@@ -1,0 +1,26 @@
+services:
+  app:
+    build: .
+    container_name: laravel-shadcn-admin-dashboard
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      - APP_NAME=laravel-shadcn-admin-dashboard
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=http://localhost:8000
+      - APP_KEY=${APP_KEY:-}
+      - DB_CONNECTION=sqlite
+      - SESSION_DRIVER=database
+      - QUEUE_CONNECTION=database
+      - CACHE_STORE=database
+    volumes:
+      - app_db:/var/www/html/database
+      - app_storage:/var/www/html/storage/app
+      - app_logs:/var/www/html/storage/logs
+
+volumes:
+  app_db: {}
+  app_storage: {}
+  app_logs: {}

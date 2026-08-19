@@ -1,0 +1,168 @@
+import { createContext, useContext, useEffect, useState } from 'react';
+
+import { useStore } from 'zustand';
+import type { StoreApi } from 'zustand';
+
+import {
+    PREFERENCE_DEFAULTS,
+    PREFERENCE_KEYS,
+    PREFERENCE_REGISTRY,
+    parsePreference,
+} from '@/lib/preferences/preferences-config';
+import type {
+    PreferenceKey,
+    PreferenceValueMap,
+    PreferencePersistence,
+} from '@/lib/preferences/preferences-config';
+import {
+    applyThemeMode,
+    subscribeToSystemTheme,
+} from '@/lib/preferences/theme-utils';
+
+import { createPreferencesStore } from './preferences-store';
+import type { PreferencesState } from './preferences-store';
+
+const PreferencesStoreContext =
+    createContext<StoreApi<PreferencesState> | null>(null);
+
+function readDomPreference<K extends PreferenceKey>(
+    key: K,
+): PreferenceValueMap[K] {
+    const definition = PREFERENCE_REGISTRY[key];
+    const rawValue = document.documentElement.getAttribute(
+        definition.attribute,
+    );
+
+    return parsePreference(key, rawValue);
+}
+
+function readDomPreferences(): PreferenceValueMap {
+    const values = { ...PREFERENCE_DEFAULTS } as PreferenceValueMap;
+
+    function assignPreference<K extends PreferenceKey>(key: K) {
+        values[key] = readDomPreference(key);
+    }
+
+    for (const key of PREFERENCE_KEYS) {
+        assignPreference(key);
+    }
+
+    return values;
+}
+
+function isClientCookiePersistence(
+    persistence: PreferencePersistence,
+): boolean {
+    return persistence === 'client-cookie';
+}
+
+function mergePreferences(
+    initialValues: Partial<PreferenceValueMap>,
+    domValues: PreferenceValueMap,
+): PreferenceValueMap {
+    const result: PreferenceValueMap = { ...PREFERENCE_DEFAULTS };
+
+    for (const key of PREFERENCE_KEYS) {
+        const definition = PREFERENCE_REGISTRY[key];
+        const persistence = definition.persistence as PreferencePersistence;
+
+        if (isClientCookiePersistence(persistence)) {
+            (result as Record<string, string>)[key] = domValues[key] as string;
+        } else {
+            const serverValue = initialValues[key];
+            const domValue = domValues[key];
+            const defaultValue = PREFERENCE_DEFAULTS[key];
+
+            if (serverValue !== undefined) {
+                (result as Record<string, string>)[key] = serverValue as string;
+            } else if (domValue !== undefined) {
+                (result as Record<string, string>)[key] = domValue as string;
+            } else {
+                (result as Record<string, string>)[key] =
+                    defaultValue as string;
+            }
+        }
+    }
+
+    return result;
+}
+
+export function PreferencesStoreProvider({
+    children,
+    initialValues,
+}: {
+    children: React.ReactNode;
+    initialValues: Partial<PreferenceValueMap>;
+}) {
+    const [store] = useState<StoreApi<PreferencesState>>(() =>
+        createPreferencesStore(initialValues),
+    );
+
+    useEffect(() => {
+        // Read from DOM (set by theme-boot script) to get actual values
+        const domValues = readDomPreferences();
+
+        // Merge with server-provided values, preferring DOM for layout-critical prefs
+        const values = mergePreferences(initialValues, domValues);
+
+        store.setState({
+            values,
+            resolvedThemeMode: document.documentElement.classList.contains(
+                'dark',
+            )
+                ? 'dark'
+                : 'light',
+            isSynced: true,
+        });
+    }, [store, initialValues]);
+
+    useEffect(() => {
+        let unsubscribeMedia: (() => void) | undefined;
+
+        const subscribeForMode = (mode: PreferenceValueMap['theme_mode']) => {
+            unsubscribeMedia?.();
+            unsubscribeMedia = undefined;
+
+            if (mode === 'system') {
+                unsubscribeMedia = subscribeToSystemTheme(() => {
+                    store.setState({
+                        resolvedThemeMode: applyThemeMode('system'),
+                    });
+                });
+            }
+        };
+
+        subscribeForMode(store.getState().values.theme_mode);
+
+        const unsubscribeStore = store.subscribe((state, previousState) => {
+            if (state.values.theme_mode !== previousState.values.theme_mode) {
+                subscribeForMode(state.values.theme_mode);
+            }
+        });
+
+        return () => {
+            unsubscribeMedia?.();
+            unsubscribeStore();
+        };
+    }, [store]);
+
+    return (
+        <PreferencesStoreContext.Provider value={store}>
+            {children}
+        </PreferencesStoreContext.Provider>
+    );
+}
+
+export function usePreferencesStore<T>(
+    selector: (state: PreferencesState) => T,
+): T {
+    const store = useContext(
+        PreferencesStoreContext,
+    ) as StoreApi<PreferencesState> | null;
+
+    if (!store) {
+        throw new Error('Missing PreferencesStoreProvider');
+    }
+
+    return useStore(store, selector);
+}
