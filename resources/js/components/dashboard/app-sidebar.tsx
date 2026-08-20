@@ -136,7 +136,6 @@ export function AppSidebar({
                         <SidebarMenuButton size="lg" asChild>
                             <Link href={dashboard()} prefetch>
                                 <AppLogo />
-                                <span className="text-base font-semibold">Sistem Sekolah</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
