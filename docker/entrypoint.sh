@@ -30,8 +30,8 @@ LOG_LEVEL=${LOG_LEVEL:-warning}
 FILESYSTEM_DISK=${FILESYSTEM_DISK:-local}
 MAIL_MAILER=${MAIL_MAILER:-log}
 MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-hello@example.com}
-MAIL_FROM_NAME=${MAIL_FROM_NAME:-Sistem Sekolah}
-VITE_APP_NAME=${VITE_APP_NAME:-Sistem Sekolah}
+MAIL_FROM_NAME="${MAIL_FROM_NAME:-Sistem Sekolah}"
+VITE_APP_NAME="${VITE_APP_NAME:-Sistem Sekolah}"
 EOF
 
 # --- permissions (php-fpm runs as www-data) ---
@@ -40,6 +40,7 @@ chmod -R ug+rw storage database bootstrap/cache
 
 # --- clear stale caches, migrate, seed (idempotent), cache config ---
 su www-data -s /bin/sh -c "php artisan config:clear --ansi || true"
+su www-data -s /bin/sh -c "php artisan cache:clear --ansi || true"
 su www-data -s /bin/sh -c "php artisan migrate --force --ansi"
 su www-data -s /bin/sh -c "php artisan db:seed --force --ansi || true"
 su www-data -s /bin/sh -c "php artisan config:cache --ansi"

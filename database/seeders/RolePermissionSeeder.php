@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
@@ -38,6 +39,10 @@ class RolePermissionSeeder extends Seeder
      */
     public function run(): void
     {
+        // Flush cache permission Spatie (penting saat cache driver = redis,
+        // agar syncPermissions tidak melihat cache stale).
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         // Buat permission (idempotent)
         foreach (self::PERMISSIONS as $permission) {
             Permission::findOrCreate($permission, 'web');
