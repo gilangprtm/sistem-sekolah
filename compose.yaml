@@ -1,26 +1,75 @@
 services:
   app:
     build: .
-    container_name: laravel-shadcn-admin-dashboard
+    container_name: sistem-sekolah-app
     restart: unless-stopped
     ports:
       - "8000:80"
     environment:
-      - APP_NAME=laravel-shadcn-admin-dashboard
+      - APP_NAME=sistem-sekolah
       - APP_ENV=production
       - APP_DEBUG=false
       - APP_URL=http://localhost:8000
       - APP_KEY=${APP_KEY:-}
-      - DB_CONNECTION=sqlite
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=sistem_sekolah
+      - DB_USERNAME=sistem_sekolah
+      - DB_PASSWORD=sistem_sekolah
       - SESSION_DRIVER=database
-      - QUEUE_CONNECTION=database
-      - CACHE_STORE=database
+      - QUEUE_CONNECTION=redis
+      - CACHE_STORE=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
-      - app_db:/var/www/html/database
       - app_storage:/var/www/html/storage/app
       - app_logs:/var/www/html/storage/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: sistem-sekolah-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=sistem_sekolah
+      - POSTGRES_USER=sistem_sekolah
+      - POSTGRES_PASSWORD=sistem_sekolah
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sistem_sekolah"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: sistem-sekolah-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
-  app_db: {}
   app_storage: {}
   app_logs: {}
+  postgres_data: {}
+  redis_data: {}

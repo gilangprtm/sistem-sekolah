@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get update && apt-get install -y --no-install-recommends \
-        php8.5-cli php8.5-mbstring php8.5-xml php8.5-curl php8.5-sqlite3 php8.5-zip php8.5-intl php8.5-bcmath \
+        php8.5-cli php8.5-mbstring php8.5-xml php8.5-curl php8.5-sqlite3 php8.5-zip php8.5-intl php8.5-bcmath php8.5-pgsql php8.5-redis \
         nodejs \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -36,7 +36,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list \
     && apt-get update && apt-get install -y --no-install-recommends \
         nginx \
-        php8.5-cli php8.5-fpm php8.5-mbstring php8.5-xml php8.5-curl php8.5-sqlite3 php8.5-zip php8.5-intl php8.5-bcmath \
+        curl \
+        php8.5-cli php8.5-fpm php8.5-mbstring php8.5-xml php8.5-curl php8.5-sqlite3 php8.5-zip php8.5-intl php8.5-bcmath php8.5-pgsql php8.5-redis \
         composer sqlite3 unzip \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /var/www/html

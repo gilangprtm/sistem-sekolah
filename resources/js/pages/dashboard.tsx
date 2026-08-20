@@ -1,25 +1,99 @@
-import { Head } from '@inertiajs/react';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+import { Head, Link } from '@inertiajs/react';
+import {
+    LayoutDashboard,
+    Lock,
+    PackageSearch,
+    Users,
+} from 'lucide-react';
+import Heading from '@/components/heading';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { dashboard } from '@/routes';
+import type { Auth } from '@/types';
 
-export default function Dashboard() {
+type DashboardProps = {
+    auth: Auth;
+    stats: {
+        users_count?: number;
+        roles_count?: number;
+    };
+    isSuperAdmin: boolean;
+};
+
+export default function Dashboard({ stats, isSuperAdmin }: DashboardProps) {
     return (
         <>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                <Heading
+                    variant="small"
+                    title="Dashboard"
+                    description="Ringkasan sistem"
+                />
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    {isSuperAdmin && (
+                        <>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">
+                                        Total User
+                                    </CardTitle>
+                                    <Users className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">
+                                        {stats.users_count ?? 0}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">
+                                        Total Role
+                                    </CardTitle>
+                                    <Lock className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">
+                                        {stats.roles_count ?? 0}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </>
+                    )}
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                                <PackageSearch className="h-4 w-4" />
+                                Modul Inventaris
+                            </CardTitle>
+                            <CardDescription>
+                                Kelola aset & inventaris sekolah
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex gap-2">
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href="/inventory">Daftar Inventaris</Link>
+                                </Button>
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href="/inventory/dashboard">
+                                        <LayoutDashboard className="h-4 w-4" />
+                                        Dashboard
+                                    </Link>
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </>

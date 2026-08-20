@@ -15,10 +15,11 @@ Fase:
 ### TASK-001 — Setup PostgreSQL + Redis + env production
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 1
 - **Depends On:** None
 - **Blocks:** TASK-002, TASK-005, TASK-015, TASK-016
+- **Verification Note:** .env.example + compose.yaml + entrypoint siap PostgreSQL/Redis. Dev lokal pakai SQLite (PHP herd-lite tanpa pdo_pgsql). Runtime PostgreSQL diverifikasi via Dockerfile (php8.5-pgsql) tapi belum dijalankan — Docker Desktop tidak aktif di mesin ini.
 
 **Description:**
 Siapkan infrastruktur database & cache sesuai PRD §37/§39/§44. Default dev memakai PostgreSQL (bukan SQLite) via Docker compose. Redis untuk cache/queue. Update `.env.example` dengan konfigurasi PostgreSQL + Redis (bisa toggle ke SQLite sebagai fallback). Tambahkan service `postgres` dan `redis` di compose.yaml (dev). Dokumentasikan env production.
@@ -38,7 +39,7 @@ Siapkan infrastruktur database & cache sesuai PRD §37/§39/§44. Default dev me
 ### TASK-002 — Install & konfigurasi Sanctum + Spatie Permission
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 1
 - **Depends On:** TASK-001
 - **Blocks:** TASK-003, TASK-004, TASK-005, TASK-011, TASK-012, TASK-013
@@ -60,7 +61,7 @@ Pasang `laravel/sanctum` dan `spatie/laravel-permission`. Publish migration & co
 ### TASK-003 — Role & permission seeder awal (5 role + permission)
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 1
 - **Depends On:** TASK-002
 - **Blocks:** TASK-004, TASK-006, TASK-013
@@ -82,7 +83,7 @@ Seeder mendefinisikan role awal: Super Admin, Admin Inventaris, Guru, Admin Perp
 ### TASK-004 — App shell: hapus demo pages, navigasi modul, role-aware menu
 
 - **Priority:** P1
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 1
 - **Depends On:** TASK-002, TASK-003
 - **Blocks:** TASK-006, TASK-008
@@ -104,7 +105,7 @@ Bersihkan halaman demo yang tidak relevan (chat, mail, auth v1/v2 showcase) agar
 ### TASK-005 — User Management (web): list, create, edit, assign role, delete
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 1
 - **Depends On:** TASK-001, TASK-003
 - **Blocks:** TASK-007, TASK-013
@@ -128,7 +129,7 @@ Halaman manajemen user untuk Super Admin. List user (nama, email, role, verified
 ### TASK-006 — Role & Permission Management (web)
 
 - **Priority:** P1
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 1
 - **Depends On:** TASK-003, TASK-004
 - **Blocks:** TASK-013
@@ -151,7 +152,7 @@ Halaman kelola role & permission untuk Super Admin: list role, create role, edit
 ### TASK-007 — Core Dashboard (web, role-aware)
 
 - **Priority:** P2
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 1
 - **Depends On:** TASK-005
 - **Blocks:** None
@@ -173,7 +174,7 @@ Halaman dashboard utama setelah login: ringkasan sistem (jumlah user, jumlah rol
 ### TASK-008 — Inventory schema: inventory_items + inventory_units + constraints
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 2
 - **Depends On:** TASK-004
 - **Blocks:** TASK-009, TASK-010, TASK-011, TASK-014
@@ -196,7 +197,7 @@ Buat migration & model untuk `inventory_items` (10 field immutable + keterangan 
 ### TASK-009 — Register generator service + create inventory (transactional)
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 2
 - **Depends On:** TASK-008
 - **Blocks:** TASK-010, TASK-014
@@ -219,7 +220,7 @@ Service backend pembuat register otomatis per Kode Barang (001..N) dalam satu DB
 ### TASK-010 — Inventory list: search, filter, pagination, total nilai
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 2
 - **Depends On:** TASK-008, TASK-009
 - **Blocks:** TASK-014
@@ -242,7 +243,7 @@ Halaman daftar inventaris: tabel (Urut, Kode Barang, Nama, Merk, Tahun, Satuan, 
 ### TASK-011 — Inventory dashboard (KPI + statistik)
 
 - **Priority:** P1
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 2
 - **Depends On:** TASK-008, TASK-002
 - **Blocks:** None
@@ -261,10 +262,10 @@ Halaman dashboard inventaris: KPI Total aset (unit), Total nilai (SUM qty×harga
 
 ---
 
-### TASK-012 — Inventory detail: units, ubah kondisi, tambah unit, delete, update keterangan
+### TASK-012 — Inventory detail: units, kondisi, tambah unit, delete, update keterangan
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 2
 - **Depends On:** TASK-002, TASK-009
 - **Blocks:** None
@@ -288,10 +289,10 @@ Detail item: daftar unit + register + kondisi; ubah kondisi per unit (B/KB/RB); 
 
 ## PHASE 3 — REST API
 
-### TASK-013 — API auth + users + roles (Sanctum)
+### TASK-013 — REST API: auth, users, roles (Sanctum, /api/v1)
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 3
 - **Depends On:** TASK-003, TASK-005, TASK-006
 - **Blocks:** TASK-014
@@ -312,10 +313,10 @@ REST API `/api/v1` untuk auth (login/logout/me via Sanctum), users (CRUD + assig
 
 ---
 
-### TASK-014 — API inventory + dashboard
+### TASK-014 — API inventory + dashboard (Sanctum, /api/v1)
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 3
 - **Depends On:** TASK-009, TASK-010, TASK-012, TASK-013
 - **Blocks:** None
@@ -344,7 +345,7 @@ REST API `/api/v1/inventory` (list/search/filter/pagination, create, show, updat
 ### TASK-015 — Automated tests: business rules inventaris + RBAC
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 4
 - **Depends On:** TASK-001, TASK-008, TASK-009, TASK-012, TASK-013
 - **Blocks:** TASK-017
@@ -370,10 +371,11 @@ Test suite lengkap untuk aturan inti: register sequence, qty increase/decrease, 
 ### TASK-016 — Docker production + Coolify + env documentation
 
 - **Priority:** P1
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 4
 - **Depends On:** TASK-001, TASK-015
 - **Blocks:** None
+- **Verification Note:** Artefak Docker lengkap (Dockerfile + pgsql/redis, compose prod + healthcheck, entrypoint migrate+seed, .env.production.example). Build image & deploy Coolify BELUM diverifikasi di lingkungan ini — Docker Desktop tidak berjalan (service STOPPED, butuh admin). Wajib diverifikasi saat deploy nyata.
 
 **Description:**
 Siapkan deployment production: Dockerfile + compose production (app, postgres, redis), entrypoint, env production terdokumentasi, siap deploy ke Coolify VPS. Pastikan migrate & seeder jalan saat deploy. HTTPS via Coolify.
@@ -392,10 +394,11 @@ Siapkan deployment production: Dockerfile + compose production (app, postgres, r
 ### TASK-017 — Final integration, QA, acceptance (Definition of Done)
 
 - **Priority:** P0
-- **Status:** Todo
+- **Status:** Done
 - **Phase:** 4
 - **Depends On:** TASK-007, TASK-010, TASK-011, TASK-012, TASK-014, TASK-015, TASK-016
 - **Blocks:** None
+- **Verification Note:** composer test (Pint+PHPStan+PHPUnit 82/82) lulus; npm types/lint/build lulus; smoke test server: /, /login, /up 200; API e2e (login→me→create→list→dashboard→add units→update kondisi) sukses. Deploy Coolify belum diverifikasi (Docker lokal tidak aktif).
 
 **Description:**
 Integrasi final: jalankan seluruh suite, pastikan alur user lengkap (login → dashboard → inventaris → CRUD → register → kondisi → dashboard inventaris), QA manual, pastikan DoD Phase 1 (SPEC §12) terpenuhi. Siapkan handoff ke reviewer.

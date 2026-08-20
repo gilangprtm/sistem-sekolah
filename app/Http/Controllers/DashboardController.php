@@ -2,42 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 class DashboardController extends Controller
 {
-    public function index(string $screen = 'default'): Response
+    public function index(): Response
     {
-        $screens = [
-            'default',
-            'crm',
-            'finance',
-            'analytics',
-            'productivity',
-            'ecommerce',
-            'academy',
-            'logistics',
-            'infrastructure',
-            'mail',
-            'chat',
-            'calendar',
-            'kanban',
-            'tasks',
-            'invoice',
-            'users',
-            'roles',
-            'coming-soon',
-            'default-v1',
-            'crm-v1',
-            'finance-v1',
-            'analytics-v1',
-        ];
+        $user = auth()->user();
 
-        if (! in_array($screen, $screens, true)) {
-            abort(404);
+        $isSuperAdmin = $user->hasRole('Super Admin');
+
+        $stats = [];
+
+        if ($isSuperAdmin) {
+            $stats = [
+                'users_count' => User::count(),
+                'roles_count' => Role::count(),
+            ];
         }
 
-        return Inertia::render("dashboard/{$screen}");
+        return Inertia::render('dashboard', [
+            'stats' => $stats,
+            'isSuperAdmin' => $isSuperAdmin,
+        ]);
     }
 }
