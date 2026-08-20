@@ -27,8 +27,8 @@ Siapkan infrastruktur database & cache sesuai PRD §37/§39/§44. Default dev me
 **Acceptance Criteria:**
 - [x] `.env.example` memiliki konfigurasi `DB_CONNECTION=pgsql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`.
 - [x] `compose.yaml` (atau compose file dev) menyediakan service `postgres` dan `redis`.
-- [ ] `docker compose up` dapat menjalankan PostgreSQL & Redis lokal. *(belum diverifikasi — Docker Desktop tidak aktif)*
-- [ ] Aplikasi dapat terkoneksi PostgreSQL (`php artisan migrate` jalan terhadap PostgreSQL). *(belum diverifikasi — butuh Docker)*
+- [x] `docker compose up` dapat menjalankan PostgreSQL & Redis lokal. *(diverifikasi: postgres + redis healthy)*
+- [x] Aplikasi dapat terkoneksi PostgreSQL (`php artisan migrate` jalan terhadap PostgreSQL). *(diverifikasi: 18 tabel di postgres, migrate+seed sukses)*
 - [x] Konfigurasi driver session/queue/cache mendukung Redis; dokumentasi fallback ke database/sqlite.
 - [x] `php artisan config:clear` + `migrate` sukses tanpa error. *(terverifikasi di SQLite lokal)*
 
@@ -381,11 +381,11 @@ Test suite lengkap untuk aturan inti: register sequence, qty increase/decrease, 
 Siapkan deployment production: Dockerfile + compose production (app, postgres, redis), entrypoint, env production terdokumentasi, siap deploy ke Coolify VPS. Pastikan migrate & seeder jalan saat deploy. HTTPS via Coolify.
 
 **Acceptance Criteria:**
-- [ ] Dockerfile & compose production membangun image app + postgres + redis.
-- [ ] Volume data postgres & storage persisted.
-- [ ] `.env.production.example` / dokumentasi env lengkap.
-- [ ] Deploy ke Coolify berhasil (build, migrate, seeder, HTTPS).
-- [ ] Healthcheck app & DB ok.
+- [x] Dockerfile & compose production membangun image app + postgres + redis. *(diverifikasi: image sistem-sekolah-app built, 3 container up)*
+- [x] Volume data postgres & storage persisted.
+- [x] `.env.production.example` / dokumentasi env lengkap.
+- [ ] Deploy ke Coolify berhasil (build, migrate, seeder, HTTPS). *(belum — deploy nyata ke VPS)*
+- [x] Healthcheck app & DB ok. *(diverifikasi: semua container healthy)*
 
 **References:** PRD §43, §44; RISKS R-005, R-010.
 
