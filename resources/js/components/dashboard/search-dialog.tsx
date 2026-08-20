@@ -14,61 +14,58 @@ import {
     CommandList,
     CommandSeparator,
 } from '@/components/ui/command';
-import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
-import { sidebarItems } from '@/navigation/sidebar/sidebar-items';
 
 type SearchItem = {
     id: string;
     group: string;
     label: string;
     url: string;
-    icon?: NavMainItem['icon'];
+    icon?: React.ComponentType<{ className?: string }>;
     disabled?: boolean;
     newTab?: boolean;
 };
 
-const sidebarGroupLabels = new Set(
-    sidebarItems.flatMap((group) => (group.label ? [group.label] : [])),
-);
-
-function getSubItemGroup(groupLabel: string | undefined, itemTitle: string) {
-    return sidebarGroupLabels.has(itemTitle)
-        ? (groupLabel ?? 'Other')
-        : itemTitle;
-}
-
-const searchItems: SearchItem[] = sidebarItems.flatMap((group) =>
-    group.items.flatMap((item) => {
-        if (item.subItems) {
-            return item.subItems.map((sub) => ({
-                id: sub.id,
-                group: getSubItemGroup(group.label, item.title),
-                label: sub.title,
-                url: sub.url,
-                icon: item.icon,
-                disabled: sub.disabled,
-                newTab: sub.newTab,
-            }));
-        }
-
-        return [
-            {
-                id: item.id,
-                group: group.label ?? 'Other',
-                label: item.title,
-                url: item.url,
-                icon: item.icon,
-                disabled: item.disabled,
-                newTab: item.newTab,
-            },
-        ];
-    }),
-);
+const searchItems: SearchItem[] = [
+    {
+        id: 'dashboard',
+        group: 'Navigasi',
+        label: 'Dashboard',
+        url: '/dashboard',
+    },
+    {
+        id: 'inventory',
+        group: 'Inventaris',
+        label: 'Inventaris',
+        url: '/inventory',
+    },
+    {
+        id: 'inventory-dashboard',
+        group: 'Inventaris',
+        label: 'Dashboard Inventaris',
+        url: '/inventory/dashboard',
+    },
+    {
+        id: 'inventory-create',
+        group: 'Inventaris',
+        label: 'Tambah Inventaris',
+        url: '/inventory/create',
+    },
+    {
+        id: 'users',
+        group: 'Manajemen',
+        label: 'Users',
+        url: '/users',
+    },
+    {
+        id: 'roles',
+        group: 'Manajemen',
+        label: 'Roles & Permissions',
+        url: '/roles',
+    },
+];
 
 function getAvailableItems(items: SearchItem[]) {
-    return items.filter(
-        (item) => !item.disabled && !item.url.includes('coming-soon'),
-    );
+    return items.filter((item) => !item.disabled && !item.url.includes('coming-soon'));
 }
 
 const recommendations = getAvailableItems(searchItems);
@@ -158,7 +155,7 @@ export function SearchDialog() {
             <CommandDialog open={open} onOpenChange={handleOpenChange}>
                 <Command>
                     <CommandInput
-                        placeholder="Search dashboards, users, and more…"
+                        placeholder="Cari menu…"
                         value={query}
                         onValueChange={setQuery}
                     />

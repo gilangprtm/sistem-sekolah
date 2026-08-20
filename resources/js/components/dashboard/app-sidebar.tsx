@@ -1,15 +1,16 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
-    CircleHelp,
-    ClipboardList,
-    Command,
-    Database,
-    File,
-    Search,
-    Settings,
+    BookOpen,
+    FolderGit2,
+    LayoutDashboard,
+    LayoutGrid,
+    Lock,
+    PackageSearch,
+    Users,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 
+import AppLogo from '@/components/app-logo';
 import {
     Sidebar,
     SidebarContent,
@@ -19,50 +20,36 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { APP_CONFIG } from '@/config/app-config';
-import { rootUser } from '@/data/users';
-import { sidebarItems } from '@/navigation/sidebar/sidebar-items';
+import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
+import { dashboard } from '@/routes';
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 
-import { NavFooter } from './nav-footer';
+import { NavFooter  } from './nav-footer';
+import type {NavFooterItem} from './nav-footer';
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
 
-/** Document links available for sidebar (commented in content by default). */
-export const sidebarDocumentItems = [
-    {
-        name: 'Data Library',
-        url: '#',
-        icon: Database,
-    },
-    {
-        name: 'Reports',
-        url: '#',
-        icon: ClipboardList,
-    },
-    {
-        name: 'Word Assistant',
-        url: '#',
-        icon: File,
-    },
-] as const;
+type PageProps = {
+    auth?: {
+        user?: {
+            name: string;
+            email: string;
+        };
+        permissions?: string[];
+        roles?: string[];
+    };
+};
 
-/** Secondary links available for sidebar (commented in content by default). */
-export const sidebarSecondaryItems = [
+const footerNavItems: NavFooterItem[] = [
     {
-        title: 'Settings',
-        url: '#',
-        icon: Settings,
+        title: 'Repository',
+        url: 'https://github.com/gilangprtm/sistem-sekolah',
+        icon: FolderGit2,
     },
     {
-        title: 'Get Help',
-        url: '#',
-        icon: CircleHelp,
-    },
-    {
-        title: 'Search',
-        url: '#',
-        icon: Search,
+        title: 'Documentation',
+        url: 'https://laravel.com/docs/starter-kits#react',
+        icon: BookOpen,
     },
 ];
 
@@ -74,17 +61,68 @@ export function AppSidebar({
     variant?: 'sidebar' | 'floating' | 'inset';
     collapsible?: 'offcanvas' | 'icon' | 'none';
 }) {
-    const { sidebarVariant, sidebarCollapsible, isSynced } =
-        usePreferencesStore(
-            useShallow((s) => ({
-                sidebarVariant: s.values.sidebar_variant,
-                sidebarCollapsible: s.values.sidebar_collapsible,
-                isSynced: s.isSynced,
-            })),
-        );
+    const { auth } = usePage<PageProps>().props;
+    const permissions = auth?.permissions ?? [];
+    const roles = auth?.roles ?? [];
+    const isSuperAdmin = roles.includes('Super Admin');
+
+    const can = (permission: string) => isSuperAdmin || permissions.includes(permission);
+
+    const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
+        useShallow((s) => ({
+            sidebarVariant: s.values.sidebar_variant,
+            sidebarCollapsible: s.values.sidebar_collapsible,
+            isSynced: s.isSynced,
+        })),
+    );
 
     const effectiveVariant = isSynced ? sidebarVariant : variant;
     const effectiveCollapsible = isSynced ? sidebarCollapsible : collapsible;
+
+    const navItems: NavMainItem[] = [
+        {
+            id: 'dashboard',
+            title: 'Dashboard',
+            url: dashboard().url,
+            icon: LayoutGrid,
+        },
+    ];
+
+    if (can('inventory.view')) {
+        navItems.push({
+            id: 'inventory',
+            title: 'Inventaris',
+            url: '/inventory',
+            icon: PackageSearch,
+        });
+    }
+
+    if (can('inventory.dashboard.view')) {
+        navItems.push({
+            id: 'inventory-dashboard',
+            title: 'Dashboard Inventaris',
+            url: '/inventory/dashboard',
+            icon: LayoutDashboard,
+        });
+    }
+
+    if (can('users.manage')) {
+        navItems.push({
+            id: 'users',
+            title: 'Users',
+            url: '/users',
+            icon: Users,
+        });
+    }
+
+    if (can('roles.manage')) {
+        navItems.push({
+            id: 'roles',
+            title: 'Roles & Permissions',
+            url: '/roles',
+            icon: Lock,
+        });
+    }
 
     return (
         <Sidebar
@@ -95,26 +133,34 @@ export function AppSidebar({
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                            <Link href="/dashboard/default">
-                                <Command />
-                                <span className="text-base font-semibold">
-                                    {APP_CONFIG.name}
-                                </span>
+                        <SidebarMenuButton size="lg" asChild>
+                            <Link href={dashboard()} prefetch>
+                                <AppLogo />
+                                <span className="text-base font-semibold">Sistem Sekolah</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain items={sidebarItems} />
-                {/* Available: NavDocuments + NavSecondary (commented like Next.js reference) */}
-                {/* <NavDocuments items={sidebarDocumentItems} /> */}
-                {/* <NavSecondary items={sidebarSecondaryItems} className="mt-auto" /> */}
+                <NavMain
+                    items={[
+                        {
+                            id: 1,
+                            items: navItems,
+                        },
+                    ]}
+                />
             </SidebarContent>
             <SidebarFooter>
-                <NavFooter />
-                <NavUser user={rootUser} />
+                <NavFooter items={footerNavItems} showSupportCard={false} />
+                <NavUser
+                    user={{
+                        name: auth?.user?.name ?? 'User',
+                        email: auth?.user?.email ?? '',
+                        avatar: '',
+                    }}
+                />
             </SidebarFooter>
         </Sidebar>
     );

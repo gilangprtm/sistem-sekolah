@@ -21,12 +21,12 @@ export type NavFooterItem = {
 export const defaultNavFooterItems: NavFooterItem[] = [
     {
         title: 'Repository',
-        url: 'https://github.com/arhamkhnz/next-shadcn-admin-dashboard',
+        url: 'https://github.com/gilangprtm/sistem-sekolah',
         icon: FolderGit2,
     },
     {
         title: 'Documentation',
-        url: 'https://ui.shadcn.com/docs',
+        url: 'https://laravel.com/docs/starter-kits#react',
         icon: BookOpen,
     },
 ];

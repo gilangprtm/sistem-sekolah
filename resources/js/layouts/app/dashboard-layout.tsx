@@ -4,7 +4,6 @@ import { siGithub } from 'simple-icons';
 
 import { useShallow } from 'zustand/react/shallow';
 
-import { AccountSwitcher } from '@/components/dashboard/account-switcher';
 import { AppSidebar } from '@/components/dashboard/app-sidebar';
 import { LayoutControls } from '@/components/dashboard/layout-controls';
 import { SearchDialog } from '@/components/dashboard/search-dialog';
@@ -17,7 +16,6 @@ import {
     SidebarProvider,
     SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { users } from '@/data/users';
 import { getClientCookie } from '@/lib/cookie.client';
 import { cn } from '@/lib/utils';
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
@@ -76,7 +74,7 @@ export default function DashboardLayout({
                             <Button asChild size="icon">
                                 <Link
                                     prefetch={false}
-                                    href="https://github.com/arhamkhnz/next-shadcn-admin-dashboard"
+                                    href="https://github.com/gilangprtm/sistem-sekolah"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="Open GitHub repository"
@@ -87,7 +85,6 @@ export default function DashboardLayout({
                                     />
                                 </Link>
                             </Button>
-                            <AccountSwitcher users={users} />
                         </div>
                     </div>
                 </header>
