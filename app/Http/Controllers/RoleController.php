@@ -17,7 +17,7 @@ class RoleController extends Controller
      */
     public function index(Request $request): Response
     {
-        $roles = Role::withCount('users')->orderBy('name')->get();
+        $roles = Role::with('permissions')->withCount('users')->orderBy('name')->get();
 
         $permissions = Permission::orderBy('name')->get(['id', 'name']);
 
