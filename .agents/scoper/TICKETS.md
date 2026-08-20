@@ -25,12 +25,12 @@ Fase:
 Siapkan infrastruktur database & cache sesuai PRD §37/§39/§44. Default dev memakai PostgreSQL (bukan SQLite) via Docker compose. Redis untuk cache/queue. Update `.env.example` dengan konfigurasi PostgreSQL + Redis (bisa toggle ke SQLite sebagai fallback). Tambahkan service `postgres` dan `redis` di compose.yaml (dev). Dokumentasikan env production.
 
 **Acceptance Criteria:**
-- [ ] `.env.example` memiliki konfigurasi `DB_CONNECTION=pgsql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`.
-- [ ] `compose.yaml` (atau compose file dev) menyediakan service `postgres` dan `redis`.
-- [ ] `docker compose up` dapat menjalankan PostgreSQL & Redis lokal.
-- [ ] Aplikasi dapat terkoneksi PostgreSQL (`php artisan migrate` jalan terhadap PostgreSQL).
-- [ ] Konfigurasi driver session/queue/cache mendukung Redis; dokumentasi fallback ke database/sqlite.
-- [ ] `php artisan config:clear` + `migrate` sukses tanpa error.
+- [x] `.env.example` memiliki konfigurasi `DB_CONNECTION=pgsql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`.
+- [x] `compose.yaml` (atau compose file dev) menyediakan service `postgres` dan `redis`.
+- [ ] `docker compose up` dapat menjalankan PostgreSQL & Redis lokal. *(belum diverifikasi — Docker Desktop tidak aktif)*
+- [ ] Aplikasi dapat terkoneksi PostgreSQL (`php artisan migrate` jalan terhadap PostgreSQL). *(belum diverifikasi — butuh Docker)*
+- [x] Konfigurasi driver session/queue/cache mendukung Redis; dokumentasi fallback ke database/sqlite.
+- [x] `php artisan config:clear` + `migrate` sukses tanpa error. *(terverifikasi di SQLite lokal)*
 
 **References:** PRD §37, §39, §44; DECISIONS D-001, D-005, D-010.
 
@@ -48,11 +48,11 @@ Siapkan infrastruktur database & cache sesuai PRD §37/§39/§44. Default dev me
 Pasang `laravel/sanctum` dan `spatie/laravel-permission`. Publish migration & config keduanya. Daftarkan provider. Konfigurasi guard: web (Fortify session) dan sanctum (API token). Model `User` siap multi-guard. Pastikan tidak bentrok dengan Fortify yang sudah ada.
 
 **Acceptance Criteria:**
-- [ ] `composer.json` memuat `laravel/sanctum` dan `spatie/laravel-permission`.
-- [ ] Migration Sanctum (`personal_access_tokens`) dan Spatie (`roles`, `permissions`, `model_has_roles`, `role_has_permissions`, `model_has_permissions`) tersedia.
-- [ ] Konfigurasi `config/sanctum.php`, `config/permission.php` terpublish.
-- [ ] `User` model menggunakan `HasRoles` dan dapat create token Sanctum.
-- [ ] `php artisan migrate` sukses dengan tabel baru.
+- [x] `composer.json` memuat `laravel/sanctum` dan `spatie/laravel-permission`.
+- [x] Migration Sanctum (`personal_access_tokens`) dan Spatie (`roles`, `permissions`, `model_has_roles`, `role_has_permissions`, `model_has_permissions`) tersedia.
+- [x] Konfigurasi `config/sanctum.php`, `config/permission.php` terpublish.
+- [x] `User` model menggunakan `HasRoles` dan dapat create token Sanctum.
+- [x] `php artisan migrate` sukses dengan tabel baru.
 
 **References:** PRD §5, §6, §30; DECISIONS D-002, D-003.
 
@@ -70,11 +70,11 @@ Pasang `laravel/sanctum` dan `spatie/laravel-permission`. Publish migration & co
 Seeder mendefinisikan role awal: Super Admin, Admin Inventaris, Guru, Admin Perpustakaan, Siswa. Permission per domain (users, roles, inventory, dashboard, units). Super Admin mendapat semua permission. Assign role ke user tertentu (mis. seeder admin pertama).
 
 **Acceptance Criteria:**
-- [ ] Seeder membuat 5 role dengan guard `web`/`sanctum` sesuai konfigurasi.
-- [ ] Permission `users.manage`, `roles.manage`, `inventory.view`, `inventory.create`, `inventory.delete`, `inventory.dashboard.view`, `inventory.unit.create`, `inventory.unit.condition.update` ada.
-- [ ] Super Admin memiliki seluruh permission.
-- [ ] User admin pertama dibuat & mendapat role Super Admin.
-- [ ] `php artisan db:seed` idempotent (dapat dijalankan ulang tanpa duplikasi).
+- [x] Seeder membuat 5 role dengan guard `web`/`sanctum` sesuai konfigurasi.
+- [x] Permission `users.manage`, `roles.manage`, `inventory.view`, `inventory.create`, `inventory.delete`, `inventory.dashboard.view`, `inventory.unit.create`, `inventory.unit.condition.update` ada.
+- [x] Super Admin memiliki seluruh permission.
+- [x] User admin pertama dibuat & mendapat role Super Admin.
+- [x] `php artisan db:seed` idempotent (dapat dijalankan ulang tanpa duplikasi). *(diverifikasi 2x run)*
 
 **References:** PRD §30, §31; DECISIONS D-003.
 
@@ -92,11 +92,11 @@ Seeder mendefinisikan role awal: Super Admin, Admin Inventaris, Guru, Admin Perp
 Bersihkan halaman demo yang tidak relevan (chat, mail, auth v1/v2 showcase) agar shell aplikasi fokus (DECISIONS D-010). Susun navigasi sidebar: Dashboard, Manajemen User, Role & Permission, Inventaris (masuk fase 2). Menu role-aware: item disembunyikan berdasarkan permission user (frontend only; enforcement tetap backend). Pertahankan komponen UI reusable yang ada.
 
 **Acceptance Criteria:**
-- [ ] Halaman demo `chat`, `mail`, `auth/v1/*`, `auth/v2/*` dihapus dari route & pages (atau ditandai non-navigable) tanpa merusak build.
-- [ ] Navigasi sidebar memuat menu Dashboard, User, Role & Permission (dan placeholder Inventaris).
-- [ ] Menu disembunyikan sesuai permission user (role-aware).
-- [ ] `npm run types:check`, `npm run lint:check`, `npm run build` lulus.
-- [ ] `php artisan test` (suite existing) tetap lulus.
+- [x] Halaman demo `chat`, `mail`, `auth/v1/*`, `auth/v2/*` dihapus dari route & pages (atau ditandai non-navigable) tanpa merusak build.
+- [x] Navigasi sidebar memuat menu Dashboard, User, Role & Permission (dan placeholder Inventaris).
+- [x] Menu disembunyikan sesuai permission user (role-aware).
+- [x] `npm run types:check`, `npm run lint:check`, `npm run build` lulus.
+- [x] `php artisan test` (suite existing) tetap lulus.
 
 **References:** PRD §45; DECISIONS D-010; RISKS R-006.
 
@@ -114,13 +114,13 @@ Bersihkan halaman demo yang tidak relevan (chat, mail, auth v1/v2 showcase) agar
 Halaman manajemen user untuk Super Admin. List user (nama, email, role, verified, created), create user (via Fortify rules), edit user, assign/unassign role, delete user. Backend guard `users.manage`. Gunakan TanStack Table + shadcn/ui (reusable dari base).
 
 **Acceptance Criteria:**
-- [ ] Halaman `/users` menampilkan daftar user dengan pagination.
-- [ ] Create user baru (nama, email, password) validasi backend.
-- [ ] Edit user (nama, email, active?) — password reset via Fortify.
-- [ ] Assign/unassign role pada user (multi-role).
-- [ ] Delete user dengan konfirmasi.
-- [ ] Hanya Super Admin (`users.manage`) dapat mengakses; non-admin mendapat 403.
-- [ ] `npm run types:check` + `npm run build` lulus.
+- [x] Halaman `/users` menampilkan daftar user dengan pagination.
+- [x] Create user baru (nama, email, password) validasi backend.
+- [x] Edit user (nama, email, active?) — password reset via Fortify.
+- [x] Assign/unassign role pada user (multi-role).
+- [x] Delete user dengan konfirmasi.
+- [x] Hanya Super Admin (`users.manage`) dapat mengakses; non-admin mendapat 403.
+- [x] `npm run types:check` + `npm run build` lulus.
 
 **References:** PRD §4.1, §5, §31; DECISIONS D-003.
 
@@ -138,12 +138,12 @@ Halaman manajemen user untuk Super Admin. List user (nama, email, role, verified
 Halaman kelola role & permission untuk Super Admin: list role, create role, edit role (nama + permission assignment via checkbox terstruktur per domain), delete role (cegah hapus Super Admin & role yang dipakai). Backend guard `roles.manage`.
 
 **Acceptance Criteria:**
-- [ ] Halaman `/roles` menampilkan daftar role + jumlah user.
-- [ ] Create/edit role dengan nama unik.
-- [ ] Assign/unassign permission per role (multi-select terstruktur).
-- [ ] Delete role; Super Admin tidak dapat dihapus.
-- [ ] Hanya Super Admin (`roles.manage`); non-admin 403.
-- [ ] `npm run types:check` + `npm run build` lulus.
+- [x] Halaman `/roles` menampilkan daftar role + jumlah user.
+- [x] Create/edit role dengan nama unik.
+- [x] Assign/unassign permission per role (multi-select terstruktur).
+- [x] Delete role; Super Admin tidak dapat dihapus.
+- [x] Hanya Super Admin (`roles.manage`); non-admin 403.
+- [x] `npm run types:check` + `npm run build` lulus.
 
 **References:** PRD §30, §31; RISKS R-011.
 
@@ -161,9 +161,9 @@ Halaman kelola role & permission untuk Super Admin: list role, create role, edit
 Halaman dashboard utama setelah login: ringkasan sistem (jumlah user, jumlah role) untuk Super Admin; role-aware welcome + link modul. Dashboard Inventaris terpisah (TASK-011).
 
 **Acceptance Criteria:**
-- [ ] `/dashboard` menampilkan statistik dasar sistem sesuai role.
-- [ ] Role-aware: Super Admin melihat user/role stats; Admin Inventaris melihat link ke dashboard inventaris.
-- [ ] `npm run types:check` + `npm run build` lulus.
+- [x] `/dashboard` menampilkan statistik dasar sistem sesuai role.
+- [x] Role-aware: Super Admin melihat user/role stats; Admin Inventaris melihat link ke dashboard inventaris.
+- [x] `npm run types:check` + `npm run build` lulus.
 
 **References:** PRD §4, §12 (Core Dashboard).
 
