@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 
 import { Search } from 'lucide-react';
 import * as React from 'react';
@@ -68,8 +68,6 @@ function getAvailableItems(items: SearchItem[]) {
     return items.filter((item) => !item.disabled && !item.url.includes('coming-soon'));
 }
 
-const recommendations = getAvailableItems(searchItems);
-
 function groupBy(items: SearchItem[]) {
     const groups = [...new Set(items.map((item) => item.group))];
 
@@ -80,6 +78,20 @@ function groupBy(items: SearchItem[]) {
 }
 
 export function SearchDialog() {
+    const { auth } = usePage<{ auth?: { permissions?: string[]; roles?: string[] } }>().props;
+    const permissions = auth?.permissions ?? [];
+    const isSuperAdmin = auth?.roles?.includes('Super Admin') ?? false;
+    const can = (permission: string) => isSuperAdmin || permissions.includes(permission);
+    const availableItems = searchItems.filter((item) => {
+        if (item.id === 'inventory') return can('inventory.view');
+        if (item.id === 'inventory-dashboard') return can('inventory.dashboard.view');
+        if (item.id === 'inventory-create') return can('inventory.create');
+        if (item.id === 'users') return can('users.manage');
+        if (item.id === 'roles') return can('roles.manage');
+        return true;
+    });
+    const recommendations = getAvailableItems(availableItems);
+
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState('');
 
@@ -162,7 +174,7 @@ export function SearchDialog() {
                     <CommandList>
                         <CommandEmpty>No results found.</CommandEmpty>
                         {query
-                            ? renderGroups(searchItems)
+                            ? renderGroups(availableItems)
                             : renderGroups(recommendations)}
                     </CommandList>
                 </Command>

@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     LayoutDashboard,
     Lock,
@@ -27,6 +27,13 @@ type DashboardProps = {
 };
 
 export default function Dashboard({ stats, isSuperAdmin }: DashboardProps) {
+    const { auth } = usePage<DashboardProps>().props;
+    const permissions = auth.permissions ?? [];
+    const canInventory =
+        isSuperAdmin || permissions.includes('inventory.view');
+    const canInventoryDashboard =
+        isSuperAdmin || permissions.includes('inventory.dashboard.view');
+
     return (
         <>
             <Head title="Dashboard" />
@@ -70,30 +77,34 @@ export default function Dashboard({ stats, isSuperAdmin }: DashboardProps) {
                         </>
                     )}
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                                <PackageSearch className="h-4 w-4" />
-                                Modul Inventaris
-                            </CardTitle>
-                            <CardDescription>
-                                Kelola aset & inventaris sekolah
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex gap-2">
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href="/inventory">Daftar Inventaris</Link>
-                                </Button>
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href="/inventory/dashboard">
-                                        <LayoutDashboard className="h-4 w-4" />
-                                        Dashboard
-                                    </Link>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {canInventory && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                                    <PackageSearch className="h-4 w-4" />
+                                    Modul Inventaris
+                                </CardTitle>
+                                <CardDescription>
+                                    Kelola aset & inventaris sekolah
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex gap-2">
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href="/inventory">Daftar Inventaris</Link>
+                                    </Button>
+                                    {canInventoryDashboard && (
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href="/inventory/dashboard">
+                                                <LayoutDashboard className="h-4 w-4" />
+                                                Dashboard
+                                            </Link>
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </>
