@@ -91,7 +91,7 @@ class InventoryApiController extends Controller
             'tahun_pembelian' => ['nullable', 'integer', 'min:1900', 'max:2100'],
             'ukuran_konstruksi' => ['nullable', 'string', 'max:255'],
             'satuan' => ['nullable', 'string', 'max:50'],
-            'harga' => ['required', 'integer', 'min:0'],
+            'harga' => ['required', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
             'qty' => ['required', 'integer', 'min:1'],
         ]);

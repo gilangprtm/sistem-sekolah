@@ -148,6 +148,9 @@ export default function InventoryCreate() {
                             <Input
                                 id="harga"
                                 type="number"
+                                min={0}
+                                step="0.01"
+                                inputMode="decimal"
                                 value={form.harga}
                                 onChange={(e) => set('harga', e.target.value)}
                             />

@@ -79,7 +79,7 @@ export function AppSidebar({
     const effectiveVariant = isSynced ? sidebarVariant : variant;
     const effectiveCollapsible = isSynced ? sidebarCollapsible : collapsible;
 
-    const navItems: NavMainItem[] = [
+    const dashboardItems: NavMainItem[] = [
         {
             id: 'dashboard',
             title: 'Dashboard',
@@ -87,18 +87,11 @@ export function AppSidebar({
             icon: LayoutGrid,
         },
     ];
-
-    if (can('inventory.view')) {
-        navItems.push({
-            id: 'inventory',
-            title: 'Inventaris',
-            url: '/inventory',
-            icon: PackageSearch,
-        });
-    }
+    const inventoryItems: NavMainItem[] = [];
+    const adminItems: NavMainItem[] = [];
 
     if (can('inventory.dashboard.view')) {
-        navItems.push({
+        inventoryItems.push({
             id: 'inventory-dashboard',
             title: 'Dashboard Inventaris',
             url: '/inventory/dashboard',
@@ -106,8 +99,17 @@ export function AppSidebar({
         });
     }
 
+    if (can('inventory.view')) {
+        inventoryItems.push({
+            id: 'inventory',
+            title: 'Inventaris',
+            url: '/inventory',
+            icon: PackageSearch,
+        });
+    }
+
     if (can('users.manage')) {
-        navItems.push({
+        adminItems.push({
             id: 'users',
             title: 'Users',
             url: '/users',
@@ -116,13 +118,23 @@ export function AppSidebar({
     }
 
     if (can('roles.manage')) {
-        navItems.push({
+        adminItems.push({
             id: 'roles',
             title: 'Roles & Permissions',
             url: '/roles',
             icon: Lock,
         });
     }
+
+    const navGroups = [
+        { id: 1, label: 'Umum', items: dashboardItems },
+        ...(inventoryItems.length > 0
+            ? [{ id: 2, label: 'Inventaris', items: inventoryItems }]
+            : []),
+        ...(adminItems.length > 0
+            ? [{ id: 3, label: 'Administrasi', items: adminItems }]
+            : []),
+    ];
 
     return (
         <Sidebar
@@ -136,20 +148,16 @@ export function AppSidebar({
                         <SidebarMenuButton size="lg" asChild>
                             <Link href={dashboard()} prefetch>
                                 <AppLogo />
+                                <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+                                    SMPN 17 DENPASAR
+                                </span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain
-                    items={[
-                        {
-                            id: 1,
-                            items: navItems,
-                        },
-                    ]}
-                />
+                <NavMain items={navGroups} />
             </SidebarContent>
             <SidebarFooter>
                 <NavFooter items={footerNavItems} showSupportCard={false} />
