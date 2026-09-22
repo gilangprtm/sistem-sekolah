@@ -411,4 +411,97 @@ Integrasi final: jalankan seluruh suite, pastikan alur user lengkap (login → d
 - [ ] Deployment production (Coolify) berjalan & HTTPS aktif.
 - [ ] DoD SPEC §12 terpenuhi.
 
-**References:** SPEC §12; PRD §52.
+- **References:** SPEC §12; PRD §52.
+
+---
+
+## CYCLE 2 — INVENTORY CATEGORIES (DESIGN-ONLY)
+
+### TASK-018 — Category schema and backward-compatible migration
+
+- **Priority:** P0
+- **Status:** Designed
+- **Phase:** 2
+- **Depends On:** TASK-008
+- **Blocks:** TASK-019, TASK-020, TASK-021
+
+**Description:** Buat tabel `categories` dan nullable `inventory_items.category_id`; normalized unique slug; FK `ON DELETE SET NULL`. Jangan mengubah migration lama.
+
+**Acceptance Criteria:**
+- [ ] Migration jalan pada database kosong dan existing inventory.
+- [ ] Data legacy tetap terbaca dengan `category_id = NULL`.
+- [ ] Delete kategori tidak menghapus inventory item.
+- [ ] Rollback diuji pada database disposable.
+
+### TASK-019 — Category model, normalization, and authorization
+
+- **Priority:** P0
+- **Status:** Designed
+- **Depends On:** TASK-018, TASK-003
+- **Blocks:** TASK-020, TASK-021
+
+**Acceptance Criteria:**
+- [ ] Relasi `Category hasMany InventoryItem` dan inverse tersedia.
+- [ ] Nama/slug duplicate case-insensitive ditolak.
+- [ ] Permission category CRUD dan assignment diuji dengan 401/403/authorized.
+
+### TASK-020 — Category master CRUD web
+
+- **Priority:** P1
+- **Status:** Designed
+- **Depends On:** TASK-019
+- **Blocks:** TASK-022
+
+**Acceptance Criteria:**
+- [ ] List/create/update/delete kategori tersedia dengan validasi backend.
+- [ ] Delete memakai konfirmasi dan menghasilkan `category_id = NULL` pada item terkait.
+- [ ] Jumlah kelompok dan jumlah unit ditampilkan sebagai metrik berbeda.
+
+### TASK-021 — Inventory category assignment and filtering
+
+- **Priority:** P0
+- **Status:** Designed
+- **Depends On:** TASK-019
+- **Blocks:** TASK-022, TASK-023
+
+**Acceptance Criteria:**
+- [ ] Create/edit dapat memilih atau mengganti kategori.
+- [ ] Filter `category_id` dan search nama kategori bekerja.
+- [ ] Item tanpa kategori tetap tampil.
+- [ ] Assignment tidak mengubah register, qty, harga, atau kondisi.
+
+### TASK-022 — Category aggregation and dashboard
+
+- **Priority:** P1
+- **Status:** Designed
+- **Depends On:** TASK-020, TASK-021
+- **Blocks:** TASK-024
+
+**Acceptance Criteria:**
+- [ ] Dua item kategori Kursi dengan qty 10 + 10 menghasilkan `total_units = 20`.
+- [ ] Total nilai mempertahankan harga decimal.
+- [ ] Aggregate berbasis unit dan tidak N+1 pada fixture.
+- [ ] Web dan API menghasilkan agregat yang sama.
+
+### TASK-023 — Category API
+
+- **Priority:** P1
+- **Status:** Designed
+- **Depends On:** TASK-019, TASK-021
+- **Blocks:** TASK-024
+
+**Acceptance Criteria:**
+- [ ] CRUD kategori dan filter inventory API tersedia.
+- [ ] Sanctum, permission, envelope, validation error, 401/403, dan decimal response diuji.
+
+### TASK-024 — Category regression and integration tests
+
+- **Priority:** P0
+- **Status:** Designed
+- **Depends On:** TASK-018, TASK-019, TASK-021, TASK-022, TASK-023
+
+**Acceptance Criteria:**
+- [ ] Migration compatibility, duplicate slug, SET NULL, legacy item, reassignment, filter, aggregation, decimal, authorization, dan web/API parity memiliki test.
+- [ ] `php artisan test`, `npm run types:check`, dan `npm run build` lulus.
+
+**References:** SPEC §13; DECISIONS D-013..D-018; RISKS R-013..R-018.

@@ -6,6 +6,7 @@ use Database\Factories\InventoryItemFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $satuan
  * @property string $harga
  * @property string|null $keterangan
+ * @property int|null $category_id
+ * @property-read Category|null $category
  * @property int $qty
  * @property float $total
  * @property-read Collection<int, InventoryUnit> $units
@@ -62,7 +65,18 @@ class InventoryItem extends Model
         'satuan',
         'harga',
         'keterangan',
+        'category_id',
     ];
+
+    /**
+     * Category assigned to this inventory group.
+     *
+     * @return BelongsTo<Category, $this>
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
 
     /**
      * Unit fisik milik item ini.

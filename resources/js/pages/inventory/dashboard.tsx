@@ -28,6 +28,14 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
+type CategoryStat = {
+    id: number | null;
+    name: string;
+    total_items: number;
+    total_units: number;
+    total_value: string;
+};
+
 type Kpi = {
     total_aset: number;
     total_nilai: number;
@@ -42,6 +50,7 @@ type Props = {
     statistik_tahun: { tahun_pembelian: number; total: number }[];
     statistik_asal: { asal_perolehan: string; total: number }[];
     statistik_kondisi: { condition: string; label: string; total: number }[];
+    category_stats: CategoryStat[];
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -49,7 +58,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/inventory/dashboard' },
 ];
 
-export default function InventoryDashboard({ kpis, statistik_tahun, statistik_asal, statistik_kondisi }: Props) {
+export default function InventoryDashboard({ kpis, statistik_tahun, statistik_asal, statistik_kondisi, category_stats }: Props) {
     const formatRupiah = (value: number) =>
         new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
 
@@ -214,6 +223,19 @@ export default function InventoryDashboard({ kpis, statistik_tahun, statistik_as
                                     </TableBody>
                                 </Table>
                             )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="lg:col-span-2">
+                        <CardHeader>
+                            <CardTitle className="text-base">Agregasi per Kategori</CardTitle>
+                            <CardDescription>Kelompok, unit, dan nilai aset per kategori</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader><TableRow><TableHead>Kategori</TableHead><TableHead className="text-right">Kelompok</TableHead><TableHead className="text-right">Unit</TableHead><TableHead className="text-right">Nilai</TableHead></TableRow></TableHeader>
+                                <TableBody>{category_stats.map((stat) => <TableRow key={stat.id ?? 'none'}><TableCell>{stat.name}</TableCell><TableCell className="text-right">{stat.total_items}</TableCell><TableCell className="text-right">{stat.total_units}</TableCell><TableCell className="text-right">{formatRupiah(Number(stat.total_value))}</TableCell></TableRow>)}</TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
                 </div>

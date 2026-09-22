@@ -55,3 +55,25 @@
 ### D-012 — Migration database menggunakan transaksi untuk item+units
 - **Keputusan:** Semua operasi yang membuat/mengubah `inventory_items` + `inventory_units` dibungkus database transaction.
 - **Rationale:** PRD §38 (cegah register duplicate, orphan, qty inconsistency).
+
+---
+
+## Cycle 2 — Inventory Categories (design-only)
+
+### D-013 — Category sebagai master grouping
+- Kategori mengelompokkan beberapa `InventoryItem`; `nama_jenis_barang` tetap identitas spesifik item.
+
+### D-014 — `category_id` nullable untuk backward compatibility
+- Inventory existing tidak dipaksa memiliki kategori pada migration awal.
+
+### D-015 — Delete kategori memakai `ON DELETE SET NULL`
+- Menghapus kategori tidak boleh menghapus aset inventaris.
+
+### D-016 — Agregasi kategori berbasis unit
+- `total_items` menghitung kelompok item; `total_units` dan total nilai dihitung dari unit dan harga per unit.
+
+### D-017 — Assignment kategori mutable dan terotorisasi
+- `category_id` dapat diubah tanpa mengubah register, qty, harga, kondisi, atau field identitas. Gunakan permission kategori/inventory khusus, bukan permission kondisi unit.
+
+### D-018 — Slug kategori normalized dan unique
+- Normalisasi dilakukan backend; kategori seperti `Kursi` dan `kursi` tidak boleh menjadi master terpisah.

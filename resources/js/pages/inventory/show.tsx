@@ -38,6 +38,7 @@ type Item = {
     satuan: string | null;
     harga: string;
     keterangan: string | null;
+    category: { id: number; name: string } | null;
     qty: number;
     total: number;
     units: Unit[];
@@ -45,6 +46,7 @@ type Item = {
 
 type Props = {
     item: Item;
+    categories: { id: number; name: string }[];
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -57,8 +59,10 @@ const conditionLabel: Record<string, string> = {
     RB: 'Rusak Berat',
 };
 
-export default function InventoryShow({ item }: Props) {
+export default function InventoryShow({ item, categories }: Props) {
     const [keterangan, setKeterangan] = useState(item.keterangan ?? '');
+    const [categoryId, setCategoryId] = useState(item.category?.id?.toString() ?? '');
+    const [categoryErrors, setCategoryErrors] = useState<Record<string, string>>({});
     const [keteranganErrors, setKeteranganErrors] = useState<Record<string, string>>({});
     const [addQty, setAddQty] = useState('1');
     const [addQtyErrors, setAddQtyErrors] = useState<Record<string, string>>({});
@@ -67,6 +71,13 @@ export default function InventoryShow({ item }: Props) {
         router.patch(`/inventory/${item.id}`, { keterangan }, {
             preserveScroll: true,
             onError: (errs) => setKeteranganErrors(errs),
+        });
+    };
+
+    const saveCategory = () => {
+        router.patch(`/inventory/${item.id}`, { category_id: categoryId || null }, {
+            preserveScroll: true,
+            onError: (errs) => setCategoryErrors(errs),
         });
     };
 
@@ -160,6 +171,15 @@ export default function InventoryShow({ item }: Props) {
                             <div className="flex justify-between gap-2">
                                 <dt className="text-muted-foreground">Satuan</dt>
                                 <dd>{item.satuan ?? '-'}</dd>
+                            </div>
+                            <div className="grid gap-2 border-t pt-2">
+                                <Label htmlFor="category_id">Kategori</Label>
+                                <NativeSelect id="category_id" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                                    <option value="">Tanpa kategori</option>
+                                    {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                                </NativeSelect>
+                                <InputError message={categoryErrors.category_id} />
+                                <Button variant="outline" size="sm" onClick={saveCategory}>Simpan Kategori</Button>
                             </div>
                             <div className="flex justify-between gap-2">
                                 <dt className="text-muted-foreground">Harga/unit</dt>

@@ -18,7 +18,11 @@ class InventoryApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = InventoryItem::query()->withCount('units');
+        $query = InventoryItem::query()->withCount('units')->with('category');
+
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->integer('category'));
+        }
 
         if ($search = $request->search) {
             $query->where(function ($q) use ($search) {
@@ -93,6 +97,7 @@ class InventoryApiController extends Controller
             'satuan' => ['nullable', 'string', 'max:50'],
             'harga' => ['required', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'qty' => ['required', 'integer', 'min:1'],
         ]);
 
@@ -112,9 +117,14 @@ class InventoryApiController extends Controller
     {
         $data = $request->validate([
             'keterangan' => ['nullable', 'string'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
-        $item->update(['keterangan' => $data['keterangan'] ?? null]);
+        if (array_key_exists('category_id', $data) && ! $request->user()->can('inventory.category.assign')) {
+            abort(403);
+        }
+
+        $item->update(array_intersect_key($data, array_flip(['keterangan', 'category_id'])));
 
         return response()->json([
             'success' => true,

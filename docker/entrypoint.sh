@@ -42,7 +42,7 @@ chmod -R ug+rw storage database bootstrap/cache
 su www-data -s /bin/sh -c "php artisan config:clear --ansi || true"
 su www-data -s /bin/sh -c "php artisan cache:clear --ansi || true"
 su www-data -s /bin/sh -c "php artisan migrate --force --ansi"
-su www-data -s /bin/sh -c "php artisan db:seed --force --ansi || true"
+su www-data -s /bin/sh -c "php artisan db:seed --force --ansi"
 su www-data -s /bin/sh -c "php artisan config:cache --ansi"
 
 # --- start daemons ---

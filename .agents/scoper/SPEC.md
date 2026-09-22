@@ -200,3 +200,26 @@ Mutable: Keterangan.
 - [x] API: `/api/v1` auth/users/roles/inventory + dashboard, authorization, business rules.
 - [x] Deployment: Docker + PostgreSQL + Redis, siap Coolify; env production terdokumentasi.
 - [x] Quality: `composer test` (Pint+PHPStan+PHPUnit) dan `npm run types:check` + `npm run build` lulus.
+
+---
+
+## 13. Cycle 2 Design — Inventory Categories (design-only)
+
+Kategori adalah master grouping untuk beberapa `InventoryItem`; bukan pengganti `nama_jenis_barang`. `Kursi A` dan `Kursi B` tetap item berbeda, tetapi dapat memiliki kategori `Kursi`.
+
+### Schema
+
+`categories`: `id`, `name` (required), `slug` (required unique), `description` nullable, timestamps. Tambahkan `inventory_items.category_id` nullable dengan foreign key `ON DELETE SET NULL`; data legacy tanpa kategori tetap valid.
+
+### Rules
+
+- Satu item memiliki nol atau satu kategori; satu kategori memiliki banyak item.
+- Nama/slug dinormalisasi dan dicegah duplikat case-insensitive.
+- `category_id` mutable melalui permission khusus; field identitas inventaris tetap immutable.
+- Delete kategori tidak boleh menghapus item.
+- Agregasi kategori membedakan `total_items` dan `total_units`; total unit dihitung dari `inventory_units`, bukan jumlah row item.
+- Filter inventory mendukung `category_id`; item tanpa kategori tetap tampil pada daftar.
+
+### Category UI/API scope
+
+Master CRUD kategori, assignment pada inventory create/edit, filter/search kategori, agregasi dashboard, dan API filter `/api/v1/inventory?category_id={id}`. Semua authorization tetap ditegakkan backend.

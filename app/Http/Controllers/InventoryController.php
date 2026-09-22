@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\InventoryItem;
 use App\Models\InventoryUnit;
 use App\Services\RegisterGeneratorService;
@@ -22,7 +23,8 @@ class InventoryController extends Controller
     public function index(Request $request): Response
     {
         $query = InventoryItem::query()
-            ->withCount('units');
+            ->withCount('units')
+            ->with('category');
 
         // Search: kode barang, nama/jenis, merk/type, register
         if ($search = $request->input('search')) {
@@ -47,6 +49,9 @@ class InventoryController extends Controller
         if ($satuan = $request->input('satuan')) {
             $query->where('satuan', $satuan);
         }
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->integer('category'));
+        }
 
         $items = $query->with('units')->orderBy('kode_barang')->paginate(10)->withQueryString();
 
@@ -60,11 +65,12 @@ class InventoryController extends Controller
 
         return Inertia::render('inventory/index', [
             'items' => $items,
-            'filters' => $request->only(['search', 'tahun', 'kondisi', 'asal', 'satuan']),
+            'filters' => $request->only(['search', 'tahun', 'kondisi', 'asal', 'satuan', 'category']),
             'filterOptions' => [
                 'tahun' => InventoryItem::query()->select('tahun_pembelian')->distinct()->orderBy('tahun_pembelian', 'desc')->pluck('tahun_pembelian'),
                 'asal' => InventoryItem::query()->select('asal_perolehan')->distinct()->whereNotNull('asal_perolehan')->orderBy('asal_perolehan')->pluck('asal_perolehan'),
                 'satuan' => InventoryItem::query()->select('satuan')->distinct()->whereNotNull('satuan')->orderBy('satuan')->pluck('satuan'),
+                'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
             ],
         ]);
     }
@@ -74,7 +80,9 @@ class InventoryController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('inventory/create');
+        return Inertia::render('inventory/create', [
+            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     /**
@@ -94,9 +102,22 @@ class InventoryController extends Controller
             'satuan' => ['nullable', 'string', 'max:255'],
             'harga' => ['required', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'category_name' => ['nullable', 'string', 'max:255'],
             'qty' => ['required', 'integer', 'min:1'],
         ]);
 
+        if (($request->filled('category_id') || $request->filled('category_name')) && ! $request->user()->can('inventory.category.assign')) {
+            abort(403);
+        }
+
+        if ($request->filled('category_name')) {
+            $name = trim($data['category_name']);
+            $category = Category::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+            $data['category_id'] = ($category ?? Category::create(['name' => $name]))->id;
+        }
+
+        unset($data['category_name']);
         $this->registerGenerator->createItemWithUnits($data);
 
         return redirect()->route('inventory.index')->with('success', 'Inventaris berhasil ditambahkan.');
@@ -107,13 +128,14 @@ class InventoryController extends Controller
      */
     public function show(InventoryItem $item): Response
     {
-        $item->load('units');
+        $item->load('units', 'category');
 
         $item->setAttribute('qty', $item->units->count());
         $item->setAttribute('total', (float) $item->harga * $item->units->count());
 
         return Inertia::render('inventory/show', [
             'item' => $item,
+            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -124,10 +146,15 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'keterangan' => ['nullable', 'string'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
-        // Hanya mutable field yang diupdate; immutable tidak pernah disentuh
-        $item->update(['keterangan' => $data['keterangan'] ?? null]);
+        if (array_key_exists('category_id', $data) && ! $request->user()->can('inventory.category.assign')) {
+            abort(403);
+        }
+
+        // Hanya mutable field dan assignment kategori yang diupdate.
+        $item->update(array_intersect_key($data, array_flip(['keterangan', 'category_id'])));
 
         return back()->with('success', 'Keterangan berhasil diperbarui.');
     }

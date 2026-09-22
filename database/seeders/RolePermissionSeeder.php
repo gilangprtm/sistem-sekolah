@@ -32,6 +32,11 @@ class RolePermissionSeeder extends Seeder
         'inventory.dashboard.view',
         'inventory.unit.create',
         'inventory.unit.condition.update',
+        'category.view',
+        'category.create',
+        'category.update',
+        'category.delete',
+        'inventory.category.assign',
     ];
 
     /**
@@ -66,6 +71,11 @@ class RolePermissionSeeder extends Seeder
             'inventory.dashboard.view',
             'inventory.unit.create',
             'inventory.unit.condition.update',
+            'category.view',
+            'category.create',
+            'category.update',
+            'category.delete',
+            'inventory.category.assign',
         ]);
 
         // Role lain tanpa permission khusus (fase selanjutnya)

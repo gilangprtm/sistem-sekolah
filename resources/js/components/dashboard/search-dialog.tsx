@@ -83,11 +83,26 @@ export function SearchDialog() {
     const isSuperAdmin = auth?.roles?.includes('Super Admin') ?? false;
     const can = (permission: string) => isSuperAdmin || permissions.includes(permission);
     const availableItems = searchItems.filter((item) => {
-        if (item.id === 'inventory') return can('inventory.view');
-        if (item.id === 'inventory-dashboard') return can('inventory.dashboard.view');
-        if (item.id === 'inventory-create') return can('inventory.create');
-        if (item.id === 'users') return can('users.manage');
-        if (item.id === 'roles') return can('roles.manage');
+        if (item.id === 'inventory') {
+return can('inventory.view');
+}
+
+        if (item.id === 'inventory-dashboard') {
+return can('inventory.dashboard.view');
+}
+
+        if (item.id === 'inventory-create') {
+return can('inventory.create');
+}
+
+        if (item.id === 'users') {
+return can('users.manage');
+}
+
+        if (item.id === 'roles') {
+return can('roles.manage');
+}
+
         return true;
     });
     const recommendations = getAvailableItems(availableItems);

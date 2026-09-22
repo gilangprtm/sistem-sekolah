@@ -49,3 +49,31 @@
 ### R-012 — API tanpa auth/authorization
 - **Dampak:** data inventaris bocor via `/api/v1`.
 - **Mitigasi:** semua route `/api/v1/*` dilindungi Sanctum + middleware permission; test unauthorized/forbidden.
+
+---
+
+## Cycle 2 — Inventory Categories (design-only)
+
+### R-013 — Category duplication
+- **Dampak:** `Kursi`, `kursi`, dan variasi nama menghasilkan grouping tidak konsisten.
+- **Mitigasi:** master data, normalized slug, unique constraint, dan validasi backend.
+
+### R-014 — Legacy inventory tanpa kategori
+- **Dampak:** agregasi kategori tidak mencakup seluruh item.
+- **Mitigasi:** `category_id` nullable, bucket `Tanpa Kategori`, dan backfill manual bertahap.
+
+### R-015 — Delete kategori menghapus aset
+- **Dampak:** kehilangan data inventaris.
+- **Mitigasi:** `ON DELETE SET NULL`, konfirmasi UI, dan integration test.
+
+### R-016 — Agregasi menghitung item, bukan unit
+- **Dampak:** dua kelompok masing-masing 10 unit terbaca sebagai total 2.
+- **Mitigasi:** aggregate dari `inventory_units`, pisahkan `total_items` dan `total_units`, serta regression test.
+
+### R-017 — Assignment kategori melewati authorization
+- **Dampak:** user tidak berwenang dapat mengubah klasifikasi aset.
+- **Mitigasi:** permission khusus, backend enforcement, dan role matrix test.
+
+### R-018 — Agregasi kategori tidak konsisten dengan money contract
+- **Dampak:** total web dan API berbeda untuk harga desimal.
+- **Mitigasi:** decimal-preserving calculation, string decimal pada API, dan parity test.

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryApiController;
 use App\Http\Controllers\Api\InventoryApiController;
 use App\Http\Controllers\Api\InventoryDashboardApiController;
 use App\Http\Controllers\Api\RoleApiController;
@@ -33,6 +34,15 @@ Route::prefix('v1')->group(function () {
         Route::delete('/{role}', [RoleApiController::class, 'destroy']);
         Route::post('/{role}/permissions', [RoleApiController::class, 'assignPermissions']);
         Route::delete('/{role}/permissions/{permission}', [RoleApiController::class, 'removePermission']);
+    });
+
+    // Categories
+    Route::middleware(['auth:sanctum', 'can:category.view'])->prefix('categories')->group(function () {
+        Route::get('/', [CategoryApiController::class, 'index']);
+        Route::post('/', [CategoryApiController::class, 'store'])->middleware('can:category.create');
+        Route::get('/{category}', [CategoryApiController::class, 'show']);
+        Route::patch('/{category}', [CategoryApiController::class, 'update'])->middleware('can:category.update');
+        Route::delete('/{category}', [CategoryApiController::class, 'destroy'])->middleware('can:category.delete');
     });
 
     // Inventory (permission inventory.view / inventory.manage)

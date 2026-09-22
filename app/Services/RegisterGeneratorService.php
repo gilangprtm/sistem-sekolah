@@ -22,7 +22,7 @@ class RegisterGeneratorService
         }
 
         return DB::transaction(function () use ($data, $qty) {
-            $item = InventoryItem::create($data);
+            $item = InventoryItem::create(collect($data)->except('qty')->all());
 
             $this->createUnits($item, $qty);
 

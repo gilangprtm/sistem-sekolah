@@ -32,6 +32,7 @@ type Item = {
     keterangan: string | null;
     qty: number;
     total: number;
+    category: { id: number; name: string } | null;
 };
 
 type Props = {
@@ -47,11 +48,13 @@ type Props = {
         kondisi?: string;
         asal?: string;
         satuan?: string;
+        category?: string;
     };
     filterOptions: {
         tahun: number[];
         asal: string[];
         satuan: string[];
+        categories: { id: number; name: string }[];
     };
 };
 
@@ -65,6 +68,9 @@ export default function InventoryIndex({ items, filters, filterOptions }: Props)
     const [kondisi, setKondisi] = useState(filters.kondisi ?? '');
     const [asal, setAsal] = useState(filters.asal ?? '');
     const [satuan, setSatuan] = useState(filters.satuan ?? '');
+    const [category, setCategory] = useState(filters.category ?? '');
+
+    const categories = filterOptions.categories;
 
     const applyFilters = (overrides: Record<string, string> = {}) => {
         const params: Record<string, string> = {};
@@ -73,6 +79,7 @@ export default function InventoryIndex({ items, filters, filterOptions }: Props)
         const kondisiVal = overrides.kondisi ?? kondisi;
         const asalVal = overrides.asal ?? asal;
         const satuanVal = overrides.satuan ?? satuan;
+        const categoryVal = overrides.category ?? category;
 
         if (searchVal) {
 params.search = searchVal;
@@ -91,8 +98,12 @@ params.asal = asalVal;
 }
 
         if (satuanVal) {
-params.satuan = satuanVal;
-}
+            params.satuan = satuanVal;
+        }
+
+        if (categoryVal) {
+            params.category = categoryVal;
+        }
 
         router.get('/inventory', params, { preserveState: true, replace: true });
     };
@@ -103,6 +114,7 @@ params.satuan = satuanVal;
         setKondisi('');
         setAsal('');
         setSatuan('');
+        setCategory('');
         router.get('/inventory', {}, { preserveState: true, replace: true });
     };
 
@@ -178,6 +190,13 @@ params.satuan = satuanVal;
                                 ))}
                             </NativeSelect>
                         </div>
+                        <div className="grid gap-2">
+                            <Label>Kategori</Label>
+                            <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)}>
+                                <option value="">Semua</option>
+                                {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                            </NativeSelect>
+                        </div>
                         <div className="flex gap-2">
                             <Button onClick={() => applyFilters()}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>Reset</Button>
@@ -193,6 +212,7 @@ params.satuan = satuanVal;
                                 <TableHead>Nama/Jenis</TableHead>
                                 <TableHead>Merk/Type</TableHead>
                                 <TableHead>Tahun</TableHead>
+                                <TableHead>Kategori</TableHead>
                                 <TableHead className="text-right">Qty</TableHead>
                                 <TableHead className="text-right">Harga</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
@@ -206,6 +226,7 @@ params.satuan = satuanVal;
                                     <TableCell className="font-medium">{item.nama_jenis_barang}</TableCell>
                                     <TableCell>{item.merk_type ?? '-'}</TableCell>
                                     <TableCell>{item.tahun_pembelian ?? '-'}</TableCell>
+                                    <TableCell>{item.category?.name ?? 'Tanpa kategori'}</TableCell>
                                     <TableCell className="text-right">{item.qty}</TableCell>
                                     <TableCell className="text-right">{formatRupiah(Number(item.harga))}</TableCell>
                                     <TableCell className="text-right font-medium">{formatRupiah(item.total)}</TableCell>

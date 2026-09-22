@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InventoryItem;
 use App\Models\InventoryUnit;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,9 +18,38 @@ class InventoryDashboardController extends Controller
         $totalUnits = InventoryUnit::count();
         $totalItems = InventoryItem::count();
 
-        $totalNilai = InventoryItem::query()
-            ->get()
-            ->sum(fn (InventoryItem $item) => (float) $item->harga * $item->units()->count());
+        $totalNilai = DB::table('inventory_items')
+            ->leftJoin('inventory_units', 'inventory_units.inventory_item_id', '=', 'inventory_items.id')
+            ->selectRaw('COALESCE(SUM(CASE WHEN inventory_units.id IS NOT NULL THEN inventory_items.harga ELSE 0 END), 0) as total_value')
+            ->value('total_value');
+
+        $categoryStats = DB::table('categories')
+            ->leftJoin('inventory_items', 'inventory_items.category_id', '=', 'categories.id')
+            ->leftJoin('inventory_units', 'inventory_units.inventory_item_id', '=', 'inventory_items.id')
+            ->select([
+                'categories.id',
+                'categories.name',
+                DB::raw('COUNT(DISTINCT inventory_items.id) as total_items'),
+                DB::raw('COUNT(inventory_units.id) as total_units'),
+                DB::raw('COALESCE(SUM(inventory_items.harga), 0) as total_value'),
+            ])
+            ->groupBy('categories.id', 'categories.name')
+            ->orderBy('categories.name')
+            ->get();
+
+        $uncategorized = DB::table('inventory_items')
+            ->leftJoin('inventory_units', 'inventory_units.inventory_item_id', '=', 'inventory_items.id')
+            ->whereNull('inventory_items.category_id')
+            ->selectRaw('COUNT(DISTINCT inventory_items.id) as total_items, COUNT(inventory_units.id) as total_units, COALESCE(SUM(inventory_items.harga), 0) as total_value')
+            ->first();
+
+        $categoryStats->push((object) [
+            'id' => null,
+            'name' => 'Tanpa kategori',
+            'total_items' => (int) ($uncategorized->total_items ?? 0),
+            'total_units' => (int) ($uncategorized->total_units ?? 0),
+            'total_value' => $uncategorized->total_value ?? '0.00',
+        ]);
 
         $kondisiCounts = InventoryUnit::query()
             ->selectRaw('condition, count(*) as total')
@@ -58,6 +88,7 @@ class InventoryDashboardController extends Controller
             'statistik_tahun' => $statistikTahun,
             'statistik_asal' => $statistikAsal,
             'statistik_kondisi' => $statistikKondisi,
+            'category_stats' => $categoryStats,
         ]);
     }
 }
