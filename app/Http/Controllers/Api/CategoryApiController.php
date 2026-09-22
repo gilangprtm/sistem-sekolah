@@ -34,7 +34,7 @@ class CategoryApiController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
+            'name' => ['required', 'string', 'max:255', 'unique:m_inventory_categories,name'],
             'description' => ['nullable', 'string'],
         ]);
 
@@ -50,7 +50,7 @@ class CategoryApiController extends Controller
     public function update(Request $request, Category $category): JsonResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('categories', 'name')->ignore($category->id)],
+            'name' => ['required', 'string', 'max:255', Rule::unique('m_inventory_categories', 'name')->ignore($category->id)],
             'description' => ['nullable', 'string'],
         ]);
 

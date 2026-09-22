@@ -22,8 +22,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $satuan
  * @property string $harga
  * @property string|null $keterangan
- * @property int|null $category_id
+ * @property int|null $inventory_category_id
+ * @property int|null $inventory_type_id
+ * @property string $asset_kind
+ * @property int|null $tangible_asset_type_id
+ * @property int|null $intangible_asset_type_id
+ * @property-read TangibleAssetType|null $tangibleAssetType
+ * @property-read IntangibleAssetType|null $intangibleAssetType
  * @property-read Category|null $category
+ * @property-read InventoryType|null $inventoryType
  * @property int $qty
  * @property float $total
  * @property-read Collection<int, InventoryUnit> $units
@@ -31,6 +38,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class InventoryItem extends Model
 {
+    protected $table = 'tr_inventory_items';
+
+    public function getTable(): string
+    {
+        return $this->table;
+    }
+
     /** @use HasFactory<InventoryItemFactory> */
     use HasFactory;
 
@@ -65,7 +79,11 @@ class InventoryItem extends Model
         'satuan',
         'harga',
         'keterangan',
-        'category_id',
+        'inventory_category_id',
+        'inventory_type_id',
+        'asset_kind',
+        'tangible_asset_type_id',
+        'intangible_asset_type_id',
     ];
 
     /**
@@ -75,7 +93,22 @@ class InventoryItem extends Model
      */
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class, 'inventory_category_id');
+    }
+
+    public function inventoryType(): BelongsTo
+    {
+        return $this->belongsTo(InventoryType::class);
+    }
+
+    public function tangibleAssetType(): BelongsTo
+    {
+        return $this->belongsTo(TangibleAssetType::class);
+    }
+
+    public function intangibleAssetType(): BelongsTo
+    {
+        return $this->belongsTo(IntangibleAssetType::class);
     }
 
     /**

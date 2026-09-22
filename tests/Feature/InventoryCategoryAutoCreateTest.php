@@ -36,7 +36,7 @@ class InventoryCategoryAutoCreateTest extends TestCase
         $category = Category::where('name', 'Perabot Kelas')->first();
         $this->assertNotNull($category);
         $this->assertSame('perabot-kelas', $category->slug);
-        $this->assertDatabaseHas('inventory_items', ['kode_barang' => 'AUTO.01', 'category_id' => $category->id]);
+        $this->assertDatabaseHas('tr_inventory_items', ['kode_barang' => 'AUTO.01', 'inventory_category_id' => $category->id]);
     }
 
     public function test_auto_create_reuses_existing_category_case_insensitively(): void
@@ -54,6 +54,6 @@ class InventoryCategoryAutoCreateTest extends TestCase
         ]);
 
         $this->assertSame(1, Category::whereRaw('LOWER(name) = ?', ['perabot'])->count());
-        $this->assertDatabaseHas('inventory_items', ['kode_barang' => 'AUTO.02', 'category_id' => $existing->id]);
+        $this->assertDatabaseHas('tr_inventory_items', ['kode_barang' => 'AUTO.02', 'inventory_category_id' => $existing->id]);
     }
 }

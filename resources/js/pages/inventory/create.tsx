@@ -29,6 +29,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 type Category = { id: number; name: string };
+type InventoryType = { id: number; name: string };
+type AssetType = { id: number; name: string };
 
 const initialForm = {
     kode_barang: '',
@@ -43,17 +45,31 @@ const initialForm = {
     harga: '',
     keterangan: '',
     category_id: '',
+    inventory_type_id: '',
+    asset_kind: 'tangible',
+    tangible_asset_type_id: '',
+    intangible_asset_type_id: '',
     qty: '1',
 };
 
 export default function InventoryCreate({
     categories,
+    inventoryTypes,
+    tangibleAssetTypes,
+    intangibleAssetTypes,
 }: {
     categories: Category[];
+    inventoryTypes: InventoryType[];
+    tangibleAssetTypes: AssetType[];
+    intangibleAssetTypes: AssetType[];
 }) {
     const [form, setForm] = useState(initialForm);
     const [categoryName, setCategoryName] = useState('');
     const [categoryOpen, setCategoryOpen] = useState(false);
+    const [inventoryTypeName, setInventoryTypeName] = useState('');
+    const [inventoryTypeOpen, setInventoryTypeOpen] = useState(false);
+    const [assetTypeName, setAssetTypeName] = useState('');
+    const [assetTypeOpen, setAssetTypeOpen] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
 
@@ -86,6 +102,15 @@ export default function InventoryCreate({
                 ...form,
                 harga: cleanHarga(form.harga),
                 category_name: categoryName || undefined,
+                inventory_type_name: inventoryTypeName || undefined,
+                tangible_asset_type_name:
+                    form.asset_kind === 'tangible'
+                        ? assetTypeName || undefined
+                        : undefined,
+                intangible_asset_type_name:
+                    form.asset_kind === 'intangible'
+                        ? assetTypeName || undefined
+                        : undefined,
             },
             {
                 preserveScroll: true,
@@ -246,6 +271,180 @@ export default function InventoryCreate({
                     </div>
 
                     <div className="grid gap-2">
+                        <Label htmlFor="asset_kind">Jenis Aset</Label>
+                        <select
+                            id="asset_kind"
+                            value={form.asset_kind}
+                            onChange={(e) => {
+                                set('asset_kind', e.target.value);
+                                setAssetTypeName('');
+                            }}
+                            className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                        >
+                            <option value="tangible">Aset Berwujud</option>
+                            <option value="intangible">
+                                Aset Tak Berwujud
+                            </option>
+                        </select>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="asset-type-combobox">
+                            {form.asset_kind === 'tangible'
+                                ? 'Jenis Aset Berwujud'
+                                : 'Jenis Aset Tak Berwujud'}
+                        </Label>
+                        <Popover
+                            open={assetTypeOpen}
+                            onOpenChange={setAssetTypeOpen}
+                        >
+                            <PopoverTrigger asChild>
+                                <Button
+                                    id="asset-type-combobox"
+                                    type="button"
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={assetTypeOpen}
+                                    className="justify-between font-normal"
+                                >
+                                    {assetTypeName ||
+                                        'Pilih atau ketik jenis aset'}
+                                    <ChevronsUpDown className="opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="p-0">
+                                <Command>
+                                    <CommandInput
+                                        placeholder="Cari atau ketik jenis aset..."
+                                        value={assetTypeName}
+                                        onValueChange={setAssetTypeName}
+                                    />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            {assetTypeName.trim()
+                                                ? `Buat jenis “${assetTypeName.trim()}”`
+                                                : 'Jenis aset tidak ditemukan.'}
+                                        </CommandEmpty>
+                                        {(form.asset_kind === 'tangible'
+                                            ? tangibleAssetTypes
+                                            : intangibleAssetTypes
+                                        ).map((type) => (
+                                            <CommandItem
+                                                key={type.id}
+                                                value={type.name}
+                                                onSelect={() => {
+                                                    setAssetTypeName(type.name);
+                                                    set(
+                                                        form.asset_kind ===
+                                                            'tangible'
+                                                            ? 'tangible_asset_type_id'
+                                                            : 'intangible_asset_type_id',
+                                                        String(type.id),
+                                                    );
+                                                    setAssetTypeOpen(false);
+                                                }}
+                                            >
+                                                {type.name}
+                                                <Check
+                                                    className={cn(
+                                                        'absolute right-2',
+                                                        assetTypeName ===
+                                                            type.name
+                                                            ? 'opacity-100'
+                                                            : 'opacity-0',
+                                                    )}
+                                                />
+                                            </CommandItem>
+                                        ))}
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        <InputError
+                            message={
+                                errors.tangible_asset_type_id ||
+                                errors.tangible_asset_type_name ||
+                                errors.intangible_asset_type_id ||
+                                errors.intangible_asset_type_name
+                            }
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="inventory-type-combobox">
+                            Jenis Inventaris
+                        </Label>
+                        <Popover
+                            open={inventoryTypeOpen}
+                            onOpenChange={setInventoryTypeOpen}
+                        >
+                            <PopoverTrigger asChild>
+                                <Button
+                                    id="inventory-type-combobox"
+                                    type="button"
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={inventoryTypeOpen}
+                                    className="justify-between font-normal"
+                                >
+                                    {inventoryTypeName ||
+                                        'Pilih atau ketik jenis'}
+                                    <ChevronsUpDown className="opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="p-0">
+                                <Command>
+                                    <CommandInput
+                                        placeholder="Cari atau ketik jenis..."
+                                        value={inventoryTypeName}
+                                        onValueChange={setInventoryTypeName}
+                                    />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            {inventoryTypeName.trim()
+                                                ? `Buat jenis “${inventoryTypeName.trim()}”`
+                                                : 'Jenis tidak ditemukan.'}
+                                        </CommandEmpty>
+                                        {inventoryTypes.map((type) => (
+                                            <CommandItem
+                                                key={type.id}
+                                                value={type.name}
+                                                onSelect={() => {
+                                                    setInventoryTypeName(
+                                                        type.name,
+                                                    );
+                                                    set(
+                                                        'inventory_type_id',
+                                                        String(type.id),
+                                                    );
+                                                    setInventoryTypeOpen(false);
+                                                }}
+                                            >
+                                                {type.name}
+                                                <Check
+                                                    className={cn(
+                                                        'absolute right-2',
+                                                        inventoryTypeName ===
+                                                            type.name
+                                                            ? 'opacity-100'
+                                                            : 'opacity-0',
+                                                    )}
+                                                />
+                                            </CommandItem>
+                                        ))}
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        <InputError
+                            message={
+                                errors.inventory_type_id ||
+                                errors.inventory_type_name
+                            }
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
                         <Label htmlFor="category-combobox">Kategori</Label>
                         <Popover
                             open={categoryOpen}
@@ -296,7 +495,7 @@ export default function InventoryCreate({
                                                 {category.name}
                                                 <Check
                                                     className={cn(
-                                                        'ml-auto',
+                                                        'absolute right-2',
                                                         categoryName ===
                                                             category.name
                                                             ? 'opacity-100'

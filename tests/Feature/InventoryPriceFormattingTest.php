@@ -27,7 +27,7 @@ class InventoryPriceFormattingTest extends TestCase
             ->assertRedirect('/inventory')
             ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseHas('inventory_items', [
+        $this->assertDatabaseHas('tr_inventory_items', [
             'kode_barang' => 'PRICE.01',
             'harga' => '5000000.50',
         ]);

@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('inventory_units', function (Blueprint $table) {
+        Schema::create('tr_inventory_units', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('inventory_item_id')->constrained('inventory_items')->cascadeOnDelete();
+            $table->foreignId('inventory_item_id')->constrained('tr_inventory_items')->cascadeOnDelete();
             $table->string('register', 10);
             $table->string('condition', 2)->default('B'); // B / KB / RB
             $table->timestamps();
@@ -29,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('inventory_units');
+        Schema::dropIfExists('tr_inventory_units');
     }
 };

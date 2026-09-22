@@ -53,7 +53,13 @@ class RegisterGeneratorService
      */
     private function createUnits(InventoryItem $item, int $qty): int
     {
-        $start = $item->nextRegisterNumber();
+        // Serialize register allocation for this item to prevent concurrent requests
+        // from reading the same maximum register before inserting their units.
+        $lockedItem = InventoryItem::query()
+            ->whereKey($item->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+        $start = $lockedItem->nextRegisterNumber();
 
         $units = [];
         for ($i = 0; $i < $qty; $i++) {

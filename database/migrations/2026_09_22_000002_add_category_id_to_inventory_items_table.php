@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('inventory_items', function (Blueprint $table) {
-            $table->foreignId('category_id')
+        Schema::table('tr_inventory_items', function (Blueprint $table) {
+            $table->foreignId('inventory_category_id')
                 ->nullable()
                 ->after('id')
-                ->constrained('categories')
+                ->constrained('m_inventory_categories')
                 ->nullOnDelete();
         });
     }
@@ -25,9 +25,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('inventory_items', function (Blueprint $table) {
-            $table->dropForeign(['category_id']);
-            $table->dropColumn('category_id');
+        Schema::table('tr_inventory_items', function (Blueprint $table) {
+            $table->dropForeign(['inventory_category_id']);
+            $table->dropColumn('inventory_category_id');
         });
     }
 };

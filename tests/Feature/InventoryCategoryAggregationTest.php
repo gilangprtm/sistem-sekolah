@@ -28,7 +28,7 @@ class InventoryCategoryAggregationTest extends TestCase
         foreach ([['A.01.01', 100.25, 2], ['A.01.02', 50.50, 3]] as [$code, $price, $qty]) {
             $item = InventoryItem::factory()->create([
                 'kode_barang' => $code,
-                'category_id' => $category->id,
+                'inventory_category_id' => $category->id,
                 'harga' => $price,
             ]);
             for ($number = 1; $number <= $qty; $number++) {

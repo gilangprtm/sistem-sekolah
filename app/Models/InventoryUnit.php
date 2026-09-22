@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class InventoryUnit extends Model
 {
+    protected $table = 'tr_inventory_units';
+
     /** @use HasFactory<InventoryUnitFactory> */
     use HasFactory;
 

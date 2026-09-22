@@ -53,6 +53,22 @@ class ApiInventoryTest extends TestCase
             ->assertJsonCount(1, 'data.data');
     }
 
+    public function test_inventory_list_rejects_page_size_above_limit(): void
+    {
+        $this->withToken($this->adminToken())
+            ->getJson('/api/v1/inventory?per_page=101')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['per_page']);
+    }
+
+    public function test_inventory_list_accepts_maximum_page_size(): void
+    {
+        $this->withToken($this->adminToken())
+            ->getJson('/api/v1/inventory?per_page=100')
+            ->assertOk()
+            ->assertJsonPath('data.per_page', 100);
+    }
+
     public function test_show_inventory_with_units(): void
     {
         $item = InventoryItem::factory()->create(['kode_barang' => 'A.01.01']);
@@ -74,8 +90,8 @@ class ApiInventoryTest extends TestCase
             ->postJson("/api/v1/inventory/{$item->id}/units", ['qty' => 2])
             ->assertOk();
 
-        $this->assertDatabaseCount('inventory_units', 3);
-        $this->assertDatabaseHas('inventory_units', ['inventory_item_id' => $item->id, 'register' => '003']);
+        $this->assertDatabaseCount('tr_inventory_units', 3);
+        $this->assertDatabaseHas('tr_inventory_units', ['inventory_item_id' => $item->id, 'register' => '003']);
     }
 
     public function test_update_condition_via_api(): void

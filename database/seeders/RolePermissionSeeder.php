@@ -32,11 +32,17 @@ class RolePermissionSeeder extends Seeder
         'inventory.dashboard.view',
         'inventory.unit.create',
         'inventory.unit.condition.update',
-        'category.view',
-        'category.create',
-        'category.update',
-        'category.delete',
+        'inventory.category.view',
+        'inventory.category.create',
+        'inventory.category.update',
+        'inventory.category.delete',
         'inventory.category.assign',
+        'inventory.type.assign',
+        'inventory.type.view',
+        'inventory.type.create',
+        'inventory.type.update',
+        'inventory.type.delete',
+        'inventory.asset-type.assign',
     ];
 
     /**
@@ -58,6 +64,9 @@ class RolePermissionSeeder extends Seeder
             Role::findOrCreate($role, 'web');
         }
 
+        // Refresh cache after creating records so syncPermissions resolves them.
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         // Super Admin mendapat SEMUA permission
         $superAdmin = Role::findByName('Super Admin', 'web');
         $superAdmin->syncPermissions(self::PERMISSIONS);
@@ -71,11 +80,17 @@ class RolePermissionSeeder extends Seeder
             'inventory.dashboard.view',
             'inventory.unit.create',
             'inventory.unit.condition.update',
-            'category.view',
-            'category.create',
-            'category.update',
-            'category.delete',
+            'inventory.category.view',
+            'inventory.category.create',
+            'inventory.category.update',
+            'inventory.category.delete',
             'inventory.category.assign',
+            'inventory.type.assign',
+            'inventory.type.view',
+            'inventory.type.create',
+            'inventory.type.update',
+            'inventory.type.delete',
+            'inventory.asset-type.assign',
         ]);
 
         // Role lain tanpa permission khusus (fase selanjutnya)

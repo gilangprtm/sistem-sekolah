@@ -9,3 +9,4 @@ require __DIR__.'/users.php';
 require __DIR__.'/roles.php';
 require __DIR__.'/inventory.php';
 require __DIR__.'/categories.php';
+require __DIR__.'/inventory-types.php';

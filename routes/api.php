@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryApiController;
 use App\Http\Controllers\Api\InventoryApiController;
 use App\Http\Controllers\Api\InventoryDashboardApiController;
+use App\Http\Controllers\Api\InventoryTypeApiController;
 use App\Http\Controllers\Api\RoleApiController;
 use App\Http\Controllers\Api\UserApiController;
 use Illuminate\Support\Facades\Route;
@@ -37,12 +38,21 @@ Route::prefix('v1')->group(function () {
     });
 
     // Categories
-    Route::middleware(['auth:sanctum', 'can:category.view'])->prefix('categories')->group(function () {
+    Route::middleware(['auth:sanctum', 'can:inventory.category.view'])->prefix('categories')->group(function () {
         Route::get('/', [CategoryApiController::class, 'index']);
-        Route::post('/', [CategoryApiController::class, 'store'])->middleware('can:category.create');
+        Route::post('/', [CategoryApiController::class, 'store'])->middleware('can:inventory.category.create');
         Route::get('/{category}', [CategoryApiController::class, 'show']);
-        Route::patch('/{category}', [CategoryApiController::class, 'update'])->middleware('can:category.update');
-        Route::delete('/{category}', [CategoryApiController::class, 'destroy'])->middleware('can:category.delete');
+        Route::patch('/{category}', [CategoryApiController::class, 'update'])->middleware('can:inventory.category.update');
+        Route::delete('/{category}', [CategoryApiController::class, 'destroy'])->middleware('can:inventory.category.delete');
+    });
+
+    // Inventory types
+    Route::middleware(['auth:sanctum', 'can:inventory.type.view'])->prefix('inventory-types')->group(function () {
+        Route::get('/', [InventoryTypeApiController::class, 'index']);
+        Route::post('/', [InventoryTypeApiController::class, 'store'])->middleware('can:inventory.type.create');
+        Route::get('/{inventoryType}', [InventoryTypeApiController::class, 'show']);
+        Route::patch('/{inventoryType}', [InventoryTypeApiController::class, 'update'])->middleware('can:inventory.type.update');
+        Route::delete('/{inventoryType}', [InventoryTypeApiController::class, 'destroy'])->middleware('can:inventory.type.delete');
     });
 
     // Inventory (permission inventory.view / inventory.manage)

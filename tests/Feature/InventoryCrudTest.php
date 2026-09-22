@@ -39,8 +39,8 @@ class InventoryCrudTest extends TestCase
             ])
             ->assertRedirect('/inventory');
 
-        $this->assertDatabaseHas('inventory_items', ['kode_barang' => 'A.01.01']);
-        $this->assertDatabaseCount('inventory_units', 3);
+        $this->assertDatabaseHas('tr_inventory_items', ['kode_barang' => 'A.01.01']);
+        $this->assertDatabaseCount('tr_inventory_units', 3);
     }
 
     public function test_create_requires_unique_kode_barang(): void

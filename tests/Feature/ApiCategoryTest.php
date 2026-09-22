@@ -47,7 +47,7 @@ class ApiCategoryTest extends TestCase
     public function test_inventory_api_filters_by_category_and_preserves_decimal(): void
     {
         $category = Category::create(['name' => 'Elektronik']);
-        $item = InventoryItem::factory()->create(['category_id' => $category->id, 'harga' => 123.45, 'kode_barang' => 'A.01.01']);
+        $item = InventoryItem::factory()->create(['inventory_category_id' => $category->id, 'harga' => 123.45, 'kode_barang' => 'A.01.01']);
         $item->units()->create(['register' => '001', 'condition' => 'B']);
         InventoryItem::factory()->create(['kode_barang' => 'B.01.01']);
 
@@ -69,10 +69,10 @@ class ApiCategoryTest extends TestCase
         $item = InventoryItem::factory()->create();
 
         $this->withToken($token)
-            ->patchJson("/api/v1/inventory/{$item->id}", ['category_id' => $category->id])
+            ->patchJson("/api/v1/inventory/{$item->id}", ['inventory_category_id' => $category->id])
             ->assertForbidden();
 
-        $this->assertNull($item->fresh()->category_id);
+        $this->assertNull($item->fresh()->inventory_category_id);
     }
 
     public function test_keterangan_only_update_does_not_require_assignment_permission(): void

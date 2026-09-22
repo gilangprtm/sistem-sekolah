@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\IntangibleAssetType;
 use App\Models\InventoryItem;
+use App\Models\InventoryType;
 use App\Models\InventoryUnit;
+use App\Models\TangibleAssetType;
 use App\Services\RegisterGeneratorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,10 +21,27 @@ class InventoryApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = InventoryItem::query()->withCount('units')->with('category');
+        $validated = $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = InventoryItem::query()->withCount('units')->with(['category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType']);
 
         if ($request->filled('category')) {
-            $query->where('category_id', $request->integer('category'));
+            $query->where('inventory_category_id', $request->integer('category'));
+        }
+
+        if ($request->filled('inventory_type')) {
+            $query->where('inventory_type_id', $request->integer('inventory_type'));
+        }
+        if ($request->filled('asset_kind')) {
+            $query->where('asset_kind', $request->string('asset_kind')->toString());
+        }
+        if ($request->filled('tangible_asset_type')) {
+            $query->where('tangible_asset_type_id', $request->integer('tangible_asset_type'));
+        }
+        if ($request->filled('intangible_asset_type')) {
+            $query->where('intangible_asset_type_id', $request->integer('intangible_asset_type'));
         }
 
         if ($search = $request->search) {
@@ -49,7 +69,7 @@ class InventoryApiController extends Controller
             $query->where('satuan', $request->satuan);
         }
 
-        $items = $query->orderBy('kode_barang')->paginate($request->integer('per_page', 15));
+        $items = $query->orderBy('kode_barang')->paginate($validated['per_page'] ?? 15);
 
         // Tambah total per item
         $items->getCollection()->transform(function ($item) {
@@ -70,7 +90,7 @@ class InventoryApiController extends Controller
      */
     public function show(InventoryItem $item): JsonResponse
     {
-        $item->load('units');
+        $item->load('units', 'category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType');
         $item->setAttribute('total', (int) $item->harga * $item->units()->count());
 
         return response()->json([
@@ -86,7 +106,7 @@ class InventoryApiController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'kode_barang' => ['required', 'string', 'max:50', 'unique:inventory_items,kode_barang'],
+            'kode_barang' => ['required', 'string', 'max:50', 'unique:tr_inventory_items,kode_barang'],
             'nama_jenis_barang' => ['required', 'string', 'max:255'],
             'merk_type' => ['nullable', 'string', 'max:255'],
             'no_identitas' => ['nullable', 'string', 'max:255'],
@@ -97,10 +117,43 @@ class InventoryApiController extends Controller
             'satuan' => ['nullable', 'string', 'max:50'],
             'harga' => ['required', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'inventory_category_id' => ['nullable', 'integer', 'exists:m_inventory_categories,id'],
+            'inventory_type_id' => ['nullable', 'integer', 'exists:m_inventory_types,id'],
+            'inventory_type_name' => ['nullable', 'string', 'max:255'],
+            'asset_kind' => ['nullable', 'string', 'in:tangible,intangible'],
+            'tangible_asset_type_id' => ['nullable', 'integer', 'exists:m_inventory_tangible_asset_types,id'],
+            'tangible_asset_type_name' => ['nullable', 'string', 'max:255'],
+            'intangible_asset_type_id' => ['nullable', 'integer', 'exists:m_inventory_intangible_asset_types,id'],
+            'intangible_asset_type_name' => ['nullable', 'string', 'max:255'],
             'qty' => ['required', 'integer', 'min:1'],
         ]);
+        $data['asset_kind'] = $data['asset_kind'] ?? 'tangible';
 
+        if ((! empty($data['inventory_type_name']) || array_key_exists('inventory_type_id', $data)) && ! $request->user()->can('inventory.type.assign')) {
+            abort(403);
+        }
+        if ((! empty($data['tangible_asset_type_name']) || ! empty($data['intangible_asset_type_name']) || array_key_exists('tangible_asset_type_id', $data) || array_key_exists('intangible_asset_type_id', $data)) && ! $request->user()->can('inventory.asset-type.assign')) {
+            abort(403);
+        }
+        if (! empty($data['inventory_type_name'])) {
+            $name = trim($data['inventory_type_name']);
+            $type = InventoryType::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+            $data['inventory_type_id'] = ($type ?? InventoryType::create(['name' => $name]))->id;
+        }
+        foreach ([
+            'tangible' => [TangibleAssetType::class, 'tangible_asset_type_name', 'tangible_asset_type_id', 'intangible_asset_type_id'],
+            'intangible' => [IntangibleAssetType::class, 'intangible_asset_type_name', 'intangible_asset_type_id', 'tangible_asset_type_id'],
+        ] as $kind => [$model, $nameKey, $idKey, $otherIdKey]) {
+            if ($data['asset_kind'] === $kind && ! empty($data[$nameKey])) {
+                $name = trim($data[$nameKey]);
+                $type = $model::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+                $data[$idKey] = ($type ?? $model::create(['name' => $name]))->id;
+            }
+            if ($data['asset_kind'] === $kind) {
+                $data[$otherIdKey] = null;
+            }
+        }
+        unset($data['inventory_type_name'], $data['tangible_asset_type_name'], $data['intangible_asset_type_name']);
         $item = app(RegisterGeneratorService::class)->createItemWithUnits($data);
 
         return response()->json([
@@ -117,14 +170,23 @@ class InventoryApiController extends Controller
     {
         $data = $request->validate([
             'keterangan' => ['nullable', 'string'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'inventory_category_id' => ['nullable', 'integer', 'exists:m_inventory_categories,id'],
+            'asset_kind' => ['sometimes', 'string', 'in:tangible,intangible'],
+            'tangible_asset_type_id' => ['nullable', 'integer', 'exists:m_inventory_tangible_asset_types,id'],
+            'intangible_asset_type_id' => ['nullable', 'integer', 'exists:m_inventory_intangible_asset_types,id'],
         ]);
 
-        if (array_key_exists('category_id', $data) && ! $request->user()->can('inventory.category.assign')) {
+        if (array_key_exists('inventory_category_id', $data) && ! $request->user()->can('inventory.category.assign')) {
+            abort(403);
+        }
+        if (array_key_exists('inventory_type_id', $data) && ! $request->user()->can('inventory.type.assign')) {
+            abort(403);
+        }
+        if ((array_key_exists('asset_kind', $data) || array_key_exists('tangible_asset_type_id', $data) || array_key_exists('intangible_asset_type_id', $data)) && ! $request->user()->can('inventory.asset-type.assign')) {
             abort(403);
         }
 
-        $item->update(array_intersect_key($data, array_flip(['keterangan', 'category_id'])));
+        $item->update(array_intersect_key($data, array_flip(['keterangan', 'inventory_category_id', 'inventory_type_id', 'asset_kind', 'tangible_asset_type_id', 'intangible_asset_type_id'])));
 
         return response()->json([
             'success' => true,

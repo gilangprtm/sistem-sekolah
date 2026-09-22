@@ -30,17 +30,17 @@ class CategoryRegressionTest extends TestCase
 
     public function test_schema_supports_legacy_uncategorized_items_and_set_null_delete(): void
     {
-        $this->assertTrue(Schema::hasTable('categories'));
-        $this->assertTrue(Schema::hasColumn('inventory_items', 'category_id'));
+        $this->assertTrue(Schema::hasTable('m_inventory_categories'));
+        $this->assertTrue(Schema::hasColumn('tr_inventory_items', 'inventory_category_id'));
 
-        $legacy = InventoryItem::factory()->create(['category_id' => null]);
+        $legacy = InventoryItem::factory()->create(['inventory_category_id' => null]);
         $category = Category::create(['name' => 'Meja']);
-        $item = InventoryItem::factory()->create(['category_id' => $category->id]);
+        $item = InventoryItem::factory()->create(['inventory_category_id' => $category->id]);
 
         $category->delete();
 
-        $this->assertDatabaseHas('inventory_items', ['id' => $legacy->id, 'category_id' => null]);
-        $this->assertDatabaseHas('inventory_items', ['id' => $item->id, 'category_id' => null]);
+        $this->assertDatabaseHas('tr_inventory_items', ['id' => $legacy->id, 'inventory_category_id' => null]);
+        $this->assertDatabaseHas('tr_inventory_items', ['id' => $item->id, 'inventory_category_id' => null]);
     }
 
     public function test_category_reassignment_has_web_and_api_parity(): void
@@ -48,18 +48,18 @@ class CategoryRegressionTest extends TestCase
         $admin = $this->admin();
         $first = Category::create(['name' => 'Kursi']);
         $second = Category::create(['name' => 'Meja']);
-        $item = InventoryItem::factory()->create(['category_id' => $first->id]);
+        $item = InventoryItem::factory()->create(['inventory_category_id' => $first->id]);
 
         $this->actingAs($admin)
-            ->patch("/inventory/{$item->id}", ['category_id' => $second->id])
+            ->patch("/inventory/{$item->id}", ['inventory_category_id' => $second->id])
             ->assertRedirect();
-        $this->assertSame($second->id, $item->fresh()->category_id);
+        $this->assertSame($second->id, $item->fresh()->inventory_category_id);
 
         $token = $admin->createToken('regression')->plainTextToken;
         $this->withToken($token)
-            ->patchJson("/api/v1/inventory/{$item->id}", ['category_id' => $first->id])
+            ->patchJson("/api/v1/inventory/{$item->id}", ['inventory_category_id' => $first->id])
             ->assertOk()
-            ->assertJsonPath('data.category_id', $first->id);
-        $this->assertSame($first->id, $item->fresh()->category_id);
+            ->assertJsonPath('data.inventory_category_id', $first->id);
+        $this->assertSame($first->id, $item->fresh()->inventory_category_id);
     }
 }

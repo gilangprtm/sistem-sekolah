@@ -34,7 +34,7 @@ class CategoryManagementTest extends TestCase
         $category = Category::create(['name' => ' Kursi & Meja ', 'description' => 'Ruang kelas']);
 
         $this->assertSame('kursi-meja', $category->slug);
-        $this->assertDatabaseHas('categories', ['id' => $category->id, 'slug' => 'kursi-meja']);
+        $this->assertDatabaseHas('m_inventory_categories', ['id' => $category->id, 'slug' => 'kursi-meja']);
     }
 
     public function test_category_rejects_case_insensitive_duplicate_name_and_slug(): void
@@ -73,20 +73,20 @@ class CategoryManagementTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseHas('categories', ['name' => 'Perabot', 'slug' => 'perabot']);
+        $this->assertDatabaseHas('m_inventory_categories', ['name' => 'Perabot', 'slug' => 'perabot']);
     }
 
     public function test_deleting_category_sets_linked_inventory_category_to_null(): void
     {
         $category = Category::create(['name' => 'Kursi']);
-        $item = InventoryItem::factory()->create(['category_id' => $category->id]);
+        $item = InventoryItem::factory()->create(['inventory_category_id' => $category->id]);
 
         $this->actingAs($this->admin())
             ->delete("/categories/{$category->id}")
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseMissing('categories', ['id' => $category->id]);
-        $this->assertDatabaseHas('inventory_items', ['id' => $item->id, 'category_id' => null]);
+        $this->assertDatabaseMissing('m_inventory_categories', ['id' => $category->id]);
+        $this->assertDatabaseHas('tr_inventory_items', ['id' => $item->id, 'inventory_category_id' => null]);
     }
 }

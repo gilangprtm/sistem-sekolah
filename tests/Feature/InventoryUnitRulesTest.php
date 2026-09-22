@@ -53,9 +53,9 @@ class InventoryUnitRulesTest extends TestCase
             ->post("/inventory/{$item->id}/units", ['qty' => 3])
             ->assertRedirect();
 
-        $this->assertDatabaseCount('inventory_units', 8);
-        $this->assertDatabaseHas('inventory_units', ['inventory_item_id' => $item->id, 'register' => '006']);
-        $this->assertDatabaseHas('inventory_units', ['inventory_item_id' => $item->id, 'register' => '008']);
+        $this->assertDatabaseCount('tr_inventory_units', 8);
+        $this->assertDatabaseHas('tr_inventory_units', ['inventory_item_id' => $item->id, 'register' => '006']);
+        $this->assertDatabaseHas('tr_inventory_units', ['inventory_item_id' => $item->id, 'register' => '008']);
     }
 
     public function test_update_condition_per_unit(): void
@@ -68,7 +68,7 @@ class InventoryUnitRulesTest extends TestCase
             ->patch("/inventory/{$item->id}/units/{$unit->id}", ['condition' => 'RB'])
             ->assertRedirect();
 
-        $this->assertDatabaseHas('inventory_units', ['id' => $unit->id, 'condition' => 'RB']);
+        $this->assertDatabaseHas('tr_inventory_units', ['id' => $unit->id, 'condition' => 'RB']);
     }
 
     public function test_invalid_condition_rejected(): void
@@ -111,8 +111,8 @@ class InventoryUnitRulesTest extends TestCase
             ->delete("/inventory/{$item->id}")
             ->assertRedirect('/inventory');
 
-        $this->assertDatabaseMissing('inventory_items', ['id' => $item->id]);
-        $this->assertDatabaseCount('inventory_units', 0);
+        $this->assertDatabaseMissing('tr_inventory_items', ['id' => $item->id]);
+        $this->assertDatabaseCount('tr_inventory_units', 0);
     }
 
     public function test_qty_cannot_decrease(): void
@@ -126,6 +126,6 @@ class InventoryUnitRulesTest extends TestCase
             ->delete("/inventory/{$item->id}/units/1");
 
         $this->assertTrue(in_array($response->status(), [404, 405], true));
-        $this->assertDatabaseCount('inventory_units', 5);
+        $this->assertDatabaseCount('tr_inventory_units', 5);
     }
 }

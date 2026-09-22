@@ -18,29 +18,29 @@ class InventoryDashboardController extends Controller
         $totalUnits = InventoryUnit::count();
         $totalItems = InventoryItem::count();
 
-        $totalNilai = DB::table('inventory_items')
-            ->leftJoin('inventory_units', 'inventory_units.inventory_item_id', '=', 'inventory_items.id')
-            ->selectRaw('COALESCE(SUM(CASE WHEN inventory_units.id IS NOT NULL THEN inventory_items.harga ELSE 0 END), 0) as total_value')
+        $totalNilai = DB::table('tr_inventory_items as items')
+            ->leftJoin('tr_inventory_units as units', 'units.inventory_item_id', '=', 'items.id')
+            ->selectRaw('COALESCE(SUM(CASE WHEN units.id IS NOT NULL THEN items.harga ELSE 0 END), 0) as total_value')
             ->value('total_value');
 
-        $categoryStats = DB::table('categories')
-            ->leftJoin('inventory_items', 'inventory_items.category_id', '=', 'categories.id')
-            ->leftJoin('inventory_units', 'inventory_units.inventory_item_id', '=', 'inventory_items.id')
+        $categoryStats = DB::table('m_inventory_categories as categories')
+            ->leftJoin('tr_inventory_items as items', 'items.inventory_category_id', '=', 'categories.id')
+            ->leftJoin('tr_inventory_units as units', 'units.inventory_item_id', '=', 'items.id')
             ->select([
                 'categories.id',
                 'categories.name',
-                DB::raw('COUNT(DISTINCT inventory_items.id) as total_items'),
-                DB::raw('COUNT(inventory_units.id) as total_units'),
-                DB::raw('COALESCE(SUM(inventory_items.harga), 0) as total_value'),
+                DB::raw('COUNT(DISTINCT items.id) as total_items'),
+                DB::raw('COUNT(units.id) as total_units'),
+                DB::raw('COALESCE(SUM(items.harga), 0) as total_value'),
             ])
             ->groupBy('categories.id', 'categories.name')
             ->orderBy('categories.name')
             ->get();
 
-        $uncategorized = DB::table('inventory_items')
-            ->leftJoin('inventory_units', 'inventory_units.inventory_item_id', '=', 'inventory_items.id')
-            ->whereNull('inventory_items.category_id')
-            ->selectRaw('COUNT(DISTINCT inventory_items.id) as total_items, COUNT(inventory_units.id) as total_units, COALESCE(SUM(inventory_items.harga), 0) as total_value')
+        $uncategorized = DB::table('tr_inventory_items as items')
+            ->leftJoin('tr_inventory_units as units', 'units.inventory_item_id', '=', 'items.id')
+            ->whereNull('items.inventory_category_id')
+            ->selectRaw('COUNT(DISTINCT items.id) as total_items, COUNT(units.id) as total_units, COALESCE(SUM(items.harga), 0) as total_value')
             ->first();
 
         $categoryStats->push((object) [

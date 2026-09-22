@@ -19,8 +19,8 @@ class CategoryController extends Controller
             ->addSelect([
                 'total_units' => InventoryUnit::query()
                     ->selectRaw('count(*)')
-                    ->join('inventory_items', 'inventory_items.id', '=', 'inventory_units.inventory_item_id')
-                    ->whereColumn('inventory_items.category_id', 'categories.id'),
+                    ->join('tr_inventory_items', 'inventory_items.id', '=', 'inventory_units.inventory_item_id')
+                    ->whereColumn('inventory_items.inventory_category_id', 'categories.id'),
             ])
             ->orderBy('name')
             ->get();
@@ -33,7 +33,7 @@ class CategoryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('categories', 'name')],
+            'name' => ['required', 'string', 'max:255', Rule::unique('m_inventory_categories', 'name')],
             'description' => ['nullable', 'string'],
         ]);
 
@@ -45,7 +45,7 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('categories', 'name')->ignore($category->id)],
+            'name' => ['required', 'string', 'max:255', Rule::unique('m_inventory_categories', 'name')->ignore($category->id)],
             'description' => ['nullable', 'string'],
         ]);
 

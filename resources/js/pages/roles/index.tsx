@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,40 @@ export default function RolesIndex({ roles, permissions }: RolesPageProps) {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
+    const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+
+    const permissionGroups = useMemo(() => {
+        const groups = new Map<string, PermissionItem[]>();
+
+        permissions.forEach((permission) => {
+            const [module] = permission.name.split('.');
+            const items = groups.get(module) ?? [];
+            items.push(permission);
+            groups.set(module, items);
+        });
+
+        return Array.from(groups.entries()).map(([module, items]) => ({ module, items }));
+    }, [permissions]);
+
+    const toggleGroup = (module: string) => {
+        setExpandedGroups((current) =>
+            current.includes(module)
+                ? current.filter((item) => item !== module)
+                : [...current, module],
+        );
+    };
+
+    const toggleGroupPermissions = (items: PermissionItem[]) => {
+        const ids = items.map((item) => item.id);
+        const allSelected = ids.every((id) => form.permissions.includes(id));
+
+        setForm((prev) => ({
+            ...prev,
+            permissions: allSelected
+                ? prev.permissions.filter((id) => !ids.includes(id))
+                : Array.from(new Set([...prev.permissions, ...ids])),
+        }));
+    };
 
     const openCreate = () => {
         setEditing(null);
@@ -227,18 +261,51 @@ export default function RolesIndex({ roles, permissions }: RolesPageProps) {
                             <div className="grid gap-2">
                                 <Label>Permissions</Label>
                                 <div className="grid gap-2 rounded-lg border p-3">
-                                    {permissions.map((perm) => (
-                                        <label
-                                            key={perm.id}
-                                            className="flex items-center gap-2 text-sm"
-                                        >
-                                            <Checkbox
-                                                checked={form.permissions.includes(perm.id)}
-                                                onCheckedChange={() => togglePermission(perm.id)}
-                                            />
-                                            {perm.name}
-                                        </label>
-                                    ))}
+                                    {permissionGroups.map(({ module, items }) => {
+                                        const expanded = expandedGroups.includes(module);
+                                        const selectedCount = items.filter((item) =>
+                                            form.permissions.includes(item.id),
+                                        ).length;
+
+                                        return (
+                                            <div key={module} className="rounded-md border">
+                                                <button
+                                                    type="button"
+                                                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm font-medium hover:bg-muted/50"
+                                                    onClick={() => toggleGroup(module)}
+                                                >
+                                                    <span className="capitalize">{module}</span>
+                                                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        {selectedCount}/{items.length}
+                                                        <span aria-hidden="true">{expanded ? '−' : '+'}</span>
+                                                    </span>
+                                                </button>
+                                                {expanded && (
+                                                    <div className="grid gap-2 border-t p-3 sm:grid-cols-2">
+                                                        <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2">
+                                                            <Checkbox
+                                                                checked={selectedCount === items.length}
+                                                                onCheckedChange={() => toggleGroupPermissions(items)}
+                                                            />
+                                                            Pilih semua {module}
+                                                        </label>
+                                                        {items.map((perm) => (
+                                                            <label
+                                                                key={perm.id}
+                                                                className="flex items-center gap-2 text-sm"
+                                                            >
+                                                                <Checkbox
+                                                                    checked={form.permissions.includes(perm.id)}
+                                                                    onCheckedChange={() => togglePermission(perm.id)}
+                                                                />
+                                                                {perm.name.split('.').slice(1).join('.')}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 <InputError message={errors.permissions} />
                             </div>

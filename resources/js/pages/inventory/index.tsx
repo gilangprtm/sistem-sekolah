@@ -1,9 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    PackageSearch,
-    Plus,
-    Search,
-} from 'lucide-react';
+import { PackageSearch, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -33,6 +29,7 @@ type Item = {
     qty: number;
     total: number;
     category: { id: number; name: string } | null;
+    inventoryType: { id: number; name: string } | null;
 };
 
 type Props = {
@@ -49,12 +46,14 @@ type Props = {
         asal?: string;
         satuan?: string;
         category?: string;
+        inventory_type?: string;
     };
     filterOptions: {
         tahun: number[];
         asal: string[];
         satuan: string[];
         categories: { id: number; name: string }[];
+        inventoryTypes: { id: number; name: string }[];
     };
 };
 
@@ -62,13 +61,20 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Inventaris', href: '/inventory' },
 ];
 
-export default function InventoryIndex({ items, filters, filterOptions }: Props) {
+export default function InventoryIndex({
+    items,
+    filters,
+    filterOptions,
+}: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [tahun, setTahun] = useState(filters.tahun ?? '');
     const [kondisi, setKondisi] = useState(filters.kondisi ?? '');
     const [asal, setAsal] = useState(filters.asal ?? '');
     const [satuan, setSatuan] = useState(filters.satuan ?? '');
     const [category, setCategory] = useState(filters.category ?? '');
+    const [inventoryType, setInventoryType] = useState(
+        filters.inventory_type ?? '',
+    );
 
     const categories = filterOptions.categories;
 
@@ -80,22 +86,23 @@ export default function InventoryIndex({ items, filters, filterOptions }: Props)
         const asalVal = overrides.asal ?? asal;
         const satuanVal = overrides.satuan ?? satuan;
         const categoryVal = overrides.category ?? category;
+        const inventoryTypeVal = overrides.inventory_type ?? inventoryType;
 
         if (searchVal) {
-params.search = searchVal;
-}
+            params.search = searchVal;
+        }
 
         if (tahunVal) {
-params.tahun = tahunVal;
-}
+            params.tahun = tahunVal;
+        }
 
         if (kondisiVal) {
-params.kondisi = kondisiVal;
-}
+            params.kondisi = kondisiVal;
+        }
 
         if (asalVal) {
-params.asal = asalVal;
-}
+            params.asal = asalVal;
+        }
 
         if (satuanVal) {
             params.satuan = satuanVal;
@@ -105,7 +112,14 @@ params.asal = asalVal;
             params.category = categoryVal;
         }
 
-        router.get('/inventory', params, { preserveState: true, replace: true });
+        if (inventoryTypeVal) {
+            params.inventory_type = inventoryTypeVal;
+        }
+
+        router.get('/inventory', params, {
+            preserveState: true,
+            replace: true,
+        });
     };
 
     const resetFilters = () => {
@@ -115,11 +129,16 @@ params.asal = asalVal;
         setAsal('');
         setSatuan('');
         setCategory('');
+        setInventoryType('');
         router.get('/inventory', {}, { preserveState: true, replace: true });
     };
 
     const formatRupiah = (value: number) =>
-        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+        new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            maximumFractionDigits: 0,
+        }).format(value);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -144,11 +163,13 @@ params.asal = asalVal;
                         <div className="grid gap-2">
                             <Label>Search</Label>
                             <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+                                    onKeyDown={(e) =>
+                                        e.key === 'Enter' && applyFilters()
+                                    }
                                     placeholder="Kode / nama / merk / register..."
                                     className="pl-8"
                                 />
@@ -156,16 +177,24 @@ params.asal = asalVal;
                         </div>
                         <div className="grid gap-2">
                             <Label>Tahun</Label>
-                            <NativeSelect value={tahun} onChange={(e) => setTahun(e.target.value)}>
+                            <NativeSelect
+                                value={tahun}
+                                onChange={(e) => setTahun(e.target.value)}
+                            >
                                 <option value="">Semua</option>
                                 {filterOptions.tahun.map((t) => (
-                                    <option key={t} value={t}>{t}</option>
+                                    <option key={t} value={t}>
+                                        {t}
+                                    </option>
                                 ))}
                             </NativeSelect>
                         </div>
                         <div className="grid gap-2">
                             <Label>Kondisi</Label>
-                            <NativeSelect value={kondisi} onChange={(e) => setKondisi(e.target.value)}>
+                            <NativeSelect
+                                value={kondisi}
+                                onChange={(e) => setKondisi(e.target.value)}
+                            >
                                 <option value="">Semua</option>
                                 <option value="B">Baik</option>
                                 <option value="KB">Kurang Baik</option>
@@ -174,32 +203,69 @@ params.asal = asalVal;
                         </div>
                         <div className="grid gap-2">
                             <Label>Asal</Label>
-                            <NativeSelect value={asal} onChange={(e) => setAsal(e.target.value)}>
+                            <NativeSelect
+                                value={asal}
+                                onChange={(e) => setAsal(e.target.value)}
+                            >
                                 <option value="">Semua</option>
                                 {filterOptions.asal.map((a) => (
-                                    <option key={a} value={a}>{a}</option>
+                                    <option key={a} value={a}>
+                                        {a}
+                                    </option>
                                 ))}
                             </NativeSelect>
                         </div>
                         <div className="grid gap-2">
                             <Label>Satuan</Label>
-                            <NativeSelect value={satuan} onChange={(e) => setSatuan(e.target.value)}>
+                            <NativeSelect
+                                value={satuan}
+                                onChange={(e) => setSatuan(e.target.value)}
+                            >
                                 <option value="">Semua</option>
                                 {filterOptions.satuan.map((s) => (
-                                    <option key={s} value={s}>{s}</option>
+                                    <option key={s} value={s}>
+                                        {s}
+                                    </option>
                                 ))}
                             </NativeSelect>
                         </div>
                         <div className="grid gap-2">
                             <Label>Kategori</Label>
-                            <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)}>
+                            <NativeSelect
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value)}
+                            >
                                 <option value="">Semua</option>
-                                {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                                {categories.map((item) => (
+                                    <option key={item.id} value={item.id}>
+                                        {item.name}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Jenis Inventaris</Label>
+                            <NativeSelect
+                                value={inventoryType}
+                                onChange={(e) =>
+                                    setInventoryType(e.target.value)
+                                }
+                            >
+                                <option value="">Semua</option>
+                                {filterOptions.inventoryTypes.map((item) => (
+                                    <option key={item.id} value={item.id}>
+                                        {item.name}
+                                    </option>
+                                ))}
                             </NativeSelect>
                         </div>
                         <div className="flex gap-2">
-                            <Button onClick={() => applyFilters()}>Filter</Button>
-                            <Button variant="outline" onClick={resetFilters}>Reset</Button>
+                            <Button onClick={() => applyFilters()}>
+                                Filter
+                            </Button>
+                            <Button variant="outline" onClick={resetFilters}>
+                                Reset
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -213,33 +279,73 @@ params.asal = asalVal;
                                 <TableHead>Merk/Type</TableHead>
                                 <TableHead>Tahun</TableHead>
                                 <TableHead>Kategori</TableHead>
-                                <TableHead className="text-right">Qty</TableHead>
-                                <TableHead className="text-right">Harga</TableHead>
-                                <TableHead className="text-right">Total</TableHead>
-                                <TableHead className="text-right">Aksi</TableHead>
+                                <TableHead>Jenis</TableHead>
+                                <TableHead className="text-right">
+                                    Qty
+                                </TableHead>
+                                <TableHead className="text-right">
+                                    Harga
+                                </TableHead>
+                                <TableHead className="text-right">
+                                    Total
+                                </TableHead>
+                                <TableHead className="text-right">
+                                    Aksi
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {items.data.map((item) => (
                                 <TableRow key={item.id}>
-                                    <TableCell className="font-mono text-xs">{item.kode_barang}</TableCell>
-                                    <TableCell className="font-medium">{item.nama_jenis_barang}</TableCell>
-                                    <TableCell>{item.merk_type ?? '-'}</TableCell>
-                                    <TableCell>{item.tahun_pembelian ?? '-'}</TableCell>
-                                    <TableCell>{item.category?.name ?? 'Tanpa kategori'}</TableCell>
-                                    <TableCell className="text-right">{item.qty}</TableCell>
-                                    <TableCell className="text-right">{formatRupiah(Number(item.harga))}</TableCell>
-                                    <TableCell className="text-right font-medium">{formatRupiah(item.total)}</TableCell>
+                                    <TableCell className="font-mono text-xs">
+                                        {item.kode_barang}
+                                    </TableCell>
+                                    <TableCell className="font-medium">
+                                        {item.nama_jenis_barang}
+                                    </TableCell>
+                                    <TableCell>
+                                        {item.merk_type ?? '-'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {item.tahun_pembelian ?? '-'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {item.category?.name ??
+                                            'Tanpa kategori'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {item.inventoryType?.name ?? '-'}
+                                    </TableCell>
                                     <TableCell className="text-right">
-                                        <Button asChild variant="outline" size="sm">
-                                            <Link href={`/inventory/${item.id}`}>Detail</Link>
+                                        {item.qty}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        {formatRupiah(Number(item.harga))}
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">
+                                        {formatRupiah(item.total)}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            size="sm"
+                                        >
+                                            <Link
+                                                href={`/inventory/${item.id}`}
+                                            >
+                                                Detail
+                                            </Link>
                                         </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
                             {items.data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                                    <TableCell
+                                        colSpan={8}
+                                        className="text-center text-muted-foreground"
+                                    >
                                         <div className="flex flex-col items-center gap-2 py-8">
                                             <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
                                             Tidak ada data inventaris.
@@ -254,15 +360,29 @@ params.asal = asalVal;
                 {items.last_page > 1 && (
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
-                            Halaman {items.current_page} dari {items.last_page} ({items.total} item)
+                            Halaman {items.current_page} dari {items.last_page}{' '}
+                            ({items.total} item)
                         </span>
                         <div className="flex gap-2">
-                            {Array.from({ length: items.last_page }, (_, i) => i + 1).map((page) => (
+                            {Array.from(
+                                { length: items.last_page },
+                                (_, i) => i + 1,
+                            ).map((page) => (
                                 <Button
                                     key={page}
-                                    variant={page === items.current_page ? 'default' : 'outline'}
+                                    variant={
+                                        page === items.current_page
+                                            ? 'default'
+                                            : 'outline'
+                                    }
                                     size="sm"
-                                    onClick={() => router.get('/inventory', { ...filters, page }, { preserveState: true })}
+                                    onClick={() =>
+                                        router.get(
+                                            '/inventory',
+                                            { ...filters, page },
+                                            { preserveState: true },
+                                        )
+                                    }
                                 >
                                     {page}
                                 </Button>

@@ -38,11 +38,11 @@ class InventoryCategoryTest extends TestCase
         $item->units()->create(['register' => '001', 'condition' => 'RB']);
 
         $this->actingAs($this->admin())
-            ->patch("/inventory/{$item->id}", ['category_id' => $category->id])
+            ->patch("/inventory/{$item->id}", ['inventory_category_id' => $category->id])
             ->assertRedirect();
 
         $item->refresh();
-        $this->assertSame($category->id, $item->category_id);
+        $this->assertSame($category->id, $item->inventory_category_id);
         $this->assertSame('A.01.01', $item->kode_barang);
         $this->assertSame('123.45', $item->harga);
         $this->assertSame('Tetap', $item->keterangan);
@@ -53,8 +53,8 @@ class InventoryCategoryTest extends TestCase
     public function test_inventory_list_can_filter_by_category_and_keeps_uncategorized_items(): void
     {
         $category = Category::create(['name' => 'Meja']);
-        $matching = InventoryItem::factory()->create(['category_id' => $category->id, 'kode_barang' => 'A.01.01']);
-        InventoryItem::factory()->create(['category_id' => null, 'kode_barang' => 'B.01.01']);
+        $matching = InventoryItem::factory()->create(['inventory_category_id' => $category->id, 'kode_barang' => 'A.01.01']);
+        InventoryItem::factory()->create(['inventory_category_id' => null, 'kode_barang' => 'B.01.01']);
 
         $this->actingAs($this->admin())
             ->get("/inventory?category={$category->id}")
@@ -72,7 +72,7 @@ class InventoryCategoryTest extends TestCase
         $item = InventoryItem::factory()->create();
 
         $this->actingAs($user)
-            ->patch("/inventory/{$item->id}", ['category_id' => $category->id])
+            ->patch("/inventory/{$item->id}", ['inventory_category_id' => $category->id])
             ->assertForbidden();
     }
 }

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\IntangibleAssetType;
 use App\Models\InventoryItem;
+use App\Models\InventoryType;
 use App\Models\InventoryUnit;
+use App\Models\TangibleAssetType;
 use App\Services\RegisterGeneratorService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +27,7 @@ class InventoryController extends Controller
     {
         $query = InventoryItem::query()
             ->withCount('units')
-            ->with('category');
+            ->with(['category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType']);
 
         // Search: kode barang, nama/jenis, merk/type, register
         if ($search = $request->input('search')) {
@@ -50,27 +53,43 @@ class InventoryController extends Controller
             $query->where('satuan', $satuan);
         }
         if ($request->filled('category')) {
-            $query->where('category_id', $request->integer('category'));
+            $query->where('inventory_category_id', $request->integer('category'));
+        }
+        if ($request->filled('inventory_type')) {
+            $query->where('inventory_type_id', $request->integer('inventory_type'));
+        }
+        if ($request->filled('asset_kind')) {
+            $query->where('asset_kind', $request->string('asset_kind')->toString());
+        }
+        if ($request->filled('tangible_asset_type')) {
+            $query->where('tangible_asset_type_id', $request->integer('tangible_asset_type'));
+        }
+        if ($request->filled('intangible_asset_type')) {
+            $query->where('intangible_asset_type_id', $request->integer('intangible_asset_type'));
         }
 
-        $items = $query->with('units')->orderBy('kode_barang')->paginate(10)->withQueryString();
+        $items = $query->orderBy('kode_barang')->paginate(10)->withQueryString();
 
-        // Transform: qty = jumlah unit, total = qty × harga
+        // Use the database aggregate instead of loading every unit for the list.
         $items->getCollection()->transform(function (InventoryItem $item) {
-            $item->setAttribute('qty', $item->units->count());
-            $item->setAttribute('total', (float) $item->harga * $item->units->count());
+            $item->setAttribute('qty', $item->units_count);
+            $item->setAttribute('total', (float) $item->harga * $item->units_count);
 
             return $item;
         });
 
         return Inertia::render('inventory/index', [
             'items' => $items,
-            'filters' => $request->only(['search', 'tahun', 'kondisi', 'asal', 'satuan', 'category']),
+            'filters' => $request->only(['search', 'tahun', 'kondisi', 'asal', 'satuan', 'category', 'inventory_type', 'asset_kind', 'tangible_asset_type', 'intangible_asset_type']),
             'filterOptions' => [
                 'tahun' => InventoryItem::query()->select('tahun_pembelian')->distinct()->orderBy('tahun_pembelian', 'desc')->pluck('tahun_pembelian'),
                 'asal' => InventoryItem::query()->select('asal_perolehan')->distinct()->whereNotNull('asal_perolehan')->orderBy('asal_perolehan')->pluck('asal_perolehan'),
                 'satuan' => InventoryItem::query()->select('satuan')->distinct()->whereNotNull('satuan')->orderBy('satuan')->pluck('satuan'),
                 'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+                'inventoryTypes' => InventoryType::query()->orderBy('name')->get(['id', 'name']),
+                'tangibleAssetTypes' => TangibleAssetType::query()->orderBy('name')->get(['id', 'name']),
+                'intangibleAssetTypes' => IntangibleAssetType::query()->orderBy('name')->get(['id', 'name']),
+                'assetKinds' => ['tangible', 'intangible'],
             ],
         ]);
     }
@@ -82,6 +101,9 @@ class InventoryController extends Controller
     {
         return Inertia::render('inventory/create', [
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'inventoryTypes' => InventoryType::query()->orderBy('name')->get(['id', 'name']),
+            'tangibleAssetTypes' => TangibleAssetType::query()->orderBy('name')->get(['id', 'name']),
+            'intangibleAssetTypes' => IntangibleAssetType::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -91,7 +113,7 @@ class InventoryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'kode_barang' => ['required', 'string', 'max:255', 'unique:inventory_items,kode_barang'],
+            'kode_barang' => ['required', 'string', 'max:255', 'unique:tr_inventory_items,kode_barang'],
             'nama_jenis_barang' => ['required', 'string', 'max:255'],
             'merk_type' => ['nullable', 'string', 'max:255'],
             'no_identitas' => ['nullable', 'string', 'max:255'],
@@ -102,22 +124,54 @@ class InventoryController extends Controller
             'satuan' => ['nullable', 'string', 'max:255'],
             'harga' => ['required', 'numeric', 'min:0'],
             'keterangan' => ['nullable', 'string'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'inventory_category_id' => ['nullable', 'integer', 'exists:m_inventory_categories,id'],
             'category_name' => ['nullable', 'string', 'max:255'],
+            'inventory_type_id' => ['nullable', 'integer', 'exists:m_inventory_types,id'],
+            'inventory_type_name' => ['nullable', 'string', 'max:255'],
+            'asset_kind' => ['nullable', 'string', 'in:tangible,intangible'],
+            'tangible_asset_type_id' => ['nullable', 'integer', 'exists:m_inventory_tangible_asset_types,id'],
+            'tangible_asset_type_name' => ['nullable', 'string', 'max:255'],
+            'intangible_asset_type_id' => ['nullable', 'integer', 'exists:m_inventory_intangible_asset_types,id'],
+            'intangible_asset_type_name' => ['nullable', 'string', 'max:255'],
             'qty' => ['required', 'integer', 'min:1'],
         ]);
+        $data['asset_kind'] = $data['asset_kind'] ?? 'tangible';
 
-        if (($request->filled('category_id') || $request->filled('category_name')) && ! $request->user()->can('inventory.category.assign')) {
+        if (($request->filled('inventory_category_id') || $request->filled('category_name')) && ! $request->user()->can('inventory.category.assign')) {
             abort(403);
         }
-
+        if (($request->filled('inventory_type_id') || $request->filled('inventory_type_name')) && ! $request->user()->can('inventory.type.assign')) {
+            abort(403);
+        }
+        if (($request->filled('tangible_asset_type_id') || $request->filled('tangible_asset_type_name') || $request->filled('intangible_asset_type_id') || $request->filled('intangible_asset_type_name')) && ! $request->user()->can('inventory.asset-type.assign')) {
+            abort(403);
+        }
         if ($request->filled('category_name')) {
             $name = trim($data['category_name']);
             $category = Category::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
-            $data['category_id'] = ($category ?? Category::create(['name' => $name]))->id;
+            $data['inventory_category_id'] = ($category ?? Category::create(['name' => $name]))->id;
         }
 
-        unset($data['category_name']);
+        if ($request->filled('inventory_type_name')) {
+            $name = trim($data['inventory_type_name']);
+            $type = InventoryType::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+            $data['inventory_type_id'] = ($type ?? InventoryType::create(['name' => $name]))->id;
+        }
+
+        if ($data['asset_kind'] === 'tangible' && $request->filled('tangible_asset_type_name')) {
+            $name = trim($data['tangible_asset_type_name']);
+            $type = TangibleAssetType::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+            $data['tangible_asset_type_id'] = ($type ?? TangibleAssetType::create(['name' => $name]))->id;
+            $data['intangible_asset_type_id'] = null;
+        }
+        if ($data['asset_kind'] === 'intangible' && $request->filled('intangible_asset_type_name')) {
+            $name = trim($data['intangible_asset_type_name']);
+            $type = IntangibleAssetType::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+            $data['intangible_asset_type_id'] = ($type ?? IntangibleAssetType::create(['name' => $name]))->id;
+            $data['tangible_asset_type_id'] = null;
+        }
+
+        unset($data['category_name'], $data['inventory_type_name'], $data['tangible_asset_type_name'], $data['intangible_asset_type_name']);
         $this->registerGenerator->createItemWithUnits($data);
 
         return redirect()->route('inventory.index')->with('success', 'Inventaris berhasil ditambahkan.');
@@ -128,7 +182,7 @@ class InventoryController extends Controller
      */
     public function show(InventoryItem $item): Response
     {
-        $item->load('units', 'category');
+        $item->load('units', 'category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType');
 
         $item->setAttribute('qty', $item->units->count());
         $item->setAttribute('total', (float) $item->harga * $item->units->count());
@@ -146,15 +200,15 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'keterangan' => ['nullable', 'string'],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'inventory_category_id' => ['nullable', 'integer', 'exists:m_inventory_categories,id'],
         ]);
 
-        if (array_key_exists('category_id', $data) && ! $request->user()->can('inventory.category.assign')) {
+        if (array_key_exists('inventory_category_id', $data) && ! $request->user()->can('inventory.category.assign')) {
             abort(403);
         }
 
         // Hanya mutable field dan assignment kategori yang diupdate.
-        $item->update(array_intersect_key($data, array_flip(['keterangan', 'category_id'])));
+        $item->update(array_intersect_key($data, array_flip(['keterangan', 'inventory_category_id'])));
 
         return back()->with('success', 'Keterangan berhasil diperbarui.');
     }

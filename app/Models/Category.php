@@ -17,6 +17,8 @@ use Illuminate\Validation\ValidationException;
  */
 class Category extends Model
 {
+    protected $table = 'm_inventory_categories';
+
     protected $fillable = [
         'name',
         'description',
@@ -55,6 +57,6 @@ class Category extends Model
      */
     public function inventoryItems(): HasMany
     {
-        return $this->hasMany(InventoryItem::class);
+        return $this->hasMany(InventoryItem::class, 'inventory_category_id');
     }
 }
