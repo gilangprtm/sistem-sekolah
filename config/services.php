@@ -46,6 +46,9 @@ return [
 
     'assistant' => [
         'enabled' => filter_var(env('ASSISTANT_ENABLED', false), FILTER_VALIDATE_BOOL),
+        // Temporary provider connectivity isolation: no system prompt or tools.
+        'plain_mode' => filter_var(env('ASSISTANT_PLAIN_MODE', false), FILTER_VALIDATE_BOOL),
+        'system_prompt_only' => filter_var(env('ASSISTANT_SYSTEM_PROMPT_ONLY', false), FILTER_VALIDATE_BOOL),
     ],
 
 ];

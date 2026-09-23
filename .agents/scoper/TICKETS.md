@@ -505,3 +505,50 @@ Integrasi final: jalankan seluruh suite, pastikan alur user lengkap (login → d
 - [ ] `php artisan test`, `npm run types:check`, dan `npm run build` lulus.
 
 **References:** SPEC §13; DECISIONS D-013..D-018; RISKS R-013..R-018.
+
+---
+
+## PHASE 5 — EPHEMERAL 9ROUTER SCHOOL ASSISTANT
+
+### TASK-025 — Ephemeral role-scoped assistant MVP
+
+- **Priority:** P1
+- **Status:** Implemented — focused backend verification complete; served-surface verification remains environment-dependent
+- **Phase:** 5
+- **Depends On:** TASK-003, TASK-011, TASK-013
+- **Blocks:** None
+
+**Description:**
+Tambahkan assistant/chatbot terautentikasi berbasis API 9Router. Laravel tetap menjadi security boundary dan sumber data; LLM tidak mengakses database, SQL, PHP, HTTP, atau code secara langsung. Assistant memakai tools read-only yang disediakan backend dan ephemeral history di memory frontend tanpa tabel `conversations`/`messages`.
+
+**Scope MVP:**
+- Non-streaming request-response.
+- Tool read-only modul inventori untuk user yang memiliki permission inventori.
+- Tool yang dikirim ke provider dibatasi berdasarkan permission user.
+- Backend memvalidasi ulang nama tool, argumen, dan permission saat tool dieksekusi.
+- Tidak ada mutation, bulk operation, upload, RAG, public chatbot, atau persistence chat.
+- API key dan konfigurasi provider hanya server-side melalui environment/config.
+
+**Acceptance Criteria:**
+- [x] `POST /api/v1/assistant/chat` memakai autentikasi Sanctum.
+- [x] Halaman `/assistant` memakai history sementara di memory browser dan menyediakan aksi mulai chat baru.
+- [x] Provider adapter server-side memakai endpoint OpenAI-compatible `/chat/completions`.
+- [x] `GET /v1/models` diverifikasi; model konfigurasi `fusion` tersedia.
+- [x] Request nyata `/v1/chat/completions` berhasil dengan credential tetap tersembunyi.
+- [x] Tool allowlist dibentuk dari permission user dan tidak bergantung pada system prompt saja.
+- [x] Tool execution loop dibatasi, read-only, dan melakukan validasi server-side.
+- [x] Feature flag `ASSISTANT_ENABLED` tersedia dan dapat menjadi kill switch.
+- [x] Timeout dan error provider ditangani tanpa membocorkan credential atau payload sensitif.
+- [x] Tidak ada migration persistence chat.
+- [x] PHP syntax, API tests, TypeScript, production build, dan `git diff --check` lulus pada verification run.
+- [ ] Browser served-surface verification pada environment lokal berhasil; sebelumnya diblokir oleh kebijakan private/internal URL.
+- [ ] SSE/streaming dan mutation tetap di luar scope sampai kontrak terpisah disetujui.
+
+**Implementation Notes:**
+- Backend: `app/Services/Assistant/NineRouterClient.php`, `app/Http/Controllers/Api/AssistantController.php`.
+- UI: `resources/js/pages/assistant.tsx`.
+- Route: `routes/api.php` dan `routes/web.php`.
+- Configuration: `config/services.php` dan environment lokal; nilai credential tidak boleh masuk repository.
+- Commit implementasi: `b52076c feat: add ephemeral role-scoped school assistant`.
+
+**References:** PROJECT §4; SPEC §4 dan §9; RISKS R-012; KITAB STD-023, SOP-001, WF-001, SK-APP-001, SK-APP-002.

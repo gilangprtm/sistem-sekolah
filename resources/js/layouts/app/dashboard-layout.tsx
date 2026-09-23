@@ -4,6 +4,7 @@ import { siGithub } from 'simple-icons';
 
 import { useShallow } from 'zustand/react/shallow';
 
+import { AssistantWidget } from '@/components/assistant-widget';
 import { AppSidebar } from '@/components/dashboard/app-sidebar';
 import { LayoutControls } from '@/components/dashboard/layout-controls';
 import { SearchDialog } from '@/components/dashboard/search-dialog';
@@ -91,6 +92,7 @@ export default function DashboardLayout({
                 <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 has-data-[content-padding=false]:p-0 md:p-6 md:has-data-[content-padding=false]:p-0">
                     {children}
                 </div>
+                <AssistantWidget />
             </SidebarInset>
         </SidebarProvider>
     );

@@ -29,6 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'sidebar_collapsible',
         ]);
 
+        $middleware->trustProxies(at: '*');
+        $middleware->statefulApi();
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

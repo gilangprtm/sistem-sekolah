@@ -4,6 +4,7 @@ namespace App\Services\Assistant;
 
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Throwable;
 
 class NineRouterClient
 {
@@ -14,7 +15,7 @@ class NineRouterClient
         $model = (string) config('services.ninerouter.model');
 
         if (! $baseUrl || ! $apiKey || ! $model) {
-            throw new RuntimeException('Assistant provider is not configured.');
+            throw new RuntimeException('provider_configuration');
         }
 
         $payload = ['model' => $model, 'messages' => $messages, 'stream' => false];
@@ -23,16 +24,25 @@ class NineRouterClient
             $payload['tool_choice'] = 'auto';
         }
 
-        $response = Http::withToken($apiKey)
-            ->acceptJson()
-            ->connectTimeout((int) config('services.ninerouter.connect_timeout', 5))
-            ->timeout((int) config('services.ninerouter.request_timeout', 60))
-            ->post($baseUrl.'/chat/completions', $payload);
-
-        if ($response->failed()) {
-            throw new RuntimeException('Assistant provider request failed.');
+        try {
+            $response = Http::withToken($apiKey)
+                ->acceptJson()
+                ->connectTimeout((int) config('services.ninerouter.connect_timeout', 5))
+                ->timeout((int) config('services.ninerouter.request_timeout', 60))
+                ->post($baseUrl.'/chat/completions', $payload);
+        } catch (Throwable $exception) {
+            throw new RuntimeException('provider_transport', 0, $exception);
         }
 
-        return $response->json();
+        if ($response->failed()) {
+            throw new RuntimeException('provider_http_'.$response->status());
+        }
+
+        $result = $response->json();
+        if (! is_array($result) || ! isset($result['choices'][0]['message'])) {
+            throw new RuntimeException('provider_malformed_response');
+        }
+
+        return $result;
     }
 }

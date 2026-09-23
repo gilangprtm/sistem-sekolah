@@ -1,10 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\AssistantController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('/assistant', 'assistant')->name('assistant');
+    Route::post('/assistant/chat', [AssistantController::class, 'chat'])->name('assistant.chat');
 });
 
 require __DIR__.'/dashboard.php';
