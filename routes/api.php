@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryApiController;
 use App\Http\Controllers\Api\InventoryApiController;
@@ -14,6 +15,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+    Route::post('/assistant/chat', [AssistantController::class, 'chat'])->middleware('auth:sanctum');
 
     // Users (Super Admin)
     Route::middleware(['auth:sanctum', 'can:users.manage'])->prefix('users')->group(function () {

@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    'ninerouter' => [
+        'base_url' => env('NINEROUTER_BASE_URL'),
+        'api_key' => env('NINEROUTER_API_KEY'),
+        'model' => env('NINEROUTER_MODEL'),
+        'connect_timeout' => (int) env('NINEROUTER_CONNECT_TIMEOUT', 5),
+        'request_timeout' => (int) env('NINEROUTER_REQUEST_TIMEOUT', 60),
+        'streaming' => filter_var(env('NINEROUTER_STREAMING', false), FILTER_VALIDATE_BOOL),
+    ],
+
+    'assistant' => [
+        'enabled' => filter_var(env('ASSISTANT_ENABLED', false), FILTER_VALIDATE_BOOL),
+    ],
+
 ];
