@@ -18,7 +18,7 @@ class InventoryDashboardApiController extends Controller
         $totalNilai = InventoryItem::query()
             ->withCount('units')
             ->get()
-            ->sum(fn ($item) => (int) $item->harga * $item->units_count);
+            ->sum(fn ($item) => (float) $item->harga * $item->units_count);
 
         $baik = InventoryUnit::where('condition', 'B')->count();
         $kurangBaik = InventoryUnit::where('condition', 'KB')->count();

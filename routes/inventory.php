@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'can:inventory.view'])->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('/inventory/export/excel', [InventoryController::class, 'exportExcel'])->name('inventory.export.excel');
+
     Route::get('/inventory/create', [InventoryController::class, 'create'])->middleware('can:inventory.create')->name('inventory.create');
     Route::post('/inventory', [InventoryController::class, 'store'])->middleware('can:inventory.create')->name('inventory.store');
 

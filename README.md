@@ -105,7 +105,7 @@ Endpoint inventaris berada di bawah `/api/v1` dan menggunakan token Sanctum. Det
 
 ## Database
 
-Database saat ini masih memakai nama tabel yang berasal dari migration existing. Rencana taxonomy prefix seperti `auth_`, `m_`, dan `tr_` belum diterapkan. Rename tabel akan dilakukan hanya melalui migration kompatibel setelah package table names, foreign key, model, seeder, test, upgrade, dan rollback diverifikasi.
+Database saat ini menggunakan taxonomy domain yang telah diterapkan pada modul Inventaris, termasuk `m_inventory_*` untuk master/reference dan `tr_inventory_*` untuk transaksi. Tabel Laravel, package, dan system tetap mengikuti kontraknya. Perubahan schema berikutnya wajib dilakukan melalui migration kompatibel setelah foreign key, model, seeder, test, upgrade, dan rollback diverifikasi.
 
 ## Status verifikasi repository
 

@@ -58,9 +58,20 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/inventory/dashboard' },
 ];
 
-export default function InventoryDashboard({ kpis, statistik_tahun, statistik_asal, statistik_kondisi, category_stats }: Props) {
+export default function InventoryDashboard({
+    kpis,
+    statistik_tahun,
+    statistik_asal,
+    statistik_kondisi,
+    category_stats,
+}: Props) {
     const formatRupiah = (value: number) =>
-        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+        new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(value);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -83,59 +94,89 @@ export default function InventoryDashboard({ kpis, statistik_tahun, statistik_as
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Aset</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Total Aset
+                            </CardTitle>
                             <PackageSearch className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{kpis.total_aset}</div>
-                            <p className="text-xs text-muted-foreground">unit/register</p>
+                            <div className="text-2xl font-bold">
+                                {kpis.total_aset}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                unit/register
+                            </p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Nilai Aset</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Total Nilai Aset
+                            </CardTitle>
                             <PiggyBank className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{formatRupiah(kpis.total_nilai)}</div>
-                            <p className="text-xs text-muted-foreground">SUM(qty × harga)</p>
+                            <div className="text-2xl font-bold">
+                                {formatRupiah(kpis.total_nilai)}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                SUM(qty × harga)
+                            </p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Aset Baik</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Aset Baik
+                            </CardTitle>
                             <ThumbsUp className="h-4 w-4 text-emerald-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-emerald-600">{kpis.baik}</div>
+                            <div className="text-2xl font-bold text-emerald-600">
+                                {kpis.baik}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Aset Kurang Baik</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Aset Kurang Baik
+                            </CardTitle>
                             <ThumbsDown className="h-4 w-4 text-amber-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-amber-600">{kpis.kurang_baik}</div>
+                            <div className="text-2xl font-bold text-amber-600">
+                                {kpis.kurang_baik}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Aset Rusak Berat</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Aset Rusak Berat
+                            </CardTitle>
                             <AlertTriangle className="h-4 w-4 text-red-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{kpis.rusak_berat}</div>
+                            <div className="text-2xl font-bold text-red-600">
+                                {kpis.rusak_berat}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Kelompok Inventaris</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Total Kelompok Inventaris
+                            </CardTitle>
                             <Layers className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{kpis.total_kelompok}</div>
-                            <p className="text-xs text-muted-foreground">kelompok barang</p>
+                            <div className="text-2xl font-bold">
+                                {kpis.total_kelompok}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                kelompok barang
+                            </p>
                         </CardContent>
                     </Card>
                 </div>
@@ -143,7 +184,9 @@ export default function InventoryDashboard({ kpis, statistik_tahun, statistik_as
                 <div className="grid gap-4 lg:grid-cols-2">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Distribusi Kondisi</CardTitle>
+                            <CardTitle className="text-base">
+                                Distribusi Kondisi
+                            </CardTitle>
                             <CardDescription>Per unit/register</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -151,16 +194,23 @@ export default function InventoryDashboard({ kpis, statistik_tahun, statistik_as
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Kondisi</TableHead>
-                                        <TableHead className="text-right">Jumlah</TableHead>
+                                        <TableHead className="text-right">
+                                            Jumlah
+                                        </TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {statistik_kondisi.map((k) => (
                                         <TableRow key={k.condition}>
                                             <TableCell>
-                                                <span className="font-medium">{k.condition}</span> — {k.label}
+                                                <span className="font-medium">
+                                                    {k.condition}
+                                                </span>{' '}
+                                                — {k.label}
                                             </TableCell>
-                                            <TableCell className="text-right">{k.total}</TableCell>
+                                            <TableCell className="text-right">
+                                                {k.total}
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -170,25 +220,37 @@ export default function InventoryDashboard({ kpis, statistik_tahun, statistik_as
 
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Aset per Tahun Pembelian</CardTitle>
-                            <CardDescription>Jumlah kelompok per tahun</CardDescription>
+                            <CardTitle className="text-base">
+                                Aset per Tahun Pembelian
+                            </CardTitle>
+                            <CardDescription>
+                                Jumlah kelompok per tahun
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
                             {statistik_tahun.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">Belum ada data.</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Belum ada data.
+                                </p>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Tahun</TableHead>
-                                            <TableHead className="text-right">Kelompok</TableHead>
+                                            <TableHead className="text-right">
+                                                Kelompok
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {statistik_tahun.map((t) => (
                                             <TableRow key={t.tahun_pembelian}>
-                                                <TableCell>{t.tahun_pembelian}</TableCell>
-                                                <TableCell className="text-right">{t.total}</TableCell>
+                                                <TableCell>
+                                                    {t.tahun_pembelian}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {t.total}
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -199,25 +261,39 @@ export default function InventoryDashboard({ kpis, statistik_tahun, statistik_as
 
                     <Card className="lg:col-span-2">
                         <CardHeader>
-                            <CardTitle className="text-base">Aset per Asal/Cara Perolehan</CardTitle>
-                            <CardDescription>Jumlah kelompok per sumber perolehan</CardDescription>
+                            <CardTitle className="text-base">
+                                Aset per Asal/Cara Perolehan
+                            </CardTitle>
+                            <CardDescription>
+                                Jumlah kelompok per sumber perolehan
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
                             {statistik_asal.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">Belum ada data.</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Belum ada data.
+                                </p>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Asal/Cara Perolehan</TableHead>
-                                            <TableHead className="text-right">Kelompok</TableHead>
+                                            <TableHead>
+                                                Asal/Cara Perolehan
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Kelompok
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {statistik_asal.map((a) => (
                                             <TableRow key={a.asal_perolehan}>
-                                                <TableCell>{a.asal_perolehan}</TableCell>
-                                                <TableCell className="text-right">{a.total}</TableCell>
+                                                <TableCell>
+                                                    {a.asal_perolehan}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {a.total}
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -228,13 +304,47 @@ export default function InventoryDashboard({ kpis, statistik_tahun, statistik_as
 
                     <Card className="lg:col-span-2">
                         <CardHeader>
-                            <CardTitle className="text-base">Agregasi per Kategori</CardTitle>
-                            <CardDescription>Kelompok, unit, dan nilai aset per kategori</CardDescription>
+                            <CardTitle className="text-base">
+                                Agregasi per Kategori
+                            </CardTitle>
+                            <CardDescription>
+                                Kelompok, unit, dan nilai aset per kategori
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Table>
-                                <TableHeader><TableRow><TableHead>Kategori</TableHead><TableHead className="text-right">Kelompok</TableHead><TableHead className="text-right">Unit</TableHead><TableHead className="text-right">Nilai</TableHead></TableRow></TableHeader>
-                                <TableBody>{category_stats.map((stat) => <TableRow key={stat.id ?? 'none'}><TableCell>{stat.name}</TableCell><TableCell className="text-right">{stat.total_items}</TableCell><TableCell className="text-right">{stat.total_units}</TableCell><TableCell className="text-right">{formatRupiah(Number(stat.total_value))}</TableCell></TableRow>)}</TableBody>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Kategori</TableHead>
+                                        <TableHead className="text-right">
+                                            Kelompok
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            Unit
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            Nilai
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {category_stats.map((stat) => (
+                                        <TableRow key={stat.id ?? 'none'}>
+                                            <TableCell>{stat.name}</TableCell>
+                                            <TableCell className="text-right">
+                                                {stat.total_items}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {stat.total_units}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {formatRupiah(
+                                                    Number(stat.total_value),
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
                             </Table>
                         </CardContent>
                     </Card>

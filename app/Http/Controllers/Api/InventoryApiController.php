@@ -73,7 +73,7 @@ class InventoryApiController extends Controller
 
         // Tambah total per item
         $items->getCollection()->transform(function ($item) {
-            $item->setAttribute('total', (int) $item->harga * $item->units_count);
+            $item->setAttribute('total', (float) $item->harga * $item->units_count);
 
             return $item;
         });

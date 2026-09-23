@@ -23,11 +23,81 @@ class InventoryController extends Controller
     /**
      * Daftar inventaris + search/filter/pagination.
      */
+    public function exportExcel(Request $request)
+    {
+        $query = InventoryItem::query()
+            ->with(['category', 'inventoryType', 'units:id,inventory_item_id,register'])
+            ->orderBy('kode_barang');
+
+        foreach ([
+            'tahun_pembelian' => 'tahun',
+            'asal_perolehan' => 'asal',
+            'satuan' => 'satuan',
+            'inventory_category_id' => 'category',
+            'inventory_type_id' => 'inventory_type',
+        ] as $column => $input) {
+            if ($request->filled($input)) {
+                $query->where($column, $input === 'category' || $input === 'inventory_type'
+                    ? $request->integer($input)
+                    : $request->input($input));
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_barang', 'like', "%{$search}%")
+                    ->orWhere('nama_jenis_barang', 'like', "%{$search}%")
+                    ->orWhere('merk_type', 'like', "%{$search}%")
+                    ->orWhereHas('units', fn ($u) => $u->where('register', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($request->filled('kondisi')) {
+            $query->whereHas('units', fn ($u) => $u->where('condition', $request->input('kondisi')));
+        }
+
+        $rows = $query->get()->map(function (InventoryItem $item) {
+            $registers = $item->units->pluck('register')->map(fn ($register) => (int) $register)->sort()->values();
+            return [
+                $item->kode_barang,
+                $registers->isEmpty() ? '-' : sprintf('%03d - %03d', $registers->first(), $registers->last()),
+                $item->nama_jenis_barang,
+                $item->merk_type ?? '-',
+                $item->tahun_pembelian ?? '-',
+                $item->category?->name ?? 'Tanpa kategori',
+                $item->inventoryType?->name ?? '-',
+                $item->units->count(),
+                number_format((float) $item->harga, 2, ',', '.'),
+                number_format((float) $item->harga * $item->units->count(), 2, ',', '.'),
+            ];
+        });
+
+        $headers = ['Kode Barang', 'Register', 'Nama/Jenis', 'Merk/Type', 'Tahun', 'Kategori', 'Jenis Inventaris', 'Qty', 'Harga', 'Total'];
+        $xml = '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Inventaris"><Table>';
+        $xml .= '<Row>'.collect($headers)->map(fn ($header) => '<Cell><Data ss:Type="String">'.htmlspecialchars($header, ENT_XML1).'</Data></Cell>')->implode('').'</Row>';
+        foreach ($rows as $row) {
+            $xml .= '<Row>'.collect($row)->map(fn ($value) => '<Cell><Data ss:Type="String">'.htmlspecialchars((string) $value, ENT_XML1).'</Data></Cell>')->implode('').'</Row>';
+        }
+        $xml .= '</Table></Worksheet></Workbook>';
+
+        return response($xml, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="inventaris.xls"',
+        ]);
+    }
+
     public function index(Request $request): Response
     {
         $query = InventoryItem::query()
             ->withCount('units')
-            ->with(['category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType']);
+            ->with([
+                'category',
+                'inventoryType',
+                'tangibleAssetType',
+                'intangibleAssetType',
+                'units:id,inventory_item_id,register',
+            ]);
 
         // Search: kode barang, nama/jenis, merk/type, register
         if ($search = $request->input('search')) {
@@ -68,10 +138,20 @@ class InventoryController extends Controller
             $query->where('intangible_asset_type_id', $request->integer('intangible_asset_type'));
         }
 
-        $items = $query->orderBy('kode_barang')->paginate(10)->withQueryString();
+        $perPage = min(max($request->integer('per_page', 10), 1), 50);
+        $items = $query->orderBy('kode_barang')->paginate($perPage)->withQueryString();
 
         // Use the database aggregate instead of loading every unit for the list.
         $items->getCollection()->transform(function (InventoryItem $item) {
+            $registers = $item->units
+                ->pluck('register')
+                ->map(fn ($register) => (int) $register)
+                ->sort()
+                ->values();
+
+            $item->setAttribute('register_range', $registers->isEmpty()
+                ? '-'
+                : sprintf('%03d - %03d', $registers->first(), $registers->last()));
             $item->setAttribute('qty', $item->units_count);
             $item->setAttribute('total', (float) $item->harga * $item->units_count);
 

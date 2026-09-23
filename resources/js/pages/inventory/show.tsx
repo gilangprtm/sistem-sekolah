@@ -1,8 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,12 +55,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Inventaris', href: '/inventory' },
 ];
 
-const conditionLabel: Record<string, string> = {
-    B: 'Baik',
-    KB: 'Kurang Baik',
-    RB: 'Rusak Berat',
-};
-
 export default function InventoryShow({ item, categories }: Props) {
     const [keterangan, setKeterangan] = useState(item.keterangan ?? '');
     const [categoryId, setCategoryId] = useState(
@@ -74,6 +69,16 @@ export default function InventoryShow({ item, categories }: Props) {
     const [addQty, setAddQty] = useState('1');
     const [addQtyErrors, setAddQtyErrors] = useState<Record<string, string>>(
         {},
+    );
+    const sortedUnits = useMemo(
+        () =>
+            [...item.units].sort((a, b) =>
+                a.register.localeCompare(b.register, undefined, {
+                    numeric: true,
+                    sensitivity: 'base',
+                }),
+            ),
+        [item.units],
     );
 
     const saveKeterangan = () => {
@@ -139,7 +144,8 @@ export default function InventoryShow({ item, categories }: Props) {
         new Intl.NumberFormat('id-ID', {
             style: 'currency',
             currency: 'IDR',
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
         }).format(value);
 
     return (
@@ -228,23 +234,20 @@ export default function InventoryShow({ item, categories }: Props) {
                             </div>
                             <div className="grid gap-2 border-t pt-2">
                                 <Label htmlFor="category_id">Kategori</Label>
-                                <NativeSelect
-                                    id="category_id"
+                                <SearchableCombobox
                                     value={categoryId}
-                                    onChange={(e) =>
-                                        setCategoryId(e.target.value)
-                                    }
-                                >
-                                    <option value="">Tanpa kategori</option>
-                                    {categories.map((category) => (
-                                        <option
-                                            key={category.id}
-                                            value={category.id}
-                                        >
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
+                                    options={[
+                                        { value: '', label: 'Tanpa kategori' },
+                                        ...categories.map((category) => ({
+                                            value: category.id.toString(),
+                                            label: category.name,
+                                        })),
+                                    ]}
+                                    onChange={setCategoryId}
+                                    placeholder="Tanpa kategori"
+                                    searchPlaceholder="Cari kategori..."
+                                    emptyMessage="Kategori tidak ditemukan."
+                                />
                                 <InputError
                                     message={categoryErrors.category_id}
                                 />
@@ -318,61 +321,69 @@ export default function InventoryShow({ item, categories }: Props) {
                         </div>
                         <InputError message={addQtyErrors.qty} />
 
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Register</TableHead>
-                                    <TableHead>Kondisi</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {item.units.map((unit) => (
-                                    <TableRow key={unit.id}>
-                                        <TableCell className="font-mono">
-                                            {unit.register}
-                                        </TableCell>
-                                        <TableCell>
-                                            <NativeSelect
-                                                value={unit.condition}
-                                                onChange={(e) =>
-                                                    updateCondition(
-                                                        unit,
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                className="w-40"
-                                            >
-                                                <option value="B">
-                                                    B — Baik
-                                                </option>
-                                                <option value="KB">
-                                                    KB — Kurang Baik
-                                                </option>
-                                                <option value="RB">
-                                                    RB — Rusak Berat
-                                                </option>
-                                            </NativeSelect>
-                                        </TableCell>
-                                        <TableCell className="text-right text-sm text-muted-foreground">
-                                            {conditionLabel[unit.condition]}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {item.units.length === 0 && (
+                        <div className="w-full overflow-x-auto">
+                            <Table className="w-full table-fixed">
+                                <colgroup>
+                                    <col className="w-[20%]" />
+                                    <col className="w-[30%]" />
+                                    <col className="w-[50%]" />
+                                </colgroup>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell
-                                            colSpan={3}
-                                            className="text-center text-muted-foreground"
-                                        >
-                                            Tidak ada unit.
-                                        </TableCell>
+                                        <TableHead>Register</TableHead>
+                                        <TableHead>Kode</TableHead>
+                                        <TableHead className="text-right">
+                                            Kondisi
+                                        </TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {sortedUnits.map((unit) => (
+                                        <TableRow key={unit.id}>
+                                            <TableCell className="font-mono">
+                                                {unit.register}
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs text-muted-foreground">
+                                                {item.kode_barang}.
+                                                {unit.register}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <NativeSelect
+                                                    value={unit.condition}
+                                                    onChange={(e) =>
+                                                        updateCondition(
+                                                            unit,
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="ml-auto w-40"
+                                                >
+                                                    <option value="B">
+                                                        B — Baik
+                                                    </option>
+                                                    <option value="KB">
+                                                        KB — Kurang Baik
+                                                    </option>
+                                                    <option value="RB">
+                                                        RB — Rusak Berat
+                                                    </option>
+                                                </NativeSelect>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {item.units.length === 0 && (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={3}
+                                                className="text-center text-muted-foreground"
+                                            >
+                                                Tidak ada unit.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
                 </div>
             </div>
