@@ -1,10 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import {
-    LayoutDashboard,
-    Lock,
-    PackageSearch,
-    Users,
-} from 'lucide-react';
+import { LayoutDashboard, Lock, PackageSearch, Users } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,8 +24,7 @@ type DashboardProps = {
 export default function Dashboard({ stats, isSuperAdmin }: DashboardProps) {
     const { auth } = usePage<DashboardProps>().props;
     const permissions = auth.permissions ?? [];
-    const canInventory =
-        isSuperAdmin || permissions.includes('inventory.view');
+    const canInventory = isSuperAdmin || permissions.includes('inventory.view');
     const canInventoryDashboard =
         isSuperAdmin || permissions.includes('inventory.dashboard.view');
 
@@ -91,10 +85,16 @@ export default function Dashboard({ stats, isSuperAdmin }: DashboardProps) {
                             <CardContent>
                                 <div className="flex gap-2">
                                     <Button asChild variant="outline" size="sm">
-                                        <Link href="/inventory">Daftar Inventaris</Link>
+                                        <Link href="/inventory">
+                                            Daftar Inventaris
+                                        </Link>
                                     </Button>
                                     {canInventoryDashboard && (
-                                        <Button asChild variant="outline" size="sm">
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            size="sm"
+                                        >
                                             <Link href="/inventory/dashboard">
                                                 <LayoutDashboard className="h-4 w-4" />
                                                 Dashboard

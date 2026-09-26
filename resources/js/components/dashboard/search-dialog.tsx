@@ -65,7 +65,9 @@ const searchItems: SearchItem[] = [
 ];
 
 function getAvailableItems(items: SearchItem[]) {
-    return items.filter((item) => !item.disabled && !item.url.includes('coming-soon'));
+    return items.filter(
+        (item) => !item.disabled && !item.url.includes('coming-soon'),
+    );
 }
 
 function groupBy(items: SearchItem[]) {
@@ -78,30 +80,33 @@ function groupBy(items: SearchItem[]) {
 }
 
 export function SearchDialog() {
-    const { auth } = usePage<{ auth?: { permissions?: string[]; roles?: string[] } }>().props;
+    const { auth } = usePage<{
+        auth?: { permissions?: string[]; roles?: string[] };
+    }>().props;
     const permissions = auth?.permissions ?? [];
     const isSuperAdmin = auth?.roles?.includes('Super Admin') ?? false;
-    const can = (permission: string) => isSuperAdmin || permissions.includes(permission);
+    const can = (permission: string) =>
+        isSuperAdmin || permissions.includes(permission);
     const availableItems = searchItems.filter((item) => {
         if (item.id === 'inventory') {
-return can('inventory.view');
-}
+            return can('inventory.view');
+        }
 
         if (item.id === 'inventory-dashboard') {
-return can('inventory.dashboard.view');
-}
+            return can('inventory.dashboard.view');
+        }
 
         if (item.id === 'inventory-create') {
-return can('inventory.create');
-}
+            return can('inventory.create');
+        }
 
         if (item.id === 'users') {
-return can('users.manage');
-}
+            return can('users.manage');
+        }
 
         if (item.id === 'roles') {
-return can('roles.manage');
-}
+            return can('roles.manage');
+        }
 
         return true;
     });

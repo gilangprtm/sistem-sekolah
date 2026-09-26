@@ -96,16 +96,25 @@ class InventoryItem extends Model
         return $this->belongsTo(Category::class, 'inventory_category_id');
     }
 
+    /**
+     * @return BelongsTo<InventoryType, $this>
+     */
     public function inventoryType(): BelongsTo
     {
         return $this->belongsTo(InventoryType::class);
     }
 
+    /**
+     * @return BelongsTo<TangibleAssetType, $this>
+     */
     public function tangibleAssetType(): BelongsTo
     {
         return $this->belongsTo(TangibleAssetType::class);
     }
 
+    /**
+     * @return BelongsTo<IntangibleAssetType, $this>
+     */
     public function intangibleAssetType(): BelongsTo
     {
         return $this->belongsTo(IntangibleAssetType::class);

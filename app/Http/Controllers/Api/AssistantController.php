@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
+use App\Models\User;
 use App\Services\Assistant\NineRouterClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -64,7 +65,8 @@ class AssistantController extends Controller
                     $signature = hash('sha256', json_encode([
                         $call['function']['name'] ?? '',
                         $call['function']['arguments'] ?? '{}',
-                    ], JSON_UNESCAPED_UNICODE));
+                    ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
                     if ($signature === $lastToolSignature) {
                         throw new \RuntimeException('assistant_repeated_tool_call');
                     }
@@ -80,8 +82,6 @@ class AssistantController extends Controller
                     ];
                 }
             }
-
-            throw new \RuntimeException('assistant_tool_round_limit');
         } catch (Throwable $exception) {
             $requestId = (string) Str::uuid();
             $rawReason = $exception->getMessage() ?: 'assistant_execution_failed';
@@ -104,7 +104,11 @@ class AssistantController extends Controller
         }
     }
 
-    private function executeTool($user, string $name, array $arguments): array
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<int|string, mixed>
+     */
+    private function executeTool(User $user, string $name, array $arguments): array
     {
         abort_unless($user->can('inventory.view'), 403);
 
@@ -137,6 +141,10 @@ class AssistantController extends Controller
         };
     }
 
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
     private function queryInventory(array $arguments): array
     {
         $allowedFields = [
@@ -158,7 +166,7 @@ class AssistantController extends Controller
             });
         }
         foreach (['inventory_category_id', 'inventory_type_id', 'asset_kind', 'tahun_pembelian'] as $field) {
-            if (array_key_exists($field, $filters) && in_array($field, $allowedFields, true)) {
+            if (array_key_exists($field, $filters)) {
                 $query->where($field, $filters[$field]);
             }
         }
@@ -178,7 +186,8 @@ class AssistantController extends Controller
         ];
     }
 
-    private function toolsFor($user): array
+    /** @return array<int, array<string, mixed>> */
+    private function toolsFor(User $user): array
     {
         if (! $user->can('inventory.view')) {
             return [];

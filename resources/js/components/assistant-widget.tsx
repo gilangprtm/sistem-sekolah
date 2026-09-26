@@ -73,7 +73,9 @@ export function AssistantWidget() {
                     .filter(Boolean)
                     .join(' — ');
 
-                throw new Error(diagnostic || 'Assistant gagal memproses permintaan.');
+                throw new Error(
+                    diagnostic || 'Assistant gagal memproses permintaan.',
+                );
             }
 
             setHistory((current) => [

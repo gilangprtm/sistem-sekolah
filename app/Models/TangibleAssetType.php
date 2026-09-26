@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * @property string $name
+ * @property string $slug
+ */
 class TangibleAssetType extends Model
 {
     protected $table = 'm_inventory_tangible_asset_types';
@@ -27,6 +31,9 @@ class TangibleAssetType extends Model
         });
     }
 
+    /**
+     * @return HasMany<InventoryItem, $this>
+     */
     public function inventoryItems(): HasMany
     {
         return $this->hasMany(InventoryItem::class, 'tangible_asset_type_id', 'id');

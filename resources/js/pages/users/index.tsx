@@ -51,9 +51,7 @@ type UsersPageProps = {
     filters: { search?: string };
 };
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Users', href: '/users' },
-];
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Users', href: '/users' }];
 
 export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
     const { auth } = usePage<UsersPageProps>().props;
@@ -144,7 +142,11 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
     };
 
     const doSearch = () => {
-        router.get('/users', { search }, { preserveState: true, replace: true });
+        router.get(
+            '/users',
+            { search },
+            { preserveState: true, replace: true },
+        );
     };
 
     return (
@@ -181,26 +183,38 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                                 <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Aksi</TableHead>
+                                <TableHead className="text-right">
+                                    Aksi
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {users.data.map((user) => (
                                 <TableRow key={user.id}>
-                                    <TableCell className="font-medium">{user.name}</TableCell>
+                                    <TableCell className="font-medium">
+                                        {user.name}
+                                    </TableCell>
                                     <TableCell>{user.email}</TableCell>
                                     <TableCell>
                                         {user.roles.length === 0 ? (
-                                            <span className="text-muted-foreground">-</span>
+                                            <span className="text-muted-foreground">
+                                                -
+                                            </span>
                                         ) : (
-                                            user.roles.map((r) => r.name).join(', ')
+                                            user.roles
+                                                .map((r) => r.name)
+                                                .join(', ')
                                         )}
                                     </TableCell>
                                     <TableCell>
                                         {user.email_verified_at ? (
-                                            <span className="text-emerald-600">Verified</span>
+                                            <span className="text-emerald-600">
+                                                Verified
+                                            </span>
                                         ) : (
-                                            <span className="text-amber-600">Unverified</span>
+                                            <span className="text-amber-600">
+                                                Unverified
+                                            </span>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -227,7 +241,10 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                             ))}
                             {users.data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                    <TableCell
+                                        colSpan={5}
+                                        className="text-center text-muted-foreground"
+                                    >
                                         Tidak ada data user.
                                     </TableCell>
                                 </TableRow>
@@ -239,16 +256,28 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                 {users.last_page > 1 && (
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
-                            Halaman {users.current_page} dari {users.last_page} ({users.total} user)
+                            Halaman {users.current_page} dari {users.last_page}{' '}
+                            ({users.total} user)
                         </span>
                         <div className="flex gap-2">
-                            {Array.from({ length: users.last_page }, (_, i) => i + 1).map((page) => (
+                            {Array.from(
+                                { length: users.last_page },
+                                (_, i) => i + 1,
+                            ).map((page) => (
                                 <Button
                                     key={page}
-                                    variant={page === users.current_page ? 'default' : 'outline'}
+                                    variant={
+                                        page === users.current_page
+                                            ? 'default'
+                                            : 'outline'
+                                    }
                                     size="sm"
                                     onClick={() =>
-                                        router.get('/users', { search, page }, { preserveState: true })
+                                        router.get(
+                                            '/users',
+                                            { search, page },
+                                            { preserveState: true },
+                                        )
                                     }
                                 >
                                     {page}
@@ -262,7 +291,9 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>
-                                {editing ? `Edit User: ${editing.name}` : 'Tambah User'}
+                                {editing
+                                    ? `Edit User: ${editing.name}`
+                                    : 'Tambah User'}
                             </DialogTitle>
                             <DialogDescription>
                                 {editing
@@ -277,7 +308,12 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                                 <Input
                                     id="user-name"
                                     value={form.name}
-                                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            name: e.target.value,
+                                        })
+                                    }
                                 />
                                 <InputError message={errors.name} />
                             </div>
@@ -287,19 +323,32 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                                     id="user-email"
                                     type="email"
                                     value={form.email}
-                                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            email: e.target.value,
+                                        })
+                                    }
                                 />
                                 <InputError message={errors.email} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="user-password">
-                                    Password {editing ? '(kosongkan jika tidak diubah)' : ''}
+                                    Password{' '}
+                                    {editing
+                                        ? '(kosongkan jika tidak diubah)'
+                                        : ''}
                                 </Label>
                                 <Input
                                     id="user-password"
                                     type="password"
                                     value={form.password}
-                                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            password: e.target.value,
+                                        })
+                                    }
                                 />
                                 <InputError message={errors.password} />
                             </div>
@@ -312,8 +361,12 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                                             className="flex items-center gap-2 text-sm"
                                         >
                                             <Checkbox
-                                                checked={form.roles.includes(role.id)}
-                                                onCheckedChange={() => toggleRole(role.id)}
+                                                checked={form.roles.includes(
+                                                    role.id,
+                                                )}
+                                                onCheckedChange={() =>
+                                                    toggleRole(role.id)
+                                                }
                                             />
                                             {role.name}
                                         </label>
@@ -324,7 +377,10 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                         </div>
 
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                            <Button
+                                variant="outline"
+                                onClick={() => setDialogOpen(false)}
+                            >
                                 Batal
                             </Button>
                             <Button onClick={submit} disabled={processing}>

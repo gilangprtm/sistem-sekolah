@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class InventoryController extends Controller
 {
@@ -23,7 +24,7 @@ class InventoryController extends Controller
     /**
      * Daftar inventaris + search/filter/pagination.
      */
-    public function exportExcel(Request $request)
+    public function exportExcel(Request $request): SymfonyResponse
     {
         $query = InventoryItem::query()
             ->with(['category', 'inventoryType', 'units:id,inventory_item_id,register'])
@@ -59,14 +60,15 @@ class InventoryController extends Controller
 
         $rows = $query->get()->map(function (InventoryItem $item) {
             $registers = $item->units->pluck('register')->map(fn ($register) => (int) $register)->sort()->values();
+
             return [
                 $item->kode_barang,
                 $registers->isEmpty() ? '-' : sprintf('%03d - %03d', $registers->first(), $registers->last()),
                 $item->nama_jenis_barang,
                 $item->merk_type ?? '-',
                 $item->tahun_pembelian ?? '-',
-                $item->category?->name ?? 'Tanpa kategori',
-                $item->inventoryType?->name ?? '-',
+                $item->category->name ?? 'Tanpa kategori',
+                $item->inventoryType->name ?? '-',
                 $item->units->count(),
                 number_format((float) $item->harga, 2, ',', '.'),
                 number_format((float) $item->harga * $item->units->count(), 2, ',', '.'),

@@ -15,12 +15,17 @@ export default function Assistant() {
     async function send(event: React.FormEvent) {
         event.preventDefault();
         const content = message.trim();
-        if (!content || loading) return;
+
+        if (!content || loading) {
+            return;
+        }
+
         setLoading(true);
         setError('');
         const nextHistory = [...history, { role: 'user' as const, content }];
         setHistory(nextHistory);
         setMessage('');
+
         try {
             const response = await fetch('/api/v1/assistant/chat', {
                 method: 'POST',
@@ -35,8 +40,11 @@ export default function Assistant() {
                 body: JSON.stringify({ message: content, history }),
             });
             const data = await response.json();
-            if (!response.ok)
+
+            if (!response.ok) {
                 throw new Error(data.message ?? 'Assistant tidak tersedia.');
+            }
+
             setHistory([
                 ...nextHistory,
                 { role: 'assistant', content: data.message },

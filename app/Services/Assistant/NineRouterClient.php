@@ -8,6 +8,11 @@ use Throwable;
 
 class NineRouterClient
 {
+    /**
+     * @param  array<int, array<string, mixed>>  $messages
+     * @param  array<int, array<string, mixed>>  $tools
+     * @return array<string, mixed>
+     */
     public function complete(array $messages, array $tools = []): array
     {
         $baseUrl = rtrim((string) config('services.ninerouter.base_url'), '/');

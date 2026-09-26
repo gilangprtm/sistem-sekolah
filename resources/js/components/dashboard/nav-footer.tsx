@@ -45,10 +45,7 @@ export function NavFooter({
             {showSupportCard ? <SidebarSupportCard /> : null}
             <SidebarGroup
                 {...props}
-                className={cn(
-                    'group-data-[collapsible=icon]:p-0',
-                    className,
-                )}
+                className={cn('group-data-[collapsible=icon]:p-0', className)}
             >
                 <SidebarGroupContent>
                     <SidebarMenu>

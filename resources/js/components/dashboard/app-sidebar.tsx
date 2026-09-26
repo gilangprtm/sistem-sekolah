@@ -24,8 +24,8 @@ import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 
-import { NavFooter  } from './nav-footer';
-import type {NavFooterItem} from './nav-footer';
+import { NavFooter } from './nav-footer';
+import type { NavFooterItem } from './nav-footer';
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
 
@@ -66,15 +66,17 @@ export function AppSidebar({
     const roles = auth?.roles ?? [];
     const isSuperAdmin = roles.includes('Super Admin');
 
-    const can = (permission: string) => isSuperAdmin || permissions.includes(permission);
+    const can = (permission: string) =>
+        isSuperAdmin || permissions.includes(permission);
 
-    const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
-        useShallow((s) => ({
-            sidebarVariant: s.values.sidebar_variant,
-            sidebarCollapsible: s.values.sidebar_collapsible,
-            isSynced: s.isSynced,
-        })),
-    );
+    const { sidebarVariant, sidebarCollapsible, isSynced } =
+        usePreferencesStore(
+            useShallow((s) => ({
+                sidebarVariant: s.values.sidebar_variant,
+                sidebarCollapsible: s.values.sidebar_collapsible,
+                isSynced: s.isSynced,
+            })),
+        );
 
     const effectiveVariant = isSynced ? sidebarVariant : variant;
     const effectiveCollapsible = isSynced ? sidebarCollapsible : collapsible;
