@@ -143,6 +143,62 @@ class InventoryController extends Controller
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
         $items = $query->orderBy('kode_barang')->paginate($perPage)->withQueryString();
 
+        $registerQuery = InventoryUnit::query()
+            ->with(['item:id,kode_barang,nama_jenis_barang,merk_type,tahun_pembelian,harga'])
+            ->orderBy('inventory_item_id')
+            ->orderBy('register');
+
+        if ($search = $request->input('search')) {
+            $registerQuery->where(function ($q) use ($search) {
+                $q->where('register', 'like', "%{$search}%")
+                    ->orWhereHas('item', function ($itemQuery) use ($search) {
+                        $itemQuery
+                            ->where('kode_barang', 'like', "%{$search}%")
+                            ->orWhere('nama_jenis_barang', 'like', "%{$search}%")
+                            ->orWhere('merk_type', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Apply the same item filters as the asset list; condition remains a unit field.
+        if ($tahun = $request->input('tahun')) {
+            $registerQuery->whereHas('item', fn ($itemQuery) => $itemQuery->where('tahun_pembelian', $tahun));
+        }
+        if ($kondisi = $request->input('kondisi')) {
+            $registerQuery->where('condition', $kondisi);
+        }
+        if ($asal = $request->input('asal')) {
+            $registerQuery->whereHas('item', fn ($itemQuery) => $itemQuery->where('asal_perolehan', $asal));
+        }
+        if ($satuan = $request->input('satuan')) {
+            $registerQuery->whereHas('item', fn ($itemQuery) => $itemQuery->where('satuan', $satuan));
+        }
+        if ($request->filled('category')) {
+            $registerQuery->whereHas('item', fn ($itemQuery) => $itemQuery->where('inventory_category_id', $request->integer('category')));
+        }
+        if ($request->filled('inventory_type')) {
+            $registerQuery->whereHas('item', fn ($itemQuery) => $itemQuery->where('inventory_type_id', $request->integer('inventory_type')));
+        }
+        if ($request->filled('asset_kind')) {
+            $registerQuery->whereHas('item', fn ($itemQuery) => $itemQuery->where('asset_kind', $request->string('asset_kind')->toString()));
+        }
+        if ($request->filled('tangible_asset_type')) {
+            $registerQuery->whereHas('item', fn ($itemQuery) => $itemQuery->where('tangible_asset_type_id', $request->integer('tangible_asset_type')));
+        }
+        if ($request->filled('intangible_asset_type')) {
+            $registerQuery->whereHas('item', fn ($itemQuery) => $itemQuery->where('intangible_asset_type_id', $request->integer('intangible_asset_type')));
+        }
+
+        $registerPerPage = min(max($request->integer('register_per_page', 10), 1), 50);
+        $registers = $registerQuery
+            ->paginate($registerPerPage, ['*'], 'register_page')
+            ->withQueryString();
+        $registers->getCollection()->transform(function (InventoryUnit $unit) {
+            $unit->setAttribute('display_code', $unit->item->kode_barang.'.'.$unit->register);
+
+            return $unit;
+        });
+
         // Use the database aggregate instead of loading every unit for the list.
         $items->getCollection()->transform(function (InventoryItem $item) {
             $registers = $item->units
@@ -161,8 +217,11 @@ class InventoryController extends Controller
         });
 
         return Inertia::render('inventory/index', [
+            'view' => $request->input('view', 'assets') === 'registers' ? 'registers' : 'assets',
             'items' => $items,
+            'registers' => $registers,
             'filters' => $request->only(['search', 'tahun', 'kondisi', 'asal', 'satuan', 'category', 'inventory_type', 'asset_kind', 'tangible_asset_type', 'intangible_asset_type']),
+
             'filterOptions' => [
                 'tahun' => InventoryItem::query()->select('tahun_pembelian')->distinct()->orderBy('tahun_pembelian', 'desc')->pluck('tahun_pembelian'),
                 'asal' => InventoryItem::query()->select('asal_perolehan')->distinct()->whereNotNull('asal_perolehan')->orderBy('asal_perolehan')->pluck('asal_perolehan'),

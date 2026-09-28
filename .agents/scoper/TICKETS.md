@@ -552,3 +552,32 @@ Tambahkan assistant/chatbot terautentikasi berbasis API 9Router. Laravel tetap m
 - Commit implementasi: `b52076c feat: add ephemeral role-scoped school assistant`.
 
 **References:** PROJECT §4; SPEC §4 dan §9; RISKS R-012; KITAB STD-023, SOP-001, WF-001, SK-APP-001, SK-APP-002.
+
+---
+
+## CYCLE 3 — INVENTORY ASSET AND REGISTER VIEWS
+
+### TASK-026 — Inventory tabs: Aset and Register views
+
+- **Priority:** P1
+- **Status:** Todo
+- **Phase:** 2
+- **Depends On:** TASK-008, TASK-009, TASK-010, TASK-012
+- **Blocks:** None
+
+**Description:**
+Tambahkan dua tampilan pada halaman `/inventory` menggunakan komponen Tabs yang tersedia: Tab Aset untuk kelompok `InventoryItem` dan Tab Register untuk unit fisik `InventoryUnit`. Tab aktif harus direpresentasikan pada query URL (`view=assets` atau `view=registers`) dan dapat dipulihkan melalui refresh serta navigasi browser.
+
+**Acceptance Criteria:**
+- [ ] Tab `Aset` menampilkan daftar `InventoryItem` existing tanpa mengubah kontrak tabel saat ini.
+- [ ] Tab `Register` menampilkan daftar `InventoryUnit` secara server-side dengan relasi item induk.
+- [ ] Kode tampilan register dibentuk sebagai `{kode_barang}.{register}`, misalnya `28.09.2025.001`; tidak menambah kolom kode gabungan yang redundan.
+- [ ] Tab Register menampilkan sekurang-kurangnya kode lengkap, kode aset, nomor register, nama aset, dan kondisi unit.
+- [ ] Pagination, filter, dan search pada Tab Register tidak mencampur state Tab Aset; state tab aktif tersimpan pada query URL.
+- [ ] Perpindahan tab mempertahankan parameter yang relevan dan refresh/bookmark membuka tab yang sesuai.
+- [ ] Register dan kondisi tetap ditentukan backend; frontend tidak membuat atau mengubah register secara langsung.
+- [ ] Authorization backend tetap berlaku untuk kedua tampilan.
+- [ ] Feature/regression test mencakup register rusak, kode gabungan, pagination, query `view`, dan akses unauthorized/forbidden yang relevan.
+- [ ] `php artisan test`, `npm run types:check`, `npm run lint:check`, `npm run build`, dan `git diff --check` lulus untuk scope perubahan.
+
+**References:** PROJECT §4; SPEC §7, §8, §9; DECISIONS D-004, D-005; RISKS R-001, R-003, R-008.

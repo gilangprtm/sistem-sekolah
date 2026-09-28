@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import {
     Pagination,
     PaginationContent,
+    PaginationEllipsis,
     PaginationItem,
     PaginationLink,
     PaginationNext,
@@ -44,6 +45,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -63,11 +65,35 @@ type Item = {
     inventoryType: { id: number; name: string } | null;
 };
 
+type Register = {
+    id: number;
+    register: string;
+    display_code: string;
+    condition: string;
+    item: {
+        id: number;
+        kode_barang: string;
+        nama_jenis_barang: string;
+        merk_type: string | null;
+        tahun_pembelian: number | null;
+        harga: string;
+    };
+};
+
 type Props = {
+    view: 'assets' | 'registers';
     items: {
         data: Item[];
         current_page: number;
         last_page: number;
+        per_page: number;
+        total: number;
+    };
+    registers: {
+        data: Register[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
         total: number;
     };
     filters: {
@@ -141,7 +167,9 @@ function getPageNumbers(currentPage: number, pageCount: number) {
 }
 
 export default function InventoryIndex({
+    view,
     items,
+    registers,
     filters,
     filterOptions,
 }: Props) {
@@ -157,49 +185,56 @@ export default function InventoryIndex({
     );
 
     const categories = filterOptions.categories;
+    const pageNumbers = getPageNumbers(items.current_page, items.last_page);
 
-    const applyFilters = (overrides: Record<string, string> = {}) => {
+    const filterParams = (): Record<string, string> => {
         const params: Record<string, string> = {};
-        const searchVal = overrides.search ?? search;
-        const tahunVal = overrides.tahun ?? tahun;
-        const kondisiVal = overrides.kondisi ?? kondisi;
-        const asalVal = overrides.asal ?? asal;
-        const satuanVal = overrides.satuan ?? satuan;
-        const categoryVal = overrides.category ?? category;
-        const inventoryTypeVal = overrides.inventory_type ?? inventoryType;
 
-        if (searchVal) {
-            params.search = searchVal;
+        if (search) {
+            params.search = search;
         }
 
-        if (tahunVal) {
-            params.tahun = tahunVal;
+        if (tahun) {
+            params.tahun = tahun;
         }
 
-        if (kondisiVal) {
-            params.kondisi = kondisiVal;
+        if (kondisi) {
+            params.kondisi = kondisi;
         }
 
-        if (asalVal) {
-            params.asal = asalVal;
+        if (asal) {
+            params.asal = asal;
         }
 
-        if (satuanVal) {
-            params.satuan = satuanVal;
+        if (satuan) {
+            params.satuan = satuan;
         }
 
-        if (categoryVal) {
-            params.category = categoryVal;
+        if (category) {
+            params.category = category;
         }
 
-        if (inventoryTypeVal) {
-            params.inventory_type = inventoryTypeVal;
+        if (inventoryType) {
+            params.inventory_type = inventoryType;
         }
 
-        router.get('/inventory', params, {
-            preserveState: true,
-            replace: true,
-        });
+        return params;
+    };
+
+    const applyFilters = () => {
+        router.get(
+            '/inventory',
+            {
+                ...filterParams(),
+                view,
+                page: view === 'assets' ? 1 : items.current_page,
+                per_page: items.per_page,
+                register_page:
+                    view === 'registers' ? 1 : registers.current_page,
+                register_per_page: registers.per_page,
+            },
+            { preserveState: true, replace: true },
+        );
     };
 
     const resetFilters = () => {
@@ -210,7 +245,61 @@ export default function InventoryIndex({
         setSatuan('');
         setCategory('');
         setInventoryType('');
-        router.get('/inventory', {}, { preserveState: true, replace: true });
+        router.get(
+            '/inventory',
+            {
+                view,
+                page: view === 'assets' ? 1 : items.current_page,
+                per_page: items.per_page,
+                register_page:
+                    view === 'registers' ? 1 : registers.current_page,
+                register_per_page: registers.per_page,
+            },
+            { preserveState: true, replace: true },
+        );
+    };
+
+    const goToPage = (page: number) => {
+        router.get(
+            '/inventory',
+            {
+                ...filters,
+                view: 'assets',
+                page,
+                per_page: items.per_page,
+            },
+            { preserveState: true },
+        );
+    };
+
+    const changeView = (nextView: string) => {
+        router.get(
+            '/inventory',
+            {
+                ...filterParams(),
+                view: nextView,
+                page: items.current_page,
+                per_page: items.per_page,
+                register_page: registers.current_page,
+                register_per_page: registers.per_page,
+            },
+            { preserveState: true, replace: true },
+        );
+    };
+
+    const goToRegisterPage = (page: number) => {
+        router.get(
+            '/inventory',
+            {
+                ...filters,
+                view: 'registers',
+                page: items.current_page,
+                per_page: items.per_page,
+                register_page: page,
+                register_per_page: registers.per_page,
+            },
+            { preserveState: true },
+        );
     };
 
     const formatRupiah = (value: number) =>
@@ -272,16 +361,20 @@ export default function InventoryIndex({
 
                 <div className="grid gap-4 rounded-xl border p-4">
                     <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-12">
+                        <div className="grid gap-2 md:col-span-2">
                             <Label>Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    onKeyDown={(e) =>
-                                        e.key === 'Enter' && applyFilters()
+                                    onChange={(event) =>
+                                        setSearch(event.target.value)
                                     }
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            applyFilters();
+                                        }
+                                    }}
                                     placeholder="Kode / nama / merk / register..."
                                     className="pl-8"
                                 />
@@ -365,378 +458,671 @@ export default function InventoryIndex({
                             onChange={setInventoryType}
                         />
                         <div className="flex gap-2">
-                            <Button onClick={() => applyFilters()}>
-                                Filter
-                            </Button>
+                            <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset
                             </Button>
                         </div>
                     </div>
                 </div>
-
-                <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                    <div className="flex flex-col gap-3 border-b px-4 py-4 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {items.total} baris dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                items.data.length > 0 &&
-                                                selected.length ===
-                                                    items.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? items.data.map(
-                                                              (item) => item.id,
-                                                          )
-                                                        : [],
+                <Tabs value={view} onValueChange={changeView}>
+                    <TabsList>
+                        <TabsTrigger value="assets">Aset</TabsTrigger>
+                        <TabsTrigger value="registers">Register</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="assets">
+                        <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
+                            <div className="flex flex-col gap-3 border-b px-4 py-4 md:flex-row md:items-center md:justify-between">
+                                <div className="text-sm text-muted-foreground">
+                                    {selected.length} dari {items.total} baris
+                                    dipilih.
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSelected([])}
+                                    disabled={!selected.length}
+                                >
+                                    Hapus pilihan
+                                </Button>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableHead className="w-12">
+                                                <Checkbox
+                                                    checked={
+                                                        items.data.length > 0 &&
+                                                        selected.length ===
+                                                            items.data.length
+                                                    }
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        setSelected(
+                                                            checked
+                                                                ? items.data.map(
+                                                                      (item) =>
+                                                                          item.id,
+                                                                  )
+                                                                : [],
+                                                        )
+                                                    }
+                                                    aria-label="Pilih semua inventaris"
+                                                />
+                                            </TableHead>
+                                            <TableHead>Kode Barang</TableHead>
+                                            <TableHead>Register</TableHead>
+                                            <TableHead>Nama/Jenis</TableHead>
+                                            <TableHead>Merk/Type</TableHead>
+                                            <TableHead>Tahun</TableHead>
+                                            <TableHead>Kategori</TableHead>
+                                            <TableHead>Jenis</TableHead>
+                                            <TableHead className="text-right">
+                                                Qty
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Harga
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Total
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Aksi
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {items.data.map((item) => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="w-12">
+                                                    <Checkbox
+                                                        checked={selected.includes(
+                                                            item.id,
+                                                        )}
+                                                        onCheckedChange={(
+                                                            checked,
+                                                        ) =>
+                                                            setSelected(
+                                                                (current) =>
+                                                                    checked
+                                                                        ? [
+                                                                              ...current,
+                                                                              item.id,
+                                                                          ]
+                                                                        : current.filter(
+                                                                              (
+                                                                                  id,
+                                                                              ) =>
+                                                                                  id !==
+                                                                                  item.id,
+                                                                          ),
+                                                            )
+                                                        }
+                                                        aria-label={`Pilih ${item.kode_barang}`}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">
+                                                    {item.kode_barang}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">
+                                                    {item.register_range}
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    {item.nama_jenis_barang}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {item.merk_type ?? '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {item.tahun_pembelian ??
+                                                        '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {item.category?.name ??
+                                                        'Tanpa kategori'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {item.inventoryType?.name ??
+                                                        '-'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {item.qty}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {formatRupiah(
+                                                        Number(item.harga),
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">
+                                                    {formatRupiah(item.total)}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger
+                                                            asChild
+                                                        >
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon-sm"
+                                                                className="text-muted-foreground"
+                                                                aria-label={`Aksi ${item.kode_barang}`}
+                                                            >
+                                                                <MoreHorizontal />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                asChild
+                                                            >
+                                                                <Link
+                                                                    href={`/inventory/${item.id}`}
+                                                                >
+                                                                    Lihat detail
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {items.data.length === 0 && (
+                                            <TableRow>
+                                                <TableCell
+                                                    colSpan={12}
+                                                    className="text-center text-muted-foreground"
+                                                >
+                                                    <div className="flex flex-col items-center gap-2 py-8">
+                                                        <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
+                                                        Tidak ada data
+                                                        inventaris.
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
+                                <div className="text-sm text-muted-foreground">
+                                    {selected.length} dari {items.total} baris
+                                    dipilih.
+                                </div>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-muted-foreground">
+                                            Baris per halaman
+                                        </span>
+                                        <Select
+                                            value={`${items.per_page}`}
+                                            onValueChange={(value) =>
+                                                router.get(
+                                                    '/inventory',
+                                                    {
+                                                        ...filters,
+                                                        view: 'assets',
+                                                        per_page: value,
+                                                        page: 1,
+                                                        register_page:
+                                                            registers.current_page,
+                                                        register_per_page:
+                                                            registers.per_page,
+                                                    },
+                                                    { preserveState: true },
                                                 )
                                             }
-                                            aria-label="Pilih semua inventaris"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Kode Barang</TableHead>
-                                    <TableHead>Register</TableHead>
-                                    <TableHead>Nama/Jenis</TableHead>
-                                    <TableHead>Merk/Type</TableHead>
-                                    <TableHead>Tahun</TableHead>
-                                    <TableHead>Kategori</TableHead>
-                                    <TableHead>Jenis</TableHead>
-                                    <TableHead className="text-right">
-                                        Qty
-                                    </TableHead>
-                                    <TableHead className="text-right">
-                                        Harga
-                                    </TableHead>
-                                    <TableHead className="text-right">
-                                        Total
-                                    </TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {items.data.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="w-12">
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    item.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  item.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      item.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${item.kode_barang}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {item.kode_barang}
-                                        </TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {item.register_range}
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {item.nama_jenis_barang}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.merk_type ?? '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.tahun_pembelian ?? '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.category?.name ??
-                                                'Tanpa kategori'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.inventoryType?.name ?? '-'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {item.qty}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {formatRupiah(Number(item.harga))}
-                                        </TableCell>
-                                        <TableCell className="text-right font-medium">
-                                            {formatRupiah(item.total)}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-sm"
-                                                        className="text-muted-foreground"
-                                                        aria-label={`Aksi ${item.kode_barang}`}
-                                                    >
-                                                        <MoreHorizontal />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem asChild>
-                                                        <Link
-                                                            href={`/inventory/${item.id}`}
-                                                        >
-                                                            Lihat detail
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {items.data.length === 0 && (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={12}
-                                            className="text-center text-muted-foreground"
                                         >
-                                            <div className="flex flex-col items-center gap-2 py-8">
-                                                <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
-                                                Tidak ada data inventaris.
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {items.total} baris dipilih.
-                        </div>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-muted-foreground">
-                                    Baris per halaman
-                                </span>
-                                <Select
-                                    value="10"
-                                    onValueChange={(value) =>
-                                        router.get(
-                                            '/inventory',
-                                            {
-                                                ...filters,
-                                                per_page: value,
-                                                page: 1,
-                                            },
-                                            { preserveState: true },
-                                        )
-                                    }
-                                >
-                                    <SelectTrigger className="h-8 w-18">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {[10, 20, 30, 40, 50].map((size) => (
-                                            <SelectItem
-                                                key={size}
-                                                value={`${size}`}
-                                            >
-                                                {size}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="text-sm font-medium text-muted-foreground">
-                                Halaman {items.current_page} dari{' '}
-                                {items.last_page}
-                            </div>
-                            {items.last_page > 1 && (
-                                <Pagination className="mx-0 w-auto justify-start sm:justify-end">
-                                    <PaginationContent className="gap-1">
-                                        <PaginationItem className="hidden lg:block">
-                                            <PaginationLink
-                                                href="#"
-                                                aria-label="Halaman pertama"
-                                                className={
-                                                    items.current_page === 1
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : ''
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
+                                            <SelectTrigger className="h-8 w-18">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[10, 20, 30, 40, 50].map(
+                                                    (size) => (
+                                                        <SelectItem
+                                                            key={size}
+                                                            value={`${size}`}
+                                                        >
+                                                            {size}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="text-sm font-medium text-muted-foreground">
+                                        Halaman {items.current_page} dari{' '}
+                                        {items.last_page}
+                                    </div>
+                                    {items.last_page > 1 && (
+                                        <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                                            <PaginationContent className="gap-1">
+                                                <PaginationItem className="hidden lg:block">
+                                                    <PaginationLink
+                                                        href="#"
+                                                        aria-label="Halaman pertama"
+                                                        aria-disabled={
+                                                            items.current_page ===
+                                                            1
+                                                        }
+                                                        className={
+                                                            items.current_page ===
+                                                            1
+                                                                ? 'pointer-events-none opacity-50'
+                                                                : undefined
+                                                        }
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
 
-                                                    if (
-                                                        items.current_page > 1
-                                                    ) {
-                                                        router.get(
-                                                            '/inventory',
-                                                            {
-                                                                ...filters,
-                                                                page: 1,
-                                                            },
-                                                            {
-                                                                preserveState: true,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                            >
-                                                <ChevronsLeft />
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                        <PaginationItem>
-                                            <PaginationPrevious
-                                                href="#"
-                                                text="Prev"
-                                                className={
-                                                    items.current_page === 1
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : ''
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
+                                                            if (
+                                                                items.current_page >
+                                                                1
+                                                            ) {
+                                                                goToPage(1);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ChevronsLeft />
+                                                    </PaginationLink>
+                                                </PaginationItem>
+                                                <PaginationItem>
+                                                    <PaginationPrevious
+                                                        href="#"
+                                                        text="Prev"
+                                                        aria-disabled={
+                                                            items.current_page ===
+                                                            1
+                                                        }
+                                                        className={
+                                                            items.current_page ===
+                                                            1
+                                                                ? 'pointer-events-none opacity-50'
+                                                                : undefined
+                                                        }
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
 
-                                                    if (
-                                                        items.current_page > 1
-                                                    ) {
-                                                        router.get(
-                                                            '/inventory',
-                                                            {
-                                                                ...filters,
-                                                                page:
+                                                            if (
+                                                                items.current_page >
+                                                                1
+                                                            ) {
+                                                                goToPage(
                                                                     items.current_page -
-                                                                    1,
-                                                            },
-                                                            {
-                                                                preserveState: true,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                        </PaginationItem>
-                                        {getPageNumbers(
-                                            items.current_page,
-                                            items.last_page,
-                                        ).map((page) => (
-                                            <PaginationItem key={page}>
-                                                <PaginationLink
-                                                    href="#"
-                                                    isActive={
-                                                        page ===
-                                                        items.current_page
-                                                    }
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
-                                                        router.get(
-                                                            '/inventory',
-                                                            {
-                                                                ...filters,
-                                                                page,
-                                                            },
-                                                            {
-                                                                preserveState: true,
-                                                            },
-                                                        );
-                                                    }}
-                                                >
-                                                    {page}
-                                                </PaginationLink>
-                                            </PaginationItem>
-                                        ))}
-                                        <PaginationItem>
-                                            <PaginationNext
-                                                href="#"
-                                                className={
-                                                    items.current_page ===
-                                                    items.last_page
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : ''
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
+                                                                        1,
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                </PaginationItem>
+                                                {pageNumbers[0] > 1 && (
+                                                    <PaginationItem>
+                                                        <PaginationEllipsis />
+                                                    </PaginationItem>
+                                                )}
+                                                {pageNumbers.map((page) => (
+                                                    <PaginationItem key={page}>
+                                                        <PaginationLink
+                                                            href="#"
+                                                            isActive={
+                                                                page ===
+                                                                items.current_page
+                                                            }
+                                                            onClick={(
+                                                                event,
+                                                            ) => {
+                                                                event.preventDefault();
+                                                                goToPage(page);
+                                                            }}
+                                                        >
+                                                            {page}
+                                                        </PaginationLink>
+                                                    </PaginationItem>
+                                                ))}
+                                                {pageNumbers[
+                                                    pageNumbers.length - 1
+                                                ] < items.last_page && (
+                                                    <PaginationItem>
+                                                        <PaginationEllipsis />
+                                                    </PaginationItem>
+                                                )}
+                                                <PaginationItem>
+                                                    <PaginationNext
+                                                        href="#"
+                                                        aria-disabled={
+                                                            items.current_page ===
+                                                            items.last_page
+                                                        }
+                                                        className={
+                                                            items.current_page ===
+                                                            items.last_page
+                                                                ? 'pointer-events-none opacity-50'
+                                                                : undefined
+                                                        }
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
 
-                                                    if (
-                                                        items.current_page <
-                                                        items.last_page
-                                                    ) {
-                                                        router.get(
-                                                            '/inventory',
-                                                            {
-                                                                ...filters,
-                                                                page:
+                                                            if (
+                                                                items.current_page <
+                                                                items.last_page
+                                                            ) {
+                                                                goToPage(
                                                                     items.current_page +
-                                                                    1,
-                                                            },
-                                                            {
-                                                                preserveState: true,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                        </PaginationItem>
-                                        <PaginationItem className="hidden lg:block">
-                                            <PaginationLink
-                                                href="#"
-                                                aria-label="Halaman terakhir"
-                                                className={
-                                                    items.current_page ===
-                                                    items.last_page
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : ''
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
+                                                                        1,
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                </PaginationItem>
+                                                <PaginationItem className="hidden lg:block">
+                                                    <PaginationLink
+                                                        href="#"
+                                                        aria-label="Halaman terakhir"
+                                                        aria-disabled={
+                                                            items.current_page ===
+                                                            items.last_page
+                                                        }
+                                                        className={
+                                                            items.current_page ===
+                                                            items.last_page
+                                                                ? 'pointer-events-none opacity-50'
+                                                                : undefined
+                                                        }
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
 
-                                                    if (
-                                                        items.current_page <
-                                                        items.last_page
-                                                    ) {
-                                                        router.get(
-                                                            '/inventory',
-                                                            {
-                                                                ...filters,
-                                                                page: items.last_page,
-                                                            },
-                                                            {
-                                                                preserveState: true,
-                                                            },
-                                                        );
-                                                    }
-                                                }}
-                                            >
-                                                <ChevronsRight />
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                    </PaginationContent>
-                                </Pagination>
-                            )}
+                                                            if (
+                                                                items.current_page <
+                                                                items.last_page
+                                                            ) {
+                                                                goToPage(
+                                                                    items.last_page,
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ChevronsRight />
+                                                    </PaginationLink>
+                                                </PaginationItem>
+                                            </PaginationContent>
+                                        </Pagination>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </TabsContent>
+                    <TabsContent value="registers">
+                        <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
+                            <div className="overflow-x-auto">
+                                <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableHead>Kode Lengkap</TableHead>
+                                            <TableHead>Kode Aset</TableHead>
+                                            <TableHead>Register</TableHead>
+                                            <TableHead>Nama Aset</TableHead>
+                                            <TableHead>Merk/Type</TableHead>
+                                            <TableHead>Tahun</TableHead>
+                                            <TableHead className="text-right">
+                                                Harga per Unit
+                                            </TableHead>
+                                            <TableHead>Kondisi</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {registers.data.map((register) => (
+                                            <TableRow key={register.id}>
+                                                <TableCell className="font-mono text-xs">
+                                                    {register.display_code}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">
+                                                    {register.item.kode_barang}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">
+                                                    {register.register}
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    {
+                                                        register.item
+                                                            .nama_jenis_barang
+                                                    }
+                                                </TableCell>
+                                                <TableCell>
+                                                    {register.item.merk_type ??
+                                                        '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {register.item
+                                                        .tahun_pembelian ?? '-'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {formatRupiah(
+                                                        Number(
+                                                            register.item.harga,
+                                                        ),
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {register.condition}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {registers.data.length === 0 && (
+                                            <TableRow>
+                                                <TableCell
+                                                    colSpan={8}
+                                                    className="text-center text-muted-foreground"
+                                                >
+                                                    <div className="flex flex-col items-center gap-2 py-8">
+                                                        <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
+                                                        Tidak ada data register.
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
+                                <div className="text-sm text-muted-foreground">
+                                    {registers.total} register.
+                                </div>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-muted-foreground">
+                                            Baris per halaman
+                                        </span>
+                                        <Select
+                                            value={`${registers.per_page}`}
+                                            onValueChange={(value) =>
+                                                router.get(
+                                                    '/inventory',
+                                                    {
+                                                        ...filters,
+                                                        view: 'registers',
+                                                        page: items.current_page,
+                                                        per_page:
+                                                            items.per_page,
+                                                        register_per_page:
+                                                            value,
+                                                        register_page: 1,
+                                                    },
+                                                    { preserveState: true },
+                                                )
+                                            }
+                                        >
+                                            <SelectTrigger className="h-8 w-18">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[10, 20, 30, 40, 50].map(
+                                                    (size) => (
+                                                        <SelectItem
+                                                            key={size}
+                                                            value={`${size}`}
+                                                        >
+                                                            {size}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="text-sm font-medium text-muted-foreground">
+                                        Halaman {registers.current_page} dari{' '}
+                                        {registers.last_page}
+                                    </div>
+                                    {registers.last_page > 1 && (
+                                        <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                                            <PaginationContent className="gap-1">
+                                                <PaginationItem className="hidden lg:block">
+                                                    <PaginationLink
+                                                        href="#"
+                                                        aria-label="Halaman pertama"
+                                                        aria-disabled={
+                                                            registers.current_page ===
+                                                            1
+                                                        }
+                                                        className={
+                                                            registers.current_page ===
+                                                            1
+                                                                ? 'pointer-events-none opacity-50'
+                                                                : undefined
+                                                        }
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
+
+                                                            if (
+                                                                registers.current_page >
+                                                                1
+                                                            ) {
+                                                                goToRegisterPage(
+                                                                    1,
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ChevronsLeft />
+                                                    </PaginationLink>
+                                                </PaginationItem>
+                                                <PaginationItem>
+                                                    <PaginationPrevious
+                                                        href="#"
+                                                        text="Prev"
+                                                        aria-disabled={
+                                                            registers.current_page ===
+                                                            1
+                                                        }
+                                                        className={
+                                                            registers.current_page ===
+                                                            1
+                                                                ? 'pointer-events-none opacity-50'
+                                                                : undefined
+                                                        }
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
+
+                                                            if (
+                                                                registers.current_page >
+                                                                1
+                                                            ) {
+                                                                goToRegisterPage(
+                                                                    registers.current_page -
+                                                                        1,
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                </PaginationItem>
+                                                {getPageNumbers(
+                                                    registers.current_page,
+                                                    registers.last_page,
+                                                ).map((page) => (
+                                                    <PaginationItem key={page}>
+                                                        <PaginationLink
+                                                            href="#"
+                                                            isActive={
+                                                                page ===
+                                                                registers.current_page
+                                                            }
+                                                            onClick={(
+                                                                event,
+                                                            ) => {
+                                                                event.preventDefault();
+                                                                goToRegisterPage(
+                                                                    page,
+                                                                );
+                                                            }}
+                                                        >
+                                                            {page}
+                                                        </PaginationLink>
+                                                    </PaginationItem>
+                                                ))}
+                                                <PaginationItem>
+                                                    <PaginationNext
+                                                        href="#"
+                                                        aria-disabled={
+                                                            registers.current_page ===
+                                                            registers.last_page
+                                                        }
+                                                        className={
+                                                            registers.current_page ===
+                                                            registers.last_page
+                                                                ? 'pointer-events-none opacity-50'
+                                                                : undefined
+                                                        }
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
+
+                                                            if (
+                                                                registers.current_page <
+                                                                registers.last_page
+                                                            ) {
+                                                                goToRegisterPage(
+                                                                    registers.current_page +
+                                                                        1,
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                </PaginationItem>
+                                                <PaginationItem className="hidden lg:block">
+                                                    <PaginationLink
+                                                        href="#"
+                                                        aria-label="Halaman terakhir"
+                                                        aria-disabled={
+                                                            registers.current_page ===
+                                                            registers.last_page
+                                                        }
+                                                        className={
+                                                            registers.current_page ===
+                                                            registers.last_page
+                                                                ? 'pointer-events-none opacity-50'
+                                                                : undefined
+                                                        }
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
+
+                                                            if (
+                                                                registers.current_page <
+                                                                registers.last_page
+                                                            ) {
+                                                                goToRegisterPage(
+                                                                    registers.last_page,
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ChevronsRight />
+                                                    </PaginationLink>
+                                                </PaginationItem>
+                                            </PaginationContent>
+                                        </Pagination>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </div>
         </AppLayout>
     );
