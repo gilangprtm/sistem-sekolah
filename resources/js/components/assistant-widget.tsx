@@ -127,8 +127,8 @@ export function AssistantWidget() {
                     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
                         {history.length === 0 && (
                             <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-                                Tanyakan data inventaris sesuai permission akun
-                                Anda.
+                                Tanyakan apa yang ingin Anda ketahui, saya akan
+                                membantu menjawab.
                             </p>
                         )}
                         {history.map((item, index) => (
@@ -145,6 +145,29 @@ export function AssistantWidget() {
                                     : item.content}
                             </div>
                         ))}
+                        {loading && (
+                            <div
+                                className="mr-auto flex w-fit items-center gap-1 rounded-lg bg-muted px-3 py-2.5 text-sm text-muted-foreground"
+                                role="status"
+                                aria-label="Assistant sedang mengetik"
+                            >
+                                <span className="sr-only">
+                                    Assistant sedang mengetik
+                                </span>
+                                <span
+                                    className="size-1.5 rounded-full bg-current motion-safe:animate-pulse"
+                                    aria-hidden="true"
+                                />
+                                <span
+                                    className="size-1.5 rounded-full bg-current [animation-delay:150ms] motion-safe:animate-pulse"
+                                    aria-hidden="true"
+                                />
+                                <span
+                                    className="size-1.5 rounded-full bg-current [animation-delay:300ms] motion-safe:animate-pulse"
+                                    aria-hidden="true"
+                                />
+                            </div>
+                        )}
                         {error && (
                             <p className="text-sm text-destructive">{error}</p>
                         )}
