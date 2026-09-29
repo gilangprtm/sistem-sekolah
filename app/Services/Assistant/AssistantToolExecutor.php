@@ -59,14 +59,15 @@ class AssistantToolExecutor
             throw new \InvalidArgumentException('Invalid inventory room operation.');
         }
 
-        $filters = $arguments['filters'] ?? [];
+        $filters = $this->withoutProviderDefaultRoomFilters($arguments['filters'] ?? []);
         if (! is_array($filters) || array_diff(array_keys($filters), ['room_id', 'room_name', 'room_code', 'placement']) !== []) {
             throw new \InvalidArgumentException('Invalid inventory room filters.');
         }
 
         $query = InventoryRoom::query()->withCount('units')->orderBy('name');
         if (isset($filters['room_id'])) {
-            if (! is_int($filters['room_id']) && ! (is_string($filters['room_id']) && ctype_digit($filters['room_id']))) {
+            if ((! is_int($filters['room_id']) && ! (is_string($filters['room_id']) && ctype_digit($filters['room_id'])))
+                || (int) $filters['room_id'] < 1) {
                 throw new \InvalidArgumentException('Invalid inventory room filter.');
             }
             $query->where('id', (int) $filters['room_id']);
@@ -246,6 +247,28 @@ class AssistantToolExecutor
         }
 
         return $fields !== [] ? $fields : $allowed;
+    }
+
+    private function withoutProviderDefaultRoomFilters(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $filters = $value;
+        foreach (['room_name', 'room_code'] as $field) {
+            if (array_key_exists($field, $filters) && is_string($filters[$field]) && trim($filters[$field]) === '') {
+                unset($filters[$field]);
+            }
+        }
+
+        if (array_key_exists('room_id', $filters)
+            && (is_int($filters['room_id']) && $filters['room_id'] === 0
+                || is_string($filters['room_id']) && $filters['room_id'] === '0')) {
+            unset($filters['room_id']);
+        }
+
+        return $filters;
     }
 
     private function withoutProviderDefaultRegisterFilters(mixed $value): mixed

@@ -115,13 +115,15 @@ class AssistantTest extends TestCase
             $payload = json_decode($request->body());
             $tools = collect($payload->tools ?? [])->keyBy('function.name');
             $registerSchema = $tools->get('inventory_register_query')->function->parameters ?? null;
+            $roomSchema = $tools->get('inventory_room_query')->function->parameters ?? null;
             $summarySchema = $tools->get('inventory_summary')->function->parameters ?? null;
 
             return $summarySchema?->properties instanceof \stdClass
                 && $registerSchema?->additionalProperties === false
                 && $registerSchema?->properties->fields->items->enum !== []
                 && ! in_array('sql', $registerSchema?->properties->fields->items->enum ?? [], true)
-                && $registerSchema?->properties->per_page->maximum === 50;
+                && $registerSchema?->properties->per_page->maximum === 50
+                && $roomSchema?->properties->filters->properties->room_id->minimum === 1;
         });
     }
 
@@ -297,6 +299,35 @@ class AssistantTest extends TestCase
             ['id' => $roomWithUnits->id, 'name' => 'Ruang Kepsek', 'code' => 'RK', 'register_count' => 2],
         ], $toolResult['rooms']);
         $this->assertSame(0, $emptyRoom->units()->count());
+    }
+
+    public function test_room_tool_ignores_provider_placeholder_room_id(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        InventoryRoom::query()->create(['name' => 'Ruang Kepsek', 'code' => 'RK']);
+        InventoryRoom::query()->create(['name' => 'Ruang Guru', 'code' => 'RG']);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-room-placeholder',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_room_query', 'arguments' => json_encode([
+                    'operation' => 'summary',
+                    'filters' => ['room_id' => 0],
+                ])],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Terdapat 2 ruangan.']]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Ada berapa ruangan?'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Terdapat 2 ruangan.');
+
+        $toolResult = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
+        $this->assertSame(2, $toolResult['total_rooms']);
+        $this->assertSame(0, $toolResult['rooms_with_units']);
+        $this->assertSame(0, $toolResult['assigned_units']);
     }
 
     public function test_register_tool_supports_current_room_filters_and_fields(): void

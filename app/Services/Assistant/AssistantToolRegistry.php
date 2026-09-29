@@ -46,7 +46,7 @@ class AssistantToolRegistry
                 'description' => 'Query Inventaris Ruangan secara read-only. Gunakan summary untuk jumlah ruangan/register, list untuk daftar ruangan beserta jumlah register.',
                 'parameters' => ['type' => 'object', 'properties' => [
                     'operation' => ['type' => 'string', 'enum' => ['summary', 'list']],
-                    'filters' => ['type' => 'object', 'properties' => ['room_id' => ['type' => 'integer'], 'room_name' => ['type' => 'string', 'maxLength' => 100], 'room_code' => ['type' => 'string', 'maxLength' => 100], 'placement' => ['type' => 'string', 'enum' => ['assigned', 'unassigned']]], 'additionalProperties' => false],
+                    'filters' => ['type' => 'object', 'properties' => ['room_id' => ['type' => 'integer', 'minimum' => 1], 'room_name' => ['type' => 'string', 'maxLength' => 100], 'room_code' => ['type' => 'string', 'maxLength' => 100], 'placement' => ['type' => 'string', 'enum' => ['assigned', 'unassigned']]], 'additionalProperties' => false],
                     'page' => ['type' => 'integer', 'minimum' => 1],
                     'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50],
                 ], 'additionalProperties' => false],
