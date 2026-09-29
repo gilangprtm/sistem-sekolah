@@ -51,6 +51,12 @@ const searchItems: SearchItem[] = [
         url: '/inventory/create',
     },
     {
+        id: 'inventory-rooms',
+        group: 'Inventaris',
+        label: 'Inventaris Ruangan',
+        url: '/inventory-rooms',
+    },
+    {
         id: 'users',
         group: 'Manajemen',
         label: 'Users',
@@ -98,6 +104,10 @@ export function SearchDialog() {
 
         if (item.id === 'inventory-create') {
             return can('inventory.create');
+        }
+
+        if (item.id === 'inventory-rooms') {
+            return can('inventory.room.view');
         }
 
         if (item.id === 'users') {

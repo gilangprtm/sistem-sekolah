@@ -44,10 +44,44 @@ class NineRouterClient
         }
 
         $result = $response->json();
-        if (! is_array($result) || ! isset($result['choices'][0]['message'])) {
+        $message = $result['choices'][0]['message'] ?? null;
+        if (! is_array($result) || ! is_array($message) || ($message['role'] ?? null) !== 'assistant') {
             throw new RuntimeException('provider_malformed_response');
         }
 
+        if (isset($message['tool_calls'])) {
+            if (! is_array($message['tool_calls']) || ! array_is_list($message['tool_calls']) || $message['tool_calls'] === []) {
+                throw new RuntimeException('provider_malformed_response');
+            }
+
+            foreach ($message['tool_calls'] as $call) {
+                $function = is_array($call) ? ($call['function'] ?? null) : null;
+                $arguments = is_array($function) ? ($function['arguments'] ?? null) : null;
+                if (! is_array($call)
+                    || ! is_string($call['id'] ?? null)
+                    || $call['id'] === ''
+                    || ($call['type'] ?? null) !== 'function'
+                    || ! is_array($function)
+                    || ! is_string($function['name'] ?? null)
+                    || $function['name'] === ''
+                    || ! is_string($arguments)
+                    || ! $this->isJsonObject($arguments)) {
+                    throw new RuntimeException('provider_malformed_response');
+                }
+            }
+        }
+
         return $result;
+    }
+
+    private function isJsonObject(string $value): bool
+    {
+        try {
+            $decoded = json_decode($value, false, 512, JSON_THROW_ON_ERROR);
+
+            return is_object($decoded);
+        } catch (\JsonException) {
+            return false;
+        }
     }
 }

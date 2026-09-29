@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\InventoryItem;
+use App\Models\InventoryRoom;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -103,6 +104,20 @@ class ApiInventoryTest extends TestCase
             ->patchJson("/api/v1/inventory/{$item->id}/units/{$unit->id}", ['condition' => 'RB'])
             ->assertOk()
             ->assertJsonPath('data.condition', 'RB');
+    }
+
+    public function test_assign_unit_room_via_api(): void
+    {
+        $item = InventoryItem::factory()->create();
+        $unit = $item->units()->create(['register' => '001', 'condition' => 'B']);
+        $room = InventoryRoom::query()->create(['name' => 'Lab Komputer', 'code' => 'LAB-KOM']);
+
+        $this->withToken($this->adminToken())
+            ->patchJson("/api/v1/inventory/{$item->id}/units/{$unit->id}/room", [
+                'inventory_room_id' => $room->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.room.id', $room->id);
     }
 
     public function test_dashboard_kpis_via_api(): void

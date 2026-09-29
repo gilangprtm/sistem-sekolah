@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\IntangibleAssetType;
 use App\Models\InventoryItem;
+use App\Models\InventoryRoom;
 use App\Models\InventoryType;
 use App\Models\InventoryUnit;
 use App\Models\TangibleAssetType;
@@ -323,7 +324,7 @@ class InventoryController extends Controller
      */
     public function show(InventoryItem $item): Response
     {
-        $item->load('units', 'category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType');
+        $item->load('units.room', 'category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType');
 
         $item->setAttribute('qty', $item->units->count());
         $item->setAttribute('total', (float) $item->harga * $item->units->count());
@@ -331,6 +332,7 @@ class InventoryController extends Controller
         return Inertia::render('inventory/show', [
             'item' => $item,
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'rooms' => InventoryRoom::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -384,6 +386,24 @@ class InventoryController extends Controller
         $unit->update(['condition' => $data['condition']]);
 
         return back()->with('success', 'Kondisi unit berhasil diperbarui.');
+    }
+
+    /**
+     * Ubah ruangan unit saat ini.
+     */
+    public function updateRoom(Request $request, InventoryItem $item, InventoryUnit $unit): RedirectResponse
+    {
+        if ($unit->inventory_item_id !== $item->id) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'inventory_room_id' => ['nullable', 'integer', 'exists:m_inventory_rooms,id'],
+        ]);
+
+        $unit->update(['inventory_room_id' => $data['inventory_room_id'] ?? null]);
+
+        return back()->with('success', 'Ruangan unit berhasil diperbarui.');
     }
 
     /**

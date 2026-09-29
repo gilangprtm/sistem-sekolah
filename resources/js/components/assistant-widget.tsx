@@ -21,6 +21,7 @@ export function AssistantWidget() {
     const [history, setHistory] = useState<
         { role: 'user' | 'assistant'; content: string }[]
     >([]);
+    const [conversationId, setConversationId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -59,7 +60,9 @@ export function AssistantWidget() {
                 },
                 body: JSON.stringify({
                     message: content,
-                    history: previousHistory,
+                    ...(conversationId
+                        ? { conversation_id: conversationId }
+                        : { history: previousHistory }),
                 }),
             });
             const data = await response.json();
@@ -78,6 +81,7 @@ export function AssistantWidget() {
                 );
             }
 
+            setConversationId(data.conversation_id ?? null);
             setHistory((current) => [
                 ...current,
                 { role: 'assistant', content: data.message },
@@ -195,6 +199,7 @@ export function AssistantWidget() {
                         className="mx-3 mb-3 justify-start"
                         onClick={() => {
                             setHistory([]);
+                            setConversationId(null);
                             setError('');
                         }}
                     >

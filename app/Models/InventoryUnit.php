@@ -10,9 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $id
  * @property int $inventory_item_id
+ * @property int|null $inventory_room_id
  * @property string $register
  * @property string $condition
  * @property-read InventoryItem $item
+ * @property-read InventoryRoom|null $room
  */
 class InventoryUnit extends Model
 {
@@ -25,6 +27,7 @@ class InventoryUnit extends Model
 
     protected $fillable = [
         'inventory_item_id',
+        'inventory_room_id',
         'register',
         'condition',
     ];
@@ -37,6 +40,16 @@ class InventoryUnit extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class, 'inventory_item_id');
+    }
+
+    /**
+     * Ruangan penempatan unit saat ini.
+     *
+     * @return BelongsTo<InventoryRoom, $this>
+     */
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(InventoryRoom::class, 'inventory_room_id');
     }
 
     /**

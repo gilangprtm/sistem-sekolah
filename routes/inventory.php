@@ -21,4 +21,5 @@ Route::middleware(['auth', 'verified', 'can:inventory.view'])->group(function ()
     Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->middleware('can:inventory.delete')->name('inventory.destroy');
     Route::post('/inventory/{item}/units', [InventoryController::class, 'addUnits'])->middleware('can:inventory.unit.create')->name('inventory.units.store');
     Route::patch('/inventory/{item}/units/{unit}', [InventoryController::class, 'updateCondition'])->middleware('can:inventory.unit.condition.update')->name('inventory.units.condition');
+    Route::patch('/inventory/{item}/units/{unit}/room', [InventoryController::class, 'updateRoom'])->middleware('can:inventory.room.assign')->name('inventory.units.room');
 });

@@ -24,6 +24,7 @@ type Unit = {
     id: number;
     register: string;
     condition: string;
+    room: { id: number; name: string } | null;
 };
 
 type Item = {
@@ -49,13 +50,14 @@ type Item = {
 type Props = {
     item: Item;
     categories: { id: number; name: string }[];
+    rooms: { id: number; name: string }[];
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Inventaris', href: '/inventory' },
 ];
 
-export default function InventoryShow({ item, categories }: Props) {
+export default function InventoryShow({ item, categories, rooms }: Props) {
     const [keterangan, setKeterangan] = useState(item.keterangan ?? '');
     const [categoryId, setCategoryId] = useState(
         item.category?.id?.toString() ?? '',
@@ -125,6 +127,14 @@ export default function InventoryShow({ item, categories }: Props) {
             {
                 preserveScroll: true,
             },
+        );
+    };
+
+    const updateRoom = (unit: Unit, inventoryRoomId: string) => {
+        router.patch(
+            `/inventory/${item.id}/units/${unit.id}/room`,
+            { inventory_room_id: inventoryRoomId || null },
+            { preserveScroll: true },
         );
     };
 
@@ -324,14 +334,16 @@ export default function InventoryShow({ item, categories }: Props) {
                         <div className="w-full overflow-x-auto">
                             <Table className="w-full table-fixed">
                                 <colgroup>
-                                    <col className="w-[20%]" />
+                                    <col className="w-[15%]" />
+                                    <col className="w-[25%]" />
                                     <col className="w-[30%]" />
-                                    <col className="w-[50%]" />
+                                    <col className="w-[30%]" />
                                 </colgroup>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Register</TableHead>
                                         <TableHead>Kode</TableHead>
+                                        <TableHead>Ruangan Saat Ini</TableHead>
                                         <TableHead className="text-right">
                                             Kondisi
                                         </TableHead>
@@ -346,6 +358,33 @@ export default function InventoryShow({ item, categories }: Props) {
                                             <TableCell className="font-mono text-xs text-muted-foreground">
                                                 {item.kode_barang}.
                                                 {unit.register}
+                                            </TableCell>
+                                            <TableCell>
+                                                <NativeSelect
+                                                    value={
+                                                        unit.room?.id.toString() ??
+                                                        ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        updateRoom(
+                                                            unit,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    className="w-full"
+                                                >
+                                                    <option value="">
+                                                        Tanpa ruangan
+                                                    </option>
+                                                    {rooms.map((room) => (
+                                                        <option
+                                                            key={room.id}
+                                                            value={room.id}
+                                                        >
+                                                            {room.name}
+                                                        </option>
+                                                    ))}
+                                                </NativeSelect>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <NativeSelect
@@ -374,7 +413,7 @@ export default function InventoryShow({ item, categories }: Props) {
                                     {item.units.length === 0 && (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={3}
+                                                colSpan={4}
                                                 className="text-center text-muted-foreground"
                                             >
                                                 Tidak ada unit.

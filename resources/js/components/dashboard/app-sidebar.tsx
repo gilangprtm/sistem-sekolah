@@ -110,6 +110,15 @@ export function AppSidebar({
         });
     }
 
+    if (can('inventory.room.view')) {
+        inventoryItems.push({
+            id: 'inventory-rooms',
+            title: 'Inventaris Ruangan',
+            url: '/inventory-rooms',
+            icon: LayoutGrid,
+        });
+    }
+
     if (can('users.manage')) {
         adminItems.push({
             id: 'users',

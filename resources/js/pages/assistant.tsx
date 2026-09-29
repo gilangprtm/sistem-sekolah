@@ -9,6 +9,7 @@ export default function Assistant() {
     const [history, setHistory] = useState<
         { role: 'user' | 'assistant'; content: string }[]
     >([]);
+    const [conversationId, setConversationId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -37,7 +38,12 @@ export default function Assistant() {
                             .querySelector('meta[name="csrf-token"]')
                             ?.getAttribute('content') ?? '',
                 },
-                body: JSON.stringify({ message: content, history }),
+                body: JSON.stringify({
+                    message: content,
+                    ...(conversationId
+                        ? { conversation_id: conversationId }
+                        : { history }),
+                }),
             });
             const data = await response.json();
 
@@ -45,6 +51,7 @@ export default function Assistant() {
                 throw new Error(data.message ?? 'Assistant tidak tersedia.');
             }
 
+            setConversationId(data.conversation_id ?? null);
             setHistory([
                 ...nextHistory,
                 { role: 'assistant', content: data.message },
@@ -110,7 +117,11 @@ export default function Assistant() {
                 <Button
                     variant="outline"
                     className="self-start"
-                    onClick={() => setHistory([])}
+                    onClick={() => {
+                        setHistory([]);
+                        setConversationId(null);
+                        setError('');
+                    }}
                 >
                     Mulai chat baru
                 </Button>

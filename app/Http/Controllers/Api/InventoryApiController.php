@@ -90,7 +90,7 @@ class InventoryApiController extends Controller
      */
     public function show(InventoryItem $item): JsonResponse
     {
-        $item->load('units', 'category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType');
+        $item->load('units.room', 'category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType');
         $item->setAttribute('total', (int) $item->harga * $item->units()->count());
 
         return response()->json([
@@ -224,6 +224,28 @@ class InventoryApiController extends Controller
             'success' => true,
             'message' => 'Unit ditambahkan.',
             'data' => $units,
+        ]);
+    }
+
+    /**
+     * Assign ruangan unit saat ini.
+     */
+    public function updateUnitRoom(Request $request, InventoryItem $item, InventoryUnit $unit): JsonResponse
+    {
+        if ($unit->inventory_item_id !== $item->id) {
+            throw ValidationException::withMessages(['unit' => ['Unit tidak cocok dengan item.']]);
+        }
+
+        $data = $request->validate([
+            'inventory_room_id' => ['nullable', 'integer', 'exists:m_inventory_rooms,id'],
+        ]);
+
+        $unit->update(['inventory_room_id' => $data['inventory_room_id'] ?? null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ruangan unit diperbarui.',
+            'data' => $unit->load('room'),
         ]);
     }
 

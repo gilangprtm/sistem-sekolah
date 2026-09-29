@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryApiController;
 use App\Http\Controllers\Api\InventoryApiController;
 use App\Http\Controllers\Api\InventoryDashboardApiController;
+use App\Http\Controllers\Api\InventoryRoomApiController;
 use App\Http\Controllers\Api\InventoryTypeApiController;
 use App\Http\Controllers\Api\RoleApiController;
 use App\Http\Controllers\Api\UserApiController;
@@ -48,6 +49,15 @@ Route::prefix('v1')->group(function () {
         Route::delete('/{category}', [CategoryApiController::class, 'destroy'])->middleware('can:inventory.category.delete');
     });
 
+    // Inventory rooms
+    Route::middleware(['auth:sanctum', 'can:inventory.room.view'])->prefix('inventory-rooms')->group(function () {
+        Route::get('/', [InventoryRoomApiController::class, 'index']);
+        Route::post('/', [InventoryRoomApiController::class, 'store'])->middleware('can:inventory.room.create');
+        Route::get('/{inventoryRoom}', [InventoryRoomApiController::class, 'show']);
+        Route::patch('/{inventoryRoom}', [InventoryRoomApiController::class, 'update'])->middleware('can:inventory.room.update');
+        Route::delete('/{inventoryRoom}', [InventoryRoomApiController::class, 'destroy'])->middleware('can:inventory.room.delete');
+    });
+
     // Inventory types
     Route::middleware(['auth:sanctum', 'can:inventory.type.view'])->prefix('inventory-types')->group(function () {
         Route::get('/', [InventoryTypeApiController::class, 'index']);
@@ -73,5 +83,7 @@ Route::prefix('v1')->group(function () {
             ->middleware('can:inventory.unit.create');
         Route::patch('/{item}/units/{unit}', [InventoryApiController::class, 'updateUnitCondition'])
             ->middleware('can:inventory.unit.condition.update');
+        Route::patch('/{item}/units/{unit}/room', [InventoryApiController::class, 'updateUnitRoom'])
+            ->middleware('can:inventory.room.assign');
     });
 });

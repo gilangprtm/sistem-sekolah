@@ -43,6 +43,11 @@ class RolePermissionSeeder extends Seeder
         'inventory.type.update',
         'inventory.type.delete',
         'inventory.asset-type.assign',
+        'inventory.room.view',
+        'inventory.room.create',
+        'inventory.room.update',
+        'inventory.room.delete',
+        'inventory.room.assign',
     ];
 
     /**
@@ -91,6 +96,11 @@ class RolePermissionSeeder extends Seeder
             'inventory.type.update',
             'inventory.type.delete',
             'inventory.asset-type.assign',
+            'inventory.room.view',
+            'inventory.room.create',
+            'inventory.room.update',
+            'inventory.room.delete',
+            'inventory.room.assign',
         ]);
 
         // Role lain tanpa permission khusus (fase selanjutnya)
