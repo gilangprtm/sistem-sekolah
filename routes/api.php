@@ -70,6 +70,7 @@ Route::prefix('v1')->group(function () {
     // Inventory (permission inventory.view / inventory.manage)
     Route::middleware(['auth:sanctum', 'can:inventory.view'])->prefix('inventory')->group(function () {
         Route::get('/', [InventoryApiController::class, 'index']);
+        Route::get('/registers', [InventoryApiController::class, 'registers']);
         Route::get('/dashboard', [InventoryDashboardApiController::class, 'index'])
             ->middleware('can:inventory.dashboard.view');
         Route::post('/', [InventoryApiController::class, 'store'])

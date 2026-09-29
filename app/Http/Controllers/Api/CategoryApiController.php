@@ -4,21 +4,29 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Services\InventoryCategoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class CategoryApiController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request, InventoryCategoryService $categoryService): JsonResponse
     {
+        $data = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Daftar kategori.',
-            'data' => Category::query()
-                ->withCount('inventoryItems')
-                ->orderBy('name')
-                ->get(),
+            ...$categoryService->paginate(
+                $data['search'] ?? null,
+                $data['page'] ?? 1,
+                $data['per_page'] ?? 25,
+            ),
         ]);
     }
 

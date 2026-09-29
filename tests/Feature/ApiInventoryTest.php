@@ -54,6 +54,34 @@ class ApiInventoryTest extends TestCase
             ->assertJsonCount(1, 'data.data');
     }
 
+    public function test_list_registers_via_api_uses_resource_contract(): void
+    {
+        $item = InventoryItem::factory()->create(['kode_barang' => 'A.01.01']);
+        $item->units()->create(['register' => '001', 'condition' => 'B']);
+
+        $this->withToken($this->adminToken())
+            ->getJson('/api/v1/inventory/registers?search=A.01.01&page=1&per_page=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.display_code', 'A.01.01.001')
+            ->assertJsonPath('data.0.item.code', 'A.01.01')
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('meta.last_page', 1);
+    }
+
+    public function test_inventory_list_filters_by_resource_year(): void
+    {
+        InventoryItem::factory()->create(['kode_barang' => 'A.01.01', 'tahun_pembelian' => 2024]);
+        InventoryItem::factory()->create(['kode_barang' => 'B.02.02', 'tahun_pembelian' => 2025]);
+
+        $this->withToken($this->adminToken())
+            ->getJson('/api/v1/inventory?year=2024')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.code', 'A.01.01');
+    }
+
     public function test_inventory_list_rejects_page_size_above_limit(): void
     {
         $this->withToken($this->adminToken())

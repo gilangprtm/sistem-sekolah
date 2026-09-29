@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\InventoryItem;
 use App\Models\InventoryRoom;
 use App\Models\User;
@@ -76,6 +77,11 @@ class AssistantTest extends TestCase
 
     public function test_inventory_permission_scopes_provider_tools(): void
     {
+        $this->test_inventory_registry_exposes_only_resource_tools();
+    }
+
+    public function test_inventory_registry_exposes_only_resource_tools(): void
+    {
         $user = User::factory()->create();
         $user->givePermissionTo('inventory.view');
 
@@ -84,18 +90,147 @@ class AssistantTest extends TestCase
         ])]);
 
         $this->actingAs($user, 'sanctum')
-            ->postJson('/api/v1/assistant/chat', ['message' => 'Halo'])
-            ->assertOk()
-            ->assertJsonPath('message', 'Siap.');
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Daftar inventaris'])
+            ->assertOk();
 
         Http::assertSent(function ($request): bool {
-            $tools = $request->data()['tools'] ?? [];
-            $names = array_map(fn (array $tool) => $tool['function']['name'], $tools);
+            $names = collect(json_decode($request->body())->tools ?? [])
+                ->map(fn (object $tool): string => $tool->function->name)
+                ->all();
 
-            return in_array('inventory_summary', $names, true)
-                && in_array('inventory_search', $names, true)
-                && in_array('inventory_register_query', $names, true);
+            return $names === ['inventory_items', 'inventory_registers', 'inventory_rooms', 'inventory_categories'];
         });
+    }
+
+    public function test_legacy_inventory_tool_is_not_executable(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+
+        Http::fake(['*' => Http::response(['choices' => [['message' => [
+            'role' => 'assistant',
+            'tool_calls' => [[
+                'id' => 'call-legacy-tool',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_summary', 'arguments' => '{}'],
+            ]],
+        ]]]])]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Ringkas inventaris'])
+            ->assertStatus(503)
+            ->assertJsonPath('error_code', 'assistant_execution_failed');
+    }
+
+    public function test_inventory_items_resource_returns_api_like_paginated_data(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        $item = InventoryItem::factory()->create([
+            'kode_barang' => '28.09.2026',
+            'nama_jenis_barang' => 'Laptop',
+        ]);
+        $item->units()->create(['register' => '001', 'condition' => 'B']);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-inventory-items',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => json_encode([
+                    'search' => 'Laptop',
+                    'page' => 1,
+                    'per_page' => 25,
+                ])],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Laptop tersedia.']]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Cari laptop'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Laptop tersedia.');
+
+        $result = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
+        $this->assertSame('28.09.2026', $result['data'][0]['code']);
+        $this->assertSame('Laptop', $result['data'][0]['name']);
+        $this->assertSame(1, $result['data'][0]['register_count']);
+        $this->assertSame(['current_page' => 1, 'per_page' => 25, 'total' => 1, 'last_page' => 1], $result['meta']);
+    }
+
+    public function test_inventory_registers_resource_returns_api_like_paginated_data(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        $item = InventoryItem::factory()->create(['kode_barang' => '28.09.2026', 'nama_jenis_barang' => 'Laptop']);
+        $unit = $item->units()->create(['register' => '001', 'condition' => 'RB']);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-inventory-registers',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_registers', 'arguments' => json_encode([
+                    'condition' => 'RB',
+                    'page' => 1,
+                    'per_page' => 25,
+                ])],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Register ditemukan.']]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Cari register rusak'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Register ditemukan.');
+
+        $result = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
+        $this->assertSame($unit->id, $result['data'][0]['id']);
+        $this->assertSame('28.09.2026.001', $result['data'][0]['display_code']);
+        $this->assertSame('Laptop', $result['data'][0]['item']['name']);
+        $this->assertSame(['current_page' => 1, 'per_page' => 25, 'total' => 1, 'last_page' => 1], $result['meta']);
+    }
+
+    public function test_inventory_categories_resource_returns_api_like_paginated_data(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        $category = Category::query()->create(['name' => 'Elektronik']);
+        InventoryItem::factory()->create(['inventory_category_id' => $category->id]);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-inventory-categories',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_categories', 'arguments' => '{}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Kategori tersedia.']]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Daftar kategori'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Kategori tersedia.');
+
+        $result = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
+        $this->assertSame('Elektronik', $result['data'][0]['name']);
+        $this->assertSame(1, $result['data'][0]['item_count']);
+        $this->assertSame(['current_page' => 1, 'per_page' => 25, 'total' => 1, 'last_page' => 1], $result['meta']);
+    }
+
+    public function test_resource_tools_reject_unknown_arguments(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+
+        Http::fake(['*' => Http::response(['choices' => [['message' => [
+            'role' => 'assistant',
+            'tool_calls' => [[
+                'id' => 'call-resource-unknown',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"exclude_room_name":"VII A"}'],
+            ]],
+        ]]]])]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Cari inventaris'])
+            ->assertStatus(503)
+            ->assertJsonPath('error_code', 'assistant_execution_failed');
     }
 
     public function test_register_provider_schema_is_allowlisted_and_empty_schema_properties_are_objects(): void
@@ -114,16 +249,21 @@ class AssistantTest extends TestCase
         Http::assertSent(function ($request): bool {
             $payload = json_decode($request->body());
             $tools = collect($payload->tools ?? [])->keyBy('function.name');
-            $registerSchema = $tools->get('inventory_register_query')->function->parameters ?? null;
-            $roomSchema = $tools->get('inventory_room_query')->function->parameters ?? null;
-            $summarySchema = $tools->get('inventory_summary')->function->parameters ?? null;
+            $itemSchema = $tools->get('inventory_items')->function->parameters ?? null;
+            $registerSchema = $tools->get('inventory_registers')->function->parameters ?? null;
+            $roomSchema = $tools->get('inventory_rooms')->function->parameters ?? null;
+            $categorySchema = $tools->get('inventory_categories')->function->parameters ?? null;
 
-            return $summarySchema?->properties instanceof \stdClass
+            return $itemSchema?->additionalProperties === false
+                && $itemSchema?->properties->per_page->maximum === 50
                 && $registerSchema?->additionalProperties === false
-                && $registerSchema?->properties->fields->items->enum !== []
-                && ! in_array('sql', $registerSchema?->properties->fields->items->enum ?? [], true)
+                && $registerSchema?->properties->condition->enum === ['B', 'KB', 'RB', null]
                 && $registerSchema?->properties->per_page->maximum === 50
-                && $roomSchema?->properties->filters->properties->room_id->minimum === 1;
+                && $roomSchema?->additionalProperties === false
+                && $roomSchema?->properties->search->type === ['string', 'null']
+                && $roomSchema?->properties->per_page->maximum === 50
+                && $categorySchema?->additionalProperties === false
+                && $categorySchema?->properties->per_page->maximum === 50;
         });
     }
 
@@ -139,7 +279,7 @@ class AssistantTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->postJson('/api/v1/assistant/chat', ['message' => 'Apa kondisi register?'])
             ->assertOk()
-            ->assertJsonPath('message', 'Maaf, saya belum dapat memberikan jawaban yang terverifikasi. Saya dapat membantu ringkasan inventaris, pencarian aset, query aset, dan query register/unit sesuai permission akun Anda.');
+            ->assertJsonPath('message', 'Maaf, saya belum dapat memberikan jawaban yang terverifikasi. Saya dapat membantu membaca resource inventaris yang diizinkan untuk akun Anda.');
     }
 
     public function test_user_without_inventory_permission_receives_no_inventory_tools(): void
@@ -168,7 +308,7 @@ class AssistantTest extends TestCase
             'tool_calls' => [[
                 'id' => 'call-register-forbidden',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_register_query', 'arguments' => '{}'],
+                'function' => ['name' => 'inventory_registers', 'arguments' => '{}'],
             ]],
         ]]]])]);
 
@@ -180,40 +320,7 @@ class AssistantTest extends TestCase
 
     public function test_register_tool_call_is_read_only_and_returns_backend_display_code(): void
     {
-        $user = User::factory()->create();
-        $user->givePermissionTo('inventory.view');
-        $item = InventoryItem::factory()->create(['kode_barang' => '28.09.2025', 'tahun_pembelian' => 2025]);
-        $item->units()->create(['register' => '002', 'condition' => 'RB']);
-
-        Http::fakeSequence()
-            ->push(['choices' => [['message' => [
-                'role' => 'assistant',
-                'tool_calls' => [[
-                    'id' => 'call-register-1',
-                    'type' => 'function',
-                    'function' => ['name' => 'inventory_register_query', 'arguments' => json_encode([
-                        'fields' => ['display_code', 'condition', 'item.kode_barang'],
-                        'filters' => ['condition' => 'RB', 'tahun_pembelian' => 2025],
-                        'sort' => ['field' => 'register', 'direction' => 'asc'],
-                        'page' => 1,
-                        'per_page' => 10,
-                    ])],
-                ]],
-            ]]]])
-            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Register ditemukan.']]]]);
-
-        $this->actingAs($user, 'sanctum')
-            ->postJson('/api/v1/assistant/chat', ['message' => 'Cari register rusak berat'])
-            ->assertOk()
-            ->assertJsonPath('message', 'Register ditemukan.');
-
-        $toolMessage = Http::recorded()[1][0]->data()['messages'][3];
-        $toolResult = json_decode($toolMessage['content'], true);
-        $this->assertSame('tool', $toolMessage['role']);
-        $this->assertSame('28.09.2025.002', $toolResult['data'][0]['display_code']);
-        $this->assertSame('RB', $toolResult['data'][0]['condition']);
-        $this->assertSame('28.09.2025', $toolResult['data'][0]['item']['kode_barang']);
-        $this->assertSame(1, $toolResult['pagination']['total']);
+        $this->test_inventory_registers_resource_returns_api_like_paginated_data();
     }
 
     public function test_tool_rounds_stop_at_deterministic_limit_and_trace_compact_result(): void
@@ -225,27 +332,27 @@ class AssistantTest extends TestCase
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-round-1',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_summary', 'arguments' => '{}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{}'],
             ]]]]]])
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-round-2',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_search', 'arguments' => '{"query":"round-2"}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"round-2"}'],
             ]]]]]])
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-round-3',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_search', 'arguments' => '{"query":"round-3"}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"round-3"}'],
             ]]]]]])
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-round-4',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_search', 'arguments' => '{"query":"round-4"}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"round-4"}'],
             ]]]]]])
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-round-5',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_search', 'arguments' => '{"query":"round-5"}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"round-5"}'],
             ]]]]]]);
 
         Log::spy();
@@ -259,78 +366,141 @@ class AssistantTest extends TestCase
         Log::shouldHaveReceived('debug')
             ->withArgs(function (string $message, array $context): bool {
                 return $message === 'Assistant tool result observed'
-                    && $context['tool_name'] === 'inventory_summary'
-                    && $context['result_keys'] === ['total_items', 'total_units'];
+                    && $context['tool_name'] === 'inventory_items'
+                    && $context['result_keys'] === ['data', 'meta'];
             });
     }
 
-    public function test_room_tool_answers_room_count_and_returns_room_register_counts(): void
+    public function test_inventory_rooms_resource_returns_api_like_paginated_data(): void
     {
         $user = User::factory()->create();
         $user->givePermissionTo('inventory.view');
-        $roomWithUnits = InventoryRoom::query()->create(['name' => 'Ruang Kepsek', 'code' => 'RK']);
-        $emptyRoom = InventoryRoom::query()->create(['name' => 'Ruang Kosong', 'code' => 'RK0']);
+        $room = InventoryRoom::query()->create(['name' => 'Lab Komputer', 'code' => 'LAB01']);
         $item = InventoryItem::factory()->create(['kode_barang' => '28.09.2026']);
-        $item->units()->createMany([
-            ['register' => '001', 'condition' => 'B', 'inventory_room_id' => $roomWithUnits->id],
-            ['register' => '002', 'condition' => 'KB', 'inventory_room_id' => $roomWithUnits->id],
-        ]);
+        $item->units()->create(['register' => '001', 'condition' => 'B', 'inventory_room_id' => $room->id]);
 
         Http::fakeSequence()
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
-                'id' => 'call-room-summary',
+                'id' => 'call-inventory-rooms',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_room_query', 'arguments' => json_encode(['operation' => 'summary'])],
-            ]]]]]])
-            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Terdapat 1 ruangan yang memiliki aset.']]]]);
-
-        Log::spy();
-
-        $this->actingAs($user, 'sanctum')
-            ->postJson('/api/v1/assistant/chat', ['message' => 'Ada berapa ruangan yang memiliki aset?'])
-            ->assertOk()
-            ->assertJsonPath('message', 'Terdapat 1 ruangan yang memiliki aset.');
-
-        $toolResult = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
-        $this->assertSame(2, $toolResult['total_rooms']);
-        $this->assertSame(1, $toolResult['rooms_with_units']);
-        $this->assertSame(2, $toolResult['assigned_units']);
-        $this->assertSame([
-            ['id' => $roomWithUnits->id, 'name' => 'Ruang Kepsek', 'code' => 'RK', 'register_count' => 2],
-        ], $toolResult['rooms']);
-        $this->assertSame(0, $emptyRoom->units()->count());
-    }
-
-    public function test_room_tool_ignores_provider_placeholder_room_id(): void
-    {
-        $user = User::factory()->create();
-        $user->givePermissionTo('inventory.view');
-        InventoryRoom::query()->create(['name' => 'Ruang Kepsek', 'code' => 'RK']);
-        InventoryRoom::query()->create(['name' => 'Ruang Guru', 'code' => 'RG']);
-
-        Http::fakeSequence()
-            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
-                'id' => 'call-room-placeholder',
-                'type' => 'function',
-                'function' => ['name' => 'inventory_room_query', 'arguments' => json_encode([
-                    'operation' => 'summary',
-                    'filters' => ['room_id' => 0],
+                'function' => ['name' => 'inventory_rooms', 'arguments' => json_encode([
+                    'search' => 'Lab',
+                    'page' => 1,
+                    'per_page' => 25,
                 ])],
             ]]]]]])
-            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Terdapat 2 ruangan.']]]]);
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Lab Komputer tersedia.']]]]);
 
         $this->actingAs($user, 'sanctum')
-            ->postJson('/api/v1/assistant/chat', ['message' => 'Ada berapa ruangan?'])
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Daftar ruangan lab'])
             ->assertOk()
-            ->assertJsonPath('message', 'Terdapat 2 ruangan.');
+            ->assertJsonPath('message', 'Lab Komputer tersedia.');
 
         $toolResult = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
-        $this->assertSame(2, $toolResult['total_rooms']);
-        $this->assertSame(0, $toolResult['rooms_with_units']);
-        $this->assertSame(0, $toolResult['assigned_units']);
+        $this->assertSame([
+            [
+                'id' => $room->id,
+                'code' => 'LAB01',
+                'name' => 'Lab Komputer',
+                'register_count' => 1,
+            ],
+        ], $toolResult['data']);
+        $this->assertSame([
+            'current_page' => 1,
+            'per_page' => 25,
+            'total' => 1,
+            'last_page' => 1,
+        ], $toolResult['meta']);
     }
 
-    public function test_register_tool_supports_current_room_filters_and_fields(): void
+    public function test_inventory_rooms_resource_returns_all_rooms_with_pagination_meta(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        $firstRoom = InventoryRoom::query()->create(['name' => 'Kelas VII A', 'code' => 'L1.P8']);
+        $secondRoom = InventoryRoom::query()->create(['name' => 'Ruang Guru', 'code' => 'RG']);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-inventory-rooms-all',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_rooms', 'arguments' => json_encode([
+                    'page' => 1,
+                    'per_page' => 1,
+                ])],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Ada dua ruangan.']]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Daftar semua ruangan'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Ada dua ruangan.');
+
+        $toolResult = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
+        $this->assertSame([
+            [
+                'id' => $firstRoom->id,
+                'code' => 'L1.P8',
+                'name' => 'Kelas VII A',
+                'register_count' => 0,
+            ],
+        ], $toolResult['data']);
+        $this->assertSame([
+            'current_page' => 1,
+            'per_page' => 1,
+            'total' => 2,
+            'last_page' => 2,
+        ], $toolResult['meta']);
+        $this->assertNotSame($firstRoom->id, $secondRoom->id);
+    }
+
+    public function test_inventory_rooms_resource_rejects_invalid_arguments(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+
+        Http::fake(['*' => Http::response(['choices' => [['message' => [
+            'role' => 'assistant',
+            'tool_calls' => [[
+                'id' => 'call-inventory-rooms-invalid',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_rooms', 'arguments' => json_encode([
+                    'page' => 0,
+                    'per_page' => 25,
+                ])],
+            ]],
+        ]]]])]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Daftar ruangan'])
+            ->assertStatus(503)
+            ->assertJsonPath('error_code', 'assistant_execution_failed');
+    }
+
+    public function test_inventory_rooms_resource_rejects_unknown_arguments(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+
+        Http::fake(['*' => Http::response(['choices' => [['message' => [
+            'role' => 'assistant',
+            'tool_calls' => [[
+                'id' => 'call-inventory-rooms-unknown',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_rooms', 'arguments' => json_encode([
+                    'search' => 'Lab',
+                    'exclude_room_name' => 'Kelas VII A',
+                ])],
+            ]],
+        ]]]])]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Daftar ruangan'])
+            ->assertStatus(503)
+            ->assertJsonPath('error_code', 'assistant_execution_failed');
+    }
+
+    public function test_register_resource_supports_room_filter(): void
     {
         $user = User::factory()->create();
         $user->givePermissionTo('inventory.view');
@@ -343,9 +513,8 @@ class AssistantTest extends TestCase
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-room-register',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_register_query', 'arguments' => json_encode([
-                    'fields' => ['display_code', 'room.name', 'room.code', 'room.id'],
-                    'filters' => ['room_name' => 'Ruang Kepsek'],
+                'function' => ['name' => 'inventory_registers', 'arguments' => json_encode([
+                    'room_id' => $room->id,
                     'page' => 1,
                     'per_page' => 10,
                 ])],
@@ -360,22 +529,21 @@ class AssistantTest extends TestCase
         $toolResult = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
         $this->assertSame('28.09.2026.002', $toolResult['data'][0]['display_code']);
         $this->assertSame('Ruang Kepsek', $toolResult['data'][0]['room']['name']);
-        $this->assertSame(1, $toolResult['pagination']['total']);
+        $this->assertSame(1, $toolResult['meta']['total']);
     }
 
     public static function invalidRegisterArguments(): array
     {
         return [
-            'field' => [['fields' => ['password']]],
-            'filter key' => [['filters' => ['secret' => 'x']]],
-            'asset kind' => [['filters' => ['asset_kind' => 'unknown']]],
-            'sort field' => [['sort' => ['field' => 'secret', 'direction' => 'asc']]],
-            'sort direction' => [['sort' => ['field' => 'register', 'direction' => 'sideways']]],
+            'unknown key' => [['exclude_room_name' => 'VII A']],
+            'condition' => [['condition' => 'unknown']],
+            'item id' => [['inventory_item_id' => 0]],
+            'room id' => [['room_id' => 0]],
+            'year' => [['year' => 1800]],
             'page type' => [['page' => 'first']],
-            'page negative' => [['page' => -1]],
+            'page negative' => [['page' => 0]],
             'per page type' => [['per_page' => 'many']],
             'per page 51' => [['per_page' => 51]],
-            'per page 100' => [['per_page' => 100]],
         ];
     }
 
@@ -390,7 +558,7 @@ class AssistantTest extends TestCase
             'tool_calls' => [[
                 'id' => 'call-register-invalid',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_register_query', 'arguments' => json_encode($arguments)],
+                'function' => ['name' => 'inventory_registers', 'arguments' => json_encode($arguments)],
             ]],
         ]]]])]);
 
@@ -400,7 +568,7 @@ class AssistantTest extends TestCase
             ->assertJsonPath('error_code', 'assistant_execution_failed');
     }
 
-    public function test_register_tool_ignores_provider_placeholder_filters_for_condition_counts(): void
+    public function test_register_resource_uses_explicit_condition_filter_without_placeholder_defaults(): void
     {
         $user = User::factory()->create();
         $user->givePermissionTo('inventory.view');
@@ -414,24 +582,10 @@ class AssistantTest extends TestCase
             ->push(['choices' => [['message' => [
                 'role' => 'assistant',
                 'tool_calls' => [[
-                    'id' => 'call-register-defaults',
+                    'id' => 'call-register-condition',
                     'type' => 'function',
-                    'function' => ['name' => 'inventory_register_query', 'arguments' => json_encode([
-                        'fields' => ['id'],
-                        'filters' => [
-                            'search' => '',
-                            'register' => '',
-                            'condition' => 'B',
-                            'inventory_item_id' => 0,
-                            'kode_barang' => '',
-                            'tahun_pembelian' => 0,
-                            'asal_perolehan' => '',
-                            'satuan' => '',
-                            'inventory_category_id' => 0,
-                            'inventory_type_id' => 0,
-                            'asset_kind' => 'tangible',
-                        ],
-                        'sort' => ['field' => 'id', 'direction' => 'asc'],
+                    'function' => ['name' => 'inventory_registers', 'arguments' => json_encode([
+                        'condition' => 'B',
                         'page' => 1,
                         'per_page' => 1,
                     ])],
@@ -444,9 +598,8 @@ class AssistantTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Ditemukan 1 register B.');
 
-        $toolMessage = Http::recorded()[1][0]->data()['messages'][3];
-        $toolResult = json_decode($toolMessage['content'], true);
-        $this->assertSame(1, $toolResult['pagination']['total']);
+        $toolResult = json_decode(Http::recorded()[1][0]->data()['messages'][3]['content'], true);
+        $this->assertSame(1, $toolResult['meta']['total']);
     }
 
     public function test_tool_call_is_executed_and_followed_by_final_answer(): void
@@ -461,7 +614,7 @@ class AssistantTest extends TestCase
                 'tool_calls' => [[
                     'id' => 'call-1',
                     'type' => 'function',
-                    'function' => ['name' => 'inventory_search', 'arguments' => '{"query":"Kursi"}'],
+                    'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"Kursi"}'],
                 ]],
             ]]]])
             ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Ditemukan 1 item.']]]]);
@@ -486,7 +639,7 @@ class AssistantTest extends TestCase
                 'tool_calls' => [[
                     'id' => 'call-repeat-1',
                     'type' => 'function',
-                    'function' => ['name' => 'inventory_register_query', 'arguments' => '{"filters":{"condition":"B"},"page":1}'],
+                    'function' => ['name' => 'inventory_registers', 'arguments' => '{"condition":"B","page":1}'],
                 ]],
             ]]]])
             ->push(['choices' => [['message' => [
@@ -494,7 +647,7 @@ class AssistantTest extends TestCase
                 'tool_calls' => [[
                     'id' => 'call-repeat-2',
                     'type' => 'function',
-                    'function' => ['name' => 'inventory_summary', 'arguments' => '{}'],
+                    'function' => ['name' => 'inventory_items', 'arguments' => '{}'],
                 ]],
             ]]]])
             ->push(['choices' => [['message' => [
@@ -502,7 +655,7 @@ class AssistantTest extends TestCase
                 'tool_calls' => [[
                     'id' => 'call-repeat-3',
                     'type' => 'function',
-                    'function' => ['name' => 'inventory_register_query', 'arguments' => '{"page":1,"filters":{"condition":"B"}}'],
+                    'function' => ['name' => 'inventory_registers', 'arguments' => '{"page":1,"condition":"B"}'],
                 ]],
             ]]]]);
 
@@ -535,7 +688,7 @@ class AssistantTest extends TestCase
                 'tool_calls' => [[
                     'id' => 'call-repeat-1',
                     'type' => 'function',
-                    'function' => ['name' => 'inventory_summary', 'arguments' => '{}'],
+                    'function' => ['name' => 'inventory_items', 'arguments' => '{}'],
                 ]],
             ]]]])
             ->push(['choices' => [['message' => [
@@ -543,7 +696,7 @@ class AssistantTest extends TestCase
                 'tool_calls' => [[
                     'id' => 'call-repeat-2',
                     'type' => 'function',
-                    'function' => ['name' => 'inventory_summary', 'arguments' => '{}'],
+                    'function' => ['name' => 'inventory_items', 'arguments' => '{}'],
                 ]],
             ]]]])
             ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Ringkasan tersedia.']]]]);
@@ -567,17 +720,17 @@ class AssistantTest extends TestCase
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-recovery-a',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_summary', 'arguments' => '{}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{}'],
             ]]]]]])
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-recovery-a-duplicate',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_summary', 'arguments' => '{}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{}'],
             ]]]]]])
             ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
                 'id' => 'call-recovery-b',
                 'type' => 'function',
-                'function' => ['name' => 'inventory_search', 'arguments' => '{"query":"RECOVERY-A"}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"RECOVERY-A"}'],
             ]]]]]]);
 
         $this->actingAs($user, 'sanctum')
@@ -586,7 +739,7 @@ class AssistantTest extends TestCase
             ->assertJsonPath('error_code', 'assistant_repeated_tool_call');
 
         $this->assertCount(3, Http::recorded());
-        $this->assertStringNotContainsString('RECOVERY-A', json_encode(Http::recorded()[2][0]->data(), JSON_THROW_ON_ERROR));
+        $this->assertStringNotContainsString('call-recovery-b', json_encode(Http::recorded()[2][0]->data(), JSON_THROW_ON_ERROR));
     }
 
     public function test_malformed_provider_tool_call_fails_closed(): void
@@ -598,7 +751,7 @@ class AssistantTest extends TestCase
             'role' => 'assistant',
             'tool_calls' => [[
                 'type' => 'function',
-                'function' => ['name' => 'inventory_summary', 'arguments' => '{}'],
+                'function' => ['name' => 'inventory_items', 'arguments' => '{}'],
             ]],
         ]]]])]);
 

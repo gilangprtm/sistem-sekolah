@@ -137,6 +137,6 @@ class AssistantController extends Controller
             return 'Maaf, saya belum dapat mengakses data inventaris untuk akun ini. Saya tetap dapat membantu pertanyaan umum tentang penggunaan Sistem Sekolah.';
         }
 
-        return 'Maaf, saya belum dapat memberikan jawaban yang terverifikasi. Saya dapat membantu ringkasan inventaris, pencarian aset, query aset, dan query register/unit sesuai permission akun Anda.';
+        return 'Maaf, saya belum dapat memberikan jawaban yang terverifikasi. Saya dapat membantu membaca resource inventaris yang diizinkan untuk akun Anda.';
     }
 }

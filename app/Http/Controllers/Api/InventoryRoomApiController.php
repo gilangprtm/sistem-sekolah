@@ -4,18 +4,29 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\InventoryRoom;
+use App\Services\InventoryRoomService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class InventoryRoomApiController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request, InventoryRoomService $roomService): JsonResponse
     {
+        $data = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Daftar ruangan inventaris.',
-            'data' => InventoryRoom::query()->withCount('units')->orderBy('name')->get(),
+            ...$roomService->paginate(
+                $data['search'] ?? null,
+                $data['page'] ?? 1,
+                $data['per_page'] ?? 25,
+            ),
         ]);
     }
 

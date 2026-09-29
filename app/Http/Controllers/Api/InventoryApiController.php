@@ -8,6 +8,8 @@ use App\Models\InventoryItem;
 use App\Models\InventoryType;
 use App\Models\InventoryUnit;
 use App\Models\TangibleAssetType;
+use App\Services\InventoryItemService;
+use App\Services\InventoryRegisterService;
 use App\Services\RegisterGeneratorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,72 +19,85 @@ use Illuminate\Validation\ValidationException;
 class InventoryApiController extends Controller
 {
     /**
-     * Daftar inventaris (search/filter/pagination).
+     * Daftar resource inventaris (search/filter/pagination).
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, InventoryItemService $itemService): JsonResponse
     {
-        $validated = $request->validate([
+        $data = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'inventory_category_id' => ['nullable', 'integer', 'min:1'],
+            'inventory_type_id' => ['nullable', 'integer', 'min:1'],
+            'condition' => ['nullable', 'string', Rule::in(InventoryUnit::CONDITIONS)],
+            'year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
+            'asset_kind' => ['nullable', 'string', Rule::in(['tangible', 'intangible'])],
+            'category' => ['nullable', 'integer', 'min:1'],
+            'inventory_type' => ['nullable', 'integer', 'min:1'],
+            'kondisi' => ['nullable', 'string', Rule::in(InventoryUnit::CONDITIONS)],
+            'tahun' => ['nullable', 'integer', 'min:1900', 'max:2100'],
+            'asal' => ['nullable', 'string', 'max:255'],
+            'satuan' => ['nullable', 'string', 'max:50'],
+            'tangible_asset_type' => ['nullable', 'integer', 'min:1'],
+            'intangible_asset_type' => ['nullable', 'integer', 'min:1'],
+            'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $query = InventoryItem::query()->withCount('units')->with(['category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType']);
-
-        if ($request->filled('category')) {
-            $query->where('inventory_category_id', $request->integer('category'));
-        }
-
-        if ($request->filled('inventory_type')) {
-            $query->where('inventory_type_id', $request->integer('inventory_type'));
-        }
-        if ($request->filled('asset_kind')) {
-            $query->where('asset_kind', $request->string('asset_kind')->toString());
-        }
-        if ($request->filled('tangible_asset_type')) {
-            $query->where('tangible_asset_type_id', $request->integer('tangible_asset_type'));
-        }
-        if ($request->filled('intangible_asset_type')) {
-            $query->where('intangible_asset_type_id', $request->integer('intangible_asset_type'));
-        }
-
-        if ($search = $request->search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('kode_barang', 'like', "%{$search}%")
-                    ->orWhere('nama_jenis_barang', 'like', "%{$search}%")
-                    ->orWhere('merk_type', 'like', "%{$search}%")
-                    ->orWhereHas('units', fn ($q) => $q->where('register', 'like', "%{$search}%"));
-            });
-        }
-
-        if ($request->tahun) {
-            $query->where('tahun_pembelian', $request->tahun);
-        }
-
-        if ($request->kondisi) {
-            $query->whereHas('units', fn ($q) => $q->where('condition', $request->kondisi));
-        }
-
-        if ($request->asal) {
-            $query->where('asal_perolehan', $request->asal);
-        }
-
-        if ($request->satuan) {
-            $query->where('satuan', $request->satuan);
-        }
-
-        $items = $query->orderBy('kode_barang')->paginate($validated['per_page'] ?? 15);
-
-        // Tambah total per item
-        $items->getCollection()->transform(function ($item) {
-            $item->setAttribute('total', (float) $item->harga * $item->units_count);
-
-            return $item;
-        });
+        $resource = $itemService->paginate(
+            array_filter([
+                'search' => $data['search'] ?? null,
+                'inventory_category_id' => $data['inventory_category_id'] ?? $data['category'] ?? null,
+                'inventory_type_id' => $data['inventory_type_id'] ?? $data['inventory_type'] ?? null,
+                'condition' => $data['condition'] ?? $data['kondisi'] ?? null,
+                'year' => $data['year'] ?? $data['tahun'] ?? null,
+                'asset_kind' => $data['asset_kind'] ?? null,
+                'asal_perolehan' => $data['asal'] ?? null,
+                'satuan' => $data['satuan'] ?? null,
+                'tangible_asset_type_id' => $data['tangible_asset_type'] ?? null,
+                'intangible_asset_type_id' => $data['intangible_asset_type'] ?? null,
+            ], static fn (mixed $value): bool => $value !== null),
+            $data['page'] ?? 1,
+            $data['per_page'] ?? 25,
+        );
 
         return response()->json([
             'success' => true,
             'message' => 'Daftar inventaris.',
-            'data' => $items,
+            'data' => [
+                'data' => $resource['data'],
+                'current_page' => $resource['meta']['current_page'],
+                'per_page' => $resource['meta']['per_page'],
+                'total' => $resource['meta']['total'],
+                'last_page' => $resource['meta']['last_page'],
+            ],
         ]);
+    }
+
+    /**
+     * Daftar resource register/unit inventaris.
+     */
+    public function registers(Request $request, InventoryRegisterService $registerService): JsonResponse
+    {
+        $data = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'inventory_item_id' => ['nullable', 'integer', 'min:1'],
+            'room_id' => ['nullable', 'integer', 'min:1'],
+            'condition' => ['nullable', 'string', Rule::in(InventoryUnit::CONDITIONS)],
+            'year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        return response()->json($registerService->paginate(
+            array_filter([
+                'search' => $data['search'] ?? null,
+                'inventory_item_id' => $data['inventory_item_id'] ?? null,
+                'room_id' => $data['room_id'] ?? null,
+                'condition' => $data['condition'] ?? null,
+                'year' => $data['year'] ?? null,
+            ], static fn (mixed $value): bool => $value !== null),
+            $data['page'] ?? 1,
+            $data['per_page'] ?? 25,
+        ));
     }
 
     /**

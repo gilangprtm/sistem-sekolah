@@ -45,7 +45,11 @@ class ApiInventoryRoomTest extends TestCase
         $this->withToken($token)
             ->getJson('/api/v1/inventory-rooms')
             ->assertOk()
-            ->assertJsonPath('data.0.id', $id);
+            ->assertJsonPath('data.0.id', $id)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.per_page', 25)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('meta.last_page', 1);
 
         $this->withToken($token)
             ->patchJson("/api/v1/inventory-rooms/{$id}", [
@@ -59,6 +63,22 @@ class ApiInventoryRoomTest extends TestCase
             ->deleteJson("/api/v1/inventory-rooms/{$id}")
             ->assertOk()
             ->assertJsonPath('data', null);
+    }
+
+    public function test_room_index_uses_resource_search_and_pagination_contract(): void
+    {
+        $token = $this->token();
+        InventoryRoom::query()->create(['name' => 'Kelas VII A', 'code' => 'L1.P8']);
+        InventoryRoom::query()->create(['name' => 'Ruang Guru', 'code' => 'RG']);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/inventory-rooms?search=Kelas&page=1&per_page=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'Kelas VII A')
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('meta.last_page', 1);
     }
 
     public function test_room_api_requires_authentication_and_permission(): void

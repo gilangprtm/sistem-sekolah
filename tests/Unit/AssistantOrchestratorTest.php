@@ -18,7 +18,7 @@ class AssistantOrchestratorTest extends TestCase
                     'id' => 'call-orchestrator-1',
                     'type' => 'function',
                     'function' => [
-                        'name' => 'inventory_summary',
+                        'name' => 'inventory_items',
                         'arguments' => '{}',
                     ],
                 ]],
@@ -38,12 +38,12 @@ class AssistantOrchestratorTest extends TestCase
             function (string $name, array $arguments) use (&$toolCalls): array {
                 $toolCalls[] = [$name, $arguments];
 
-                return ['total_units' => 12];
+                return ['data' => [], 'meta' => ['current_page' => 1, 'per_page' => 25, 'total' => 0, 'last_page' => 1]];
             },
         );
 
         $this->assertSame('Ada 12 register.', $content);
-        $this->assertSame([['inventory_summary', []]], $toolCalls);
+        $this->assertSame([['inventory_items', []]], $toolCalls);
         $this->assertCount(2, Http::recorded());
         $this->assertSame('tool', Http::recorded()[1][0]->data()['messages'][2]['role']);
     }

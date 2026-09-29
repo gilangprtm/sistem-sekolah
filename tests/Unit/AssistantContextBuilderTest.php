@@ -32,7 +32,7 @@ class AssistantContextBuilderTest extends TestCase
         );
 
         $this->assertSame('system', $messages[0]['role']);
-        $this->assertStringContainsString('inventory_room_query', $messages[0]['content']);
+        $this->assertStringContainsString('resource tools', $messages[0]['content']);
         $this->assertSame(['role' => 'assistant', 'content' => 'Jawaban lama.'], $messages[1]);
         $this->assertSame(['role' => 'user', 'content' => 'Pertanyaan baru'], $messages[2]);
     }
