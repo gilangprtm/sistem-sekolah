@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
+    DoorOpen,
     FolderGit2,
     LayoutDashboard,
     LayoutGrid,
@@ -115,7 +116,7 @@ export function AppSidebar({
             id: 'inventory-rooms',
             title: 'Inventaris Ruangan',
             url: '/inventory-rooms',
-            icon: LayoutGrid,
+            icon: DoorOpen,
         });
     }
 
