@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GenerateStudentAccountsRequest;
 use App\Models\User;
+use App\Services\StudentAccountGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -74,6 +76,17 @@ class UserApiController extends Controller
             'success' => true,
             'message' => 'User berhasil dibuat.',
             'data' => $user->load('roles'),
+        ], 201);
+    }
+
+    public function generateStudentAccounts(GenerateStudentAccountsRequest $request, StudentAccountGenerator $generator): JsonResponse
+    {
+        $result = $generator->generate($request->integer('year'), $request->integer('count'));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Akun Siswa berhasil dibuat.',
+            'data' => $result,
         ], 201);
     }
 

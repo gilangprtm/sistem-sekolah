@@ -45,6 +45,14 @@ type UserItem = {
     roles: { id: number; name: string }[];
 };
 
+type GeneratedAccounts = {
+    count: number;
+    first_sequence: number;
+    last_sequence: number;
+    emails: string[];
+    security_warning: string;
+};
+
 type UsersPageProps = {
     auth: Auth;
     users: {
@@ -56,11 +64,17 @@ type UsersPageProps = {
     };
     roles: Role[];
     filters: { search?: string; per_page?: number };
+    generated_accounts?: GeneratedAccounts;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Users', href: '/users' }];
 
-export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
+export default function UsersIndex({
+    users,
+    roles,
+    filters,
+    generated_accounts,
+}: UsersPageProps) {
     const { auth } = usePage<UsersPageProps>().props;
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<UserItem | null>(null);
@@ -72,6 +86,11 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
+    const [generatorOpen, setGeneratorOpen] = useState(false);
+    const [generatorYear, setGeneratorYear] = useState(
+        new Date().getFullYear().toString(),
+    );
+    const [generatorCount, setGeneratorCount] = useState('1');
     const [search, setSearch] = useState(filters.search ?? '');
 
     const openCreate = () => {
@@ -138,6 +157,33 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
         }
     };
 
+    const openGenerator = () => {
+        setErrors({});
+        setGeneratorOpen(true);
+    };
+
+    const generateStudentAccounts = () => {
+        setProcessing(true);
+        router.post(
+            '/users/generate-student-accounts',
+            {
+                year: Number(generatorYear),
+                count: Number(generatorCount),
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setGeneratorOpen(false);
+                    setProcessing(false);
+                },
+                onError: (errs) => {
+                    setErrors(errs);
+                    setProcessing(false);
+                },
+            },
+        );
+    };
+
     const remove = (user: UserItem) => {
         if (!confirm(`Hapus user "${user.name}"? Tindakan ini permanen.`)) {
             return;
@@ -166,7 +212,12 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                         title="Manajemen User"
                         description="Kelola akun pengguna dan role"
                     />
-                    <Button onClick={openCreate}>Tambah User</Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={openGenerator}>
+                            Generate Akun Siswa
+                        </Button>
+                        <Button onClick={openCreate}>Tambah User</Button>
+                    </div>
                 </div>
 
                 <DataTableToolbar className="rounded-xl border">
@@ -267,6 +318,74 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                         onPerPageChange={(perPage) => navigate(1, perPage)}
                     />
                 </DataTableShell>
+
+                {generated_accounts && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-700 dark:bg-amber-950/30">
+                        <p className="font-medium">
+                            {generated_accounts.count} akun Siswa berhasil
+                            dibuat.
+                        </p>
+                        <p>{generated_accounts.emails.join(', ')}</p>
+                        <p className="mt-2 text-amber-800 dark:text-amber-200">
+                            {generated_accounts.security_warning}
+                        </p>
+                    </div>
+                )}
+
+                <Dialog open={generatorOpen} onOpenChange={setGeneratorOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Generate Akun Siswa</DialogTitle>
+                            <DialogDescription>
+                                Akun dibuat dengan nama default Siswa dan
+                                password awal bersama. Wajib ganti password
+                                melalui alur reset.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="student-year">Tahun</Label>
+                                <Input
+                                    id="student-year"
+                                    value={generatorYear}
+                                    onChange={(event) =>
+                                        setGeneratorYear(event.target.value)
+                                    }
+                                    inputMode="numeric"
+                                />
+                                <InputError message={errors.year} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="student-count">
+                                    Jumlah (1–100)
+                                </Label>
+                                <Input
+                                    id="student-count"
+                                    value={generatorCount}
+                                    onChange={(event) =>
+                                        setGeneratorCount(event.target.value)
+                                    }
+                                    inputMode="numeric"
+                                />
+                                <InputError message={errors.count} />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setGeneratorOpen(false)}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                onClick={generateStudentAccounts}
+                                disabled={processing}
+                            >
+                                {processing ? 'Membuat...' : 'Generate'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogContent>

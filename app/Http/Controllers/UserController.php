@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\GenerateStudentAccountsRequest;
 use App\Models\User;
+use App\Services\StudentAccountGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -37,6 +39,7 @@ class UserController extends Controller
             'users' => $users,
             'roles' => Role::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'per_page']),
+            'generated_accounts' => $request->session()->get('generated_accounts'),
         ]);
     }
 
@@ -64,6 +67,13 @@ class UserController extends Controller
         }
 
         return back()->with('success', 'User berhasil dibuat.');
+    }
+
+    public function generateStudentAccounts(GenerateStudentAccountsRequest $request, StudentAccountGenerator $generator): RedirectResponse
+    {
+        $result = $generator->generate($request->integer('year'), $request->integer('count'));
+
+        return back()->with('generated_accounts', $result);
     }
 
     /**

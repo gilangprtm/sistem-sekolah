@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -65,6 +66,57 @@ class ApiUsersRolesTest extends TestCase
 
         $this->assertDatabaseHas('users', ['email' => 'budi@example.com']);
         $this->assertDatabaseHas('model_has_roles', ['role_id' => $role->id]);
+    }
+
+    public function test_super_admin_can_generate_student_accounts_without_exposing_password(): void
+    {
+        $this->withToken($this->adminToken())
+            ->postJson('/api/v1/users/generate-student-accounts', [
+                'year' => 2026,
+                'count' => 2,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.emails.0', '2026001@sekolah.sch.id')
+            ->assertJsonMissingPath('data.password');
+
+        $student = User::query()->where('email', '2026001@sekolah.sch.id')->firstOrFail();
+
+        $this->assertTrue(Hash::check('password123', $student->password));
+        $this->assertTrue($student->hasRole('Siswa'));
+    }
+
+    public function test_api_student_account_generation_validates_bounds(): void
+    {
+        $this->withToken($this->adminToken())
+            ->postJson('/api/v1/users/generate-student-accounts', [
+                'year' => 202,
+                'count' => 0,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['year', 'count']);
+    }
+
+    public function test_guest_cannot_generate_student_accounts_via_api(): void
+    {
+        $this->postJson('/api/v1/users/generate-student-accounts', [
+            'year' => 2026,
+            'count' => 1,
+        ])->assertUnauthorized();
+    }
+
+    public function test_non_admin_cannot_generate_student_accounts(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Guru');
+        $token = $user->createToken('test')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/v1/users/generate-student-accounts', [
+                'year' => 2026,
+                'count' => 1,
+            ])
+            ->assertForbidden();
     }
 
     public function test_super_admin_can_list_roles(): void

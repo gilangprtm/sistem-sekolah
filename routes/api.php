@@ -22,6 +22,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'can:users.manage'])->prefix('users')->group(function () {
         Route::get('/', [UserApiController::class, 'index']);
         Route::post('/', [UserApiController::class, 'store']);
+        Route::post('/generate-student-accounts', [UserApiController::class, 'generateStudentAccounts']);
         Route::get('/{user}', [UserApiController::class, 'show']);
         Route::patch('/{user}', [UserApiController::class, 'update']);
         Route::delete('/{user}', [UserApiController::class, 'destroy']);
