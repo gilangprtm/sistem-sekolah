@@ -39,14 +39,32 @@ class RoleManagementTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        // Pastikan relasi permissions ikut ter-load (regresi: role.permissions undefined)
         $this->actingAs($admin)
             ->get('/roles')
             ->assertOk()
             ->assertInertia(function ($page) {
                 $page->component('roles/index')
-                    ->has('roles', 5)
-                    ->has('roles.0.permissions');
+                    ->has('roles.data')
+                    ->has('roles.data.0.permissions')
+                    ->where('roles.per_page', 10);
+            });
+    }
+
+    public function test_roles_page_supports_search_and_bounded_pagination(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get('/roles?search=Guru&per_page=1&page=1')
+            ->assertOk()
+            ->assertInertia(function ($page) {
+                $page->component('roles/index')
+                    ->where('filters.search', 'Guru')
+                    ->where('filters.per_page', '1')
+                    ->where('roles.per_page', 1)
+                    ->where('roles.total', 1)
+                    ->where('roles.data.0.name', 'Guru');
             });
     }
 

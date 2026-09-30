@@ -28,6 +28,26 @@ class UserManagementTest extends TestCase
             ->assertOk();
     }
 
+    public function test_users_page_supports_search_and_bounded_pagination(): void
+    {
+        $admin = User::factory()->create(['name' => 'Administrator']);
+        $admin->assignRole('Super Admin');
+        User::factory()->create(['name' => 'Target User', 'email' => 'target@example.com']);
+        User::factory()->create(['name' => 'Other User', 'email' => 'other@example.com']);
+
+        $this->actingAs($admin)
+            ->get('/users?search=target&per_page=1&page=1')
+            ->assertOk()
+            ->assertInertia(function ($page) {
+                $page->component('users/index')
+                    ->where('filters.search', 'target')
+                    ->where('filters.per_page', '1')
+                    ->where('users.per_page', 1)
+                    ->where('users.total', 1)
+                    ->where('users.data.0.email', 'target@example.com');
+            });
+    }
+
     public function test_non_admin_cannot_access_users_page(): void
     {
         $user = User::factory()->create();

@@ -17,14 +17,25 @@ class RoleController extends Controller
      */
     public function index(Request $request): Response
     {
-        $roles = Role::with('permissions')->withCount('users')->orderBy('name')->get();
+        $search = $request->string('search')->trim()->toString();
+        $perPage = min(max($request->integer('per_page', 10), 1), 50);
+
+        $roles = Role::query()
+            ->with('permissions')
+            ->withCount('users')
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('name')
+            ->paginate($perPage)
+            ->withQueryString();
 
         $permissions = Permission::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('roles/index', [
             'roles' => $roles,
             'permissions' => $permissions,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'per_page']),
         ]);
     }
 

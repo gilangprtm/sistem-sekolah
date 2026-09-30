@@ -1,5 +1,10 @@
 import { Head, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
+import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
+import DataTablePagination from '@/components/data-table/data-table-pagination';
+import DataTableRowActions from '@/components/data-table/data-table-row-actions';
+import DataTableShell from '@/components/data-table/data-table-shell';
+import DataTableToolbar from '@/components/data-table/data-table-toolbar';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -12,6 +17,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -39,13 +45,25 @@ type RoleItem = {
 
 type RolesPageProps = {
     auth: Auth;
-    roles: RoleItem[];
+    roles: {
+        data: RoleItem[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
     permissions: PermissionItem[];
+    filters: { search?: string; per_page?: number };
 };
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Roles', href: '/roles' }];
 
-export default function RolesIndex({ roles, permissions }: RolesPageProps) {
+export default function RolesIndex({
+    roles,
+    permissions,
+    filters,
+}: RolesPageProps) {
+    const [search, setSearch] = useState(filters.search ?? '');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<RoleItem | null>(null);
     const [form, setForm] = useState({
@@ -159,6 +177,14 @@ export default function RolesIndex({ roles, permissions }: RolesPageProps) {
         });
     };
 
+    const navigate = (page: number, perPage = roles.per_page) => {
+        router.get(
+            '/roles',
+            { search, page, per_page: perPage },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Roles" />
@@ -172,78 +198,118 @@ export default function RolesIndex({ roles, permissions }: RolesPageProps) {
                     <Button onClick={openCreate}>Tambah Role</Button>
                 </div>
 
-                <div className="rounded-xl border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Role</TableHead>
-                                <TableHead>Jumlah User</TableHead>
-                                <TableHead>Permissions</TableHead>
-                                <TableHead className="text-right">
-                                    Aksi
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {roles.map((role) => (
-                                <TableRow key={role.id}>
-                                    <TableCell className="font-medium">
-                                        {role.name}
-                                    </TableCell>
-                                    <TableCell>{role.users_count}</TableCell>
-                                    <TableCell>
-                                        {role.permissions.length === 0 ? (
-                                            <span className="text-muted-foreground">
-                                                -
-                                            </span>
-                                        ) : (
-                                            <span className="flex flex-wrap gap-1">
-                                                {role.permissions
-                                                    .slice(0, 4)
-                                                    .map((p) => (
-                                                        <span
-                                                            key={p.id}
-                                                            className="rounded bg-muted px-1.5 py-0.5 text-xs"
-                                                        >
-                                                            {p.name}
-                                                        </span>
-                                                    ))}
-                                                {role.permissions.length >
-                                                    4 && (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        +
-                                                        {role.permissions
-                                                            .length - 4}
-                                                    </span>
-                                                )}
-                                            </span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => openEdit(role)}
-                                            >
-                                                Edit
-                                            </Button>
-                                            {role.name !== 'Super Admin' && (
-                                                <Button
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    onClick={() => remove(role)}
-                                                >
-                                                    Hapus
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </TableCell>
+                <DataTableToolbar className="rounded-xl border">
+                    <div className="flex w-full flex-col gap-2 sm:flex-row">
+                        <Input
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    navigate(1);
+                                }
+                            }}
+                            placeholder="Cari nama role..."
+                            className="sm:max-w-sm"
+                        />
+                        <Button variant="secondary" onClick={() => navigate(1)}>
+                            Cari
+                        </Button>
+                    </div>
+                </DataTableToolbar>
+
+                <DataTableShell>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Role</TableHead>
+                                    <TableHead>Jumlah User</TableHead>
+                                    <TableHead>Permissions</TableHead>
+                                    <TableHead className="text-right">
+                                        Aksi
+                                    </TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                            </TableHeader>
+                            <TableBody>
+                                {roles.data.map((role) => (
+                                    <TableRow key={role.id}>
+                                        <TableCell className="font-medium">
+                                            {role.name}
+                                        </TableCell>
+                                        <TableCell>
+                                            {role.users_count}
+                                        </TableCell>
+                                        <TableCell>
+                                            {role.permissions.length === 0 ? (
+                                                '-'
+                                            ) : (
+                                                <span className="flex flex-wrap gap-1">
+                                                    {role.permissions
+                                                        .slice(0, 4)
+                                                        .map((permission) => (
+                                                            <span
+                                                                key={
+                                                                    permission.id
+                                                                }
+                                                                className="rounded bg-muted px-1.5 py-0.5 text-xs"
+                                                            >
+                                                                {
+                                                                    permission.name
+                                                                }
+                                                            </span>
+                                                        ))}
+                                                    {role.permissions.length >
+                                                        4 && (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            +
+                                                            {role.permissions
+                                                                .length - 4}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <DataTableRowActions
+                                                label={`Aksi ${role.name}`}
+                                            >
+                                                <DropdownMenuItem
+                                                    onClick={() =>
+                                                        openEdit(role)
+                                                    }
+                                                >
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                {role.name !==
+                                                    'Super Admin' && (
+                                                    <DropdownMenuItem
+                                                        variant="destructive"
+                                                        onClick={() =>
+                                                            remove(role)
+                                                        }
+                                                    >
+                                                        Hapus
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DataTableRowActions>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {roles.data.length === 0 && (
+                                    <DataTableEmptyState colSpan={4}>
+                                        Tidak ada data role.
+                                    </DataTableEmptyState>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    <DataTablePagination
+                        resource={roles}
+                        noun="role"
+                        onPageChange={navigate}
+                        onPerPageChange={(perPage) => navigate(1, perPage)}
+                    />
+                </DataTableShell>
 
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogContent className="max-h-[85vh] overflow-y-auto">
