@@ -18,18 +18,17 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
-type Student = {
+type Teacher = {
     id: number;
-    nis: string | null;
+    staff_type: string;
     full_name: string;
     gender: string | null;
     status: string;
-    user?: { name: string; email: string } | null;
+    user?: { email: string } | null;
 };
-
 type Props = {
-    students: {
-        data: Student[];
+    teachers: {
+        data: Teacher[];
         current_page: number;
         last_page: number;
         per_page: number;
@@ -37,39 +36,39 @@ type Props = {
     };
     filters: { search?: string; per_page?: number };
 };
-
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Siswa', href: '/students' }];
-
-export default function StudentsIndex({ students, filters }: Props) {
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Guru & Staff', href: '/teachers' },
+];
+export default function TeachersIndex({ teachers, filters }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
-
-    const navigate = (page: number, perPage = students.per_page) =>
+    const navigate = (page: number, perPage = teachers.per_page) =>
         router.get(
-            '/students',
+            '/teachers',
             { search, page, per_page: perPage },
             { preserveState: true, preserveScroll: true, replace: true },
         );
-
-    const remove = (student: Student) => {
-        if (confirm(`Hapus data Siswa "${student.full_name}"?`)) {
-            router.delete(`/students/${student.id}`, {
-                preserveScroll: true,
-            });
+    const remove = (teacher: Teacher) => {
+        if (
+            confirm(
+                `Hapus data ${teacher.staff_type === 'guru' ? 'Guru' : 'Staff'} "${teacher.full_name}"?`,
+            )
+        ) {
+            router.delete(`/teachers/${teacher.id}`, { preserveScroll: true });
         }
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Siswa" />
+            <Head title="Guru & Staff" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
                         variant="small"
-                        title="Master Siswa"
-                        description="Kelola data profil Siswa dan akun yang terhubung"
+                        title="Master Guru & Staff"
+                        description="Kelola profil Guru dan Staff serta akun yang terhubung"
                     />
                     <Button asChild>
-                        <Link href="/students/create">Tambah Siswa</Link>
+                        <Link href="/teachers/create">Tambah Guru & Staff</Link>
                     </Button>
                 </div>
                 <DataTableToolbar className="rounded-xl border">
@@ -82,7 +81,7 @@ export default function StudentsIndex({ students, filters }: Props) {
                                     navigate(1);
                                 }
                             }}
-                            placeholder="Cari nama, NIS, atau email..."
+                            placeholder="Cari nama, tipe, atau email..."
                             className="sm:max-w-sm"
                         />
                         <Button variant="secondary" onClick={() => navigate(1)}>
@@ -96,7 +95,7 @@ export default function StudentsIndex({ students, filters }: Props) {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Nama</TableHead>
-                                    <TableHead>NIS</TableHead>
+                                    <TableHead>Tipe</TableHead>
                                     <TableHead>Akun</TableHead>
                                     <TableHead>Gender</TableHead>
                                     <TableHead>Status</TableHead>
@@ -106,22 +105,24 @@ export default function StudentsIndex({ students, filters }: Props) {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {students.data.map((student) => (
-                                    <TableRow key={student.id}>
+                                {teachers.data.map((teacher) => (
+                                    <TableRow key={teacher.id}>
                                         <TableCell className="font-medium">
-                                            {student.full_name}
+                                            {teacher.full_name}
                                         </TableCell>
                                         <TableCell>
-                                            {student.nis || '-'}
+                                            {teacher.staff_type === 'guru'
+                                                ? 'Guru'
+                                                : 'Staff'}
                                         </TableCell>
                                         <TableCell>
-                                            {student.user?.email ||
+                                            {teacher.user?.email ||
                                                 'Belum terhubung'}
                                         </TableCell>
                                         <TableCell>
-                                            {student.gender || '-'}
+                                            {teacher.gender || '-'}
                                         </TableCell>
-                                        <TableCell>{student.status}</TableCell>
+                                        <TableCell>{teacher.status}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
                                                 <Button
@@ -130,7 +131,7 @@ export default function StudentsIndex({ students, filters }: Props) {
                                                     size="sm"
                                                 >
                                                     <Link
-                                                        href={`/students/${student.id}/edit`}
+                                                        href={`/teachers/${teacher.id}/edit`}
                                                     >
                                                         Edit
                                                     </Link>
@@ -139,7 +140,7 @@ export default function StudentsIndex({ students, filters }: Props) {
                                                     variant="destructive"
                                                     size="sm"
                                                     onClick={() =>
-                                                        remove(student)
+                                                        remove(teacher)
                                                     }
                                                 >
                                                     Hapus
@@ -148,17 +149,17 @@ export default function StudentsIndex({ students, filters }: Props) {
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {students.data.length === 0 && (
+                                {teachers.data.length === 0 && (
                                     <DataTableEmptyState colSpan={6}>
-                                        Belum ada data Siswa.
+                                        Belum ada data Guru & Staff.
                                     </DataTableEmptyState>
                                 )}
                             </TableBody>
                         </Table>
                     </div>
                     <DataTablePagination
-                        resource={students}
-                        noun="siswa"
+                        resource={teachers}
+                        noun="profil"
                         onPageChange={navigate}
                         onPerPageChange={(perPage) => navigate(1, perPage)}
                     />

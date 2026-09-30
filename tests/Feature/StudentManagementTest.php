@@ -29,6 +29,43 @@ class StudentManagementTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('students/index'));
     }
 
+    public function test_super_admin_can_open_student_create_page(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get('/students/create')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('students/create')
+                ->where('availableAccounts', fn ($accounts): bool => $accounts->isEmpty()));
+    }
+
+    public function test_super_admin_can_open_student_edit_page_with_current_linked_account(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $studentUser = User::factory()->create();
+        $studentUser->assignRole('Siswa');
+
+        $this->actingAs($admin)->post('/students', [
+            'user_id' => $studentUser->id,
+            'full_name' => 'Linked Student',
+            'status' => 'active',
+        ]);
+        $studentId = (int) $this->app['db']->table('m_students')->value('id');
+
+        $this->actingAs($admin)
+            ->get("/students/{$studentId}/edit")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('students/edit')
+                ->where('student.id', $studentId)
+                ->where('availableAccounts', fn ($accounts): bool => $accounts->count() === 1
+                    && $accounts->first()['id'] === $studentUser->id));
+    }
+
     public function test_super_admin_can_create_student_with_available_siswa_account(): void
     {
         $admin = User::factory()->create();
@@ -90,7 +127,7 @@ class StudentManagementTest extends TestCase
             ->assertSessionHasErrors('user_id');
     }
 
-    public function test_student_index_only_exposes_unlinked_siswa_accounts(): void
+    public function test_student_create_page_only_exposes_unlinked_siswa_accounts(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
@@ -106,10 +143,11 @@ class StudentManagementTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get('/students')
+            ->get('/students/create')
             ->assertInertia(fn ($page) => $page
                 ->where('availableAccounts', fn ($accounts): bool => $accounts->count() === 1
-                    && $accounts->first()['id'] === $unlinkedAccount->id));
+                    && $accounts->first()['id'] === $unlinkedAccount->id
+                    && array_keys($accounts->first()) === ['id', 'email']));
     }
 
     public function test_student_validation_rejects_duplicate_nis_and_missing_name(): void
@@ -226,8 +264,7 @@ class StudentManagementTest extends TestCase
             ->get('/students')
             ->assertInertia(fn ($page) => $page
                 ->where('students.data.0.user.id', $studentUser->id)
-                ->where('students.data.0.user.email', $studentUser->email)
-                ->where('availableAccounts', fn ($accounts): bool => $accounts->isEmpty()));
+                ->where('students.data.0.user.email', $studentUser->email));
     }
 
     public function test_deleting_linked_user_nulls_student_account_reference(): void

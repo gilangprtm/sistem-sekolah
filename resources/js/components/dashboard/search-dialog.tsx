@@ -63,6 +63,12 @@ const searchItems: SearchItem[] = [
         url: '/students',
     },
     {
+        id: 'teachers',
+        group: 'Manajemen',
+        label: 'Guru & Staff',
+        url: '/teachers',
+    },
+    {
         id: 'users',
         group: 'Manajemen',
         label: 'Users',
@@ -118,6 +124,10 @@ export function SearchDialog() {
 
         if (item.id === 'students') {
             return can('student.view');
+        }
+
+        if (item.id === 'teachers') {
+            return can('teacher.view');
         }
 
         if (item.id === 'users') {

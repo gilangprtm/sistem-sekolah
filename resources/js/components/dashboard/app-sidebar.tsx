@@ -3,6 +3,7 @@ import {
     BookOpen,
     DoorOpen,
     FolderGit2,
+    GraduationCap,
     LayoutDashboard,
     LayoutGrid,
     Lock,
@@ -127,6 +128,15 @@ export function AppSidebar({
             title: 'Siswa',
             url: '/students',
             icon: UserRound,
+        });
+    }
+
+    if (can('teacher.view')) {
+        adminItems.push({
+            id: 'teachers',
+            title: 'Guru & Staff',
+            url: '/teachers',
+            icon: GraduationCap,
         });
     }
 

@@ -18,6 +18,7 @@ class RolePermissionSeeder extends Seeder
         'Guru',
         'Admin Perpustakaan',
         'Siswa',
+        'Staff',
     ];
 
     /**
@@ -31,6 +32,11 @@ class RolePermissionSeeder extends Seeder
         'student.update',
         'student.delete',
         'student.assign-account',
+        'teacher.view',
+        'teacher.create',
+        'teacher.update',
+        'teacher.delete',
+        'teacher.assign-account',
         'inventory.view',
         'inventory.create',
         'inventory.delete',

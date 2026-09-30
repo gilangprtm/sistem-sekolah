@@ -48,6 +48,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * The optional teacher profile attached to this account.
+     *
+     * @return HasOne<Teacher, $this>
+     */
+    public function teacher(): HasOne
+    {
+        return $this->hasOne(Teacher::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

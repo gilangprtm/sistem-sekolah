@@ -32,8 +32,24 @@ class StudentController extends Controller
 
         return Inertia::render('students/index', [
             'students' => $students,
-            'availableAccounts' => $this->availableAccounts(),
             'filters' => $request->only(['search', 'per_page']),
+        ]);
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('students/create', [
+            'availableAccounts' => $this->availableAccounts(),
+        ]);
+    }
+
+    public function edit(Student $student): Response
+    {
+        $student->load('user:id,name,email');
+
+        return Inertia::render('students/edit', [
+            'student' => $student,
+            'availableAccounts' => $this->availableAccounts($student->user_id),
         ]);
     }
 
@@ -59,18 +75,23 @@ class StudentController extends Controller
     }
 
     /**
-     * @return array<int, array{id: int, name: string, email: string}>
+     * @return array<int, array{id: int, email: string}>
      */
-    private function availableAccounts(): array
+    private function availableAccounts(?int $currentUserId = null): array
     {
         return User::query()
             ->role('Siswa')
-            ->whereDoesntHave('student')
+            ->where(function ($query) use ($currentUserId): void {
+                $query->whereDoesntHave('student');
+
+                if ($currentUserId !== null) {
+                    $query->orWhere('id', $currentUserId);
+                }
+            })
             ->orderBy('name')
-            ->get(['id', 'name', 'email'])
+            ->get(['id', 'email'])
             ->map(fn (User $user): array => [
                 'id' => $user->id,
-                'name' => $user->name,
                 'email' => $user->email,
             ])
             ->all();
