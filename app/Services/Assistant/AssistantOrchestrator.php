@@ -49,6 +49,9 @@ class AssistantOrchestrator
         $activeTools = $tools;
         $toolRoundCount = 0;
         $maxToolRounds = 5;
+        $paginationStates = [];
+        $selfCorrectionAttempted = false;
+        $selfCorrectionSignature = null;
 
         while (true) {
             if (microtime(true) - $startedAt > 120) {
@@ -96,6 +99,9 @@ class AssistantOrchestrator
                 ]);
 
                 if (isset($seenToolSignatures[$signature])) {
+                    if ($signature === $selfCorrectionSignature) {
+                        throw new \InvalidArgumentException('Invalid assistant resource arguments.');
+                    }
                     if ($signature !== $lastToolSignature) {
                         throw new RuntimeException('assistant_repeated_tool_call');
                     }
@@ -111,7 +117,40 @@ class AssistantOrchestrator
 
                 $name = $call['function']['name'] ?? '';
                 $arguments = json_decode($call['function']['arguments'] ?? '{}', true);
-                $toolResult = $executeTool($name, is_array($arguments) ? $arguments : []);
+                $arguments = is_array($arguments) ? $arguments : [];
+                $paginationKey = $this->paginationStateKey($name, $arguments);
+                $requestedPage = $this->paginationPage($arguments);
+                $knownPagination = $paginationStates[$paginationKey] ?? null;
+                if ($knownPagination !== null && $requestedPage >= 1) {
+                    if ($requestedPage > $knownPagination['last_page']) {
+                        throw new RuntimeException('assistant_pagination_out_of_bounds');
+                    }
+                    if ($requestedPage !== $knownPagination['current_page'] + 1) {
+                        throw new RuntimeException('assistant_pagination_invalid_sequence');
+                    }
+                }
+
+                try {
+                    $toolResult = $executeTool($name, $arguments);
+                } catch (\InvalidArgumentException $exception) {
+                    if ($selfCorrectionAttempted || ! $this->isResourceTool($name)) {
+                        throw $exception;
+                    }
+
+                    $selfCorrectionAttempted = true;
+                    $selfCorrectionSignature = $signature;
+                    $toolResult = ['error' => 'invalid_arguments'];
+                    Log::debug('Assistant tool argument correction requested', [
+                        'request_id' => $requestId,
+                        'attempt' => $this->attempt,
+                        'tool_name' => $name,
+                        'tool_call_id_present' => isset($call['id']),
+                    ]);
+                }
+                $pagination = $this->paginationMetadata($toolResult);
+                if ($pagination !== null) {
+                    $paginationStates[$paginationKey] = $pagination;
+                }
                 Log::debug('Assistant tool result observed', [
                     'request_id' => $requestId,
                     'attempt' => $this->attempt,
@@ -156,6 +195,53 @@ class AssistantOrchestrator
         }
 
         return $summary;
+    }
+
+    private function isResourceTool(string $name): bool
+    {
+        return in_array($name, [
+            'inventory_items',
+            'inventory_registers',
+            'inventory_rooms',
+            'inventory_categories',
+        ], true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function paginationStateKey(string $name, array $arguments): string
+    {
+        unset($arguments['page']);
+
+        return $name.':'.$this->canonicalToolArguments($arguments);
+    }
+
+    /** @param array<string, mixed> $arguments */
+    private function paginationPage(array $arguments): int
+    {
+        $page = $arguments['page'] ?? 1;
+
+        return is_int($page) ? $page : (int) $page;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $result
+     * @return array{current_page: int, last_page: int}|null
+     */
+    private function paginationMetadata(array $result): ?array
+    {
+        $metadata = $result['meta'] ?? $result['pagination'] ?? null;
+        if (! is_array($metadata)
+            || ! is_int($metadata['current_page'] ?? null)
+            || ! is_int($metadata['last_page'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'current_page' => $metadata['current_page'],
+            'last_page' => $metadata['last_page'],
+        ];
     }
 
     private function canonicalToolArguments(mixed $arguments): string

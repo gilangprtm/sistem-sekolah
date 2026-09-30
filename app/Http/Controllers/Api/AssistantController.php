@@ -35,6 +35,7 @@ class AssistantController extends Controller
 
         $data = Validator::make($request->all(), [
             'message' => ['required', 'string', 'max:2000'],
+            'refresh' => ['sometimes', 'boolean'],
             'conversation_id' => ['sometimes', 'nullable', 'uuid'],
             'history' => ['sometimes', 'array', 'max:12'],
             'history.*.role' => ['required', 'in:user,assistant'],
@@ -58,7 +59,14 @@ class AssistantController extends Controller
         $plainMode = (bool) config('services.assistant.plain_mode', false);
         $systemPromptOnly = (bool) config('services.assistant.system_prompt_only', false);
         $tools = ($plainMode || $systemPromptOnly) ? [] : $this->toolRegistry->forUser($user);
-        $messages = $this->contextBuilder->build($user, $history, $data['message'], $plainMode);
+        $messages = $this->contextBuilder->build(
+            $user,
+            $history,
+            $data['message'],
+            $plainMode,
+            (bool) ($data['refresh'] ?? false),
+            $requestedConversationId !== null && $storedHistory !== null,
+        );
         $conversationId ??= $this->conversationStore->put($user->getAuthIdentifier(), $sessionId, $history);
 
         $requestId = (string) Str::uuid();

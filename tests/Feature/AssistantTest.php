@@ -213,6 +213,123 @@ class AssistantTest extends TestCase
         $this->assertSame(['current_page' => 1, 'per_page' => 25, 'total' => 1, 'last_page' => 1], $result['meta']);
     }
 
+    public function test_paginated_resource_tools_complete_pages_with_matching_tool_results(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+
+        $scenarios = [
+            ['name' => 'inventory_items', 'search' => 'slice-item', 'create' => function (): void {
+                InventoryItem::factory()->create(['nama_jenis_barang' => 'slice-item-1']);
+                InventoryItem::factory()->create(['nama_jenis_barang' => 'slice-item-2']);
+            }],
+            ['name' => 'inventory_registers', 'search' => 'slice-register', 'create' => function (): void {
+                $item = InventoryItem::factory()->create(['kode_barang' => 'SLICE.REG']);
+                $item->units()->createMany([
+                    ['register' => 'slice-register-1', 'condition' => 'B'],
+                    ['register' => 'slice-register-2', 'condition' => 'B'],
+                ]);
+            }],
+            ['name' => 'inventory_rooms', 'search' => 'slice-room', 'create' => function (): void {
+                InventoryRoom::query()->create(['name' => 'slice-room-1', 'code' => 'SR1']);
+                InventoryRoom::query()->create(['name' => 'slice-room-2', 'code' => 'SR2']);
+            }],
+            ['name' => 'inventory_categories', 'search' => 'slice-category', 'create' => function (): void {
+                Category::query()->create(['name' => 'slice-category-1']);
+                Category::query()->create(['name' => 'slice-category-2']);
+            }],
+        ];
+
+        foreach ($scenarios as $scenario) {
+            $scenario['create']();
+        }
+
+        $sequence = Http::fakeSequence();
+        foreach ($scenarios as $scenario) {
+            foreach ([1, 2] as $page) {
+                $sequence->push(['choices' => [['message' => [
+                    'role' => 'assistant',
+                    'tool_calls' => [[
+                        'id' => $scenario['name'].'-page-'.$page,
+                        'type' => 'function',
+                        'function' => [
+                            'name' => $scenario['name'],
+                            'arguments' => json_encode(['search' => $scenario['search'], 'page' => $page, 'per_page' => 1]),
+                        ],
+                    ]],
+                ]]]]);
+            }
+            $sequence->push(['choices' => [['message' => [
+                'role' => 'assistant',
+                'content' => $scenario['name'].' complete.',
+            ]]]]);
+        }
+
+        foreach ($scenarios as $index => $scenario) {
+            $this->actingAs($user, 'sanctum')
+                ->postJson('/api/v1/assistant/chat', ['message' => 'Complete '.$scenario['name']])
+                ->assertOk()
+                ->assertJsonPath('message', $scenario['name'].' complete.');
+
+            $records = Http::recorded();
+            $this->assertCount(($index + 1) * 3, $records);
+            $firstPagePayload = $records[$index * 3 + 1][0]->data()['messages'];
+            $secondPagePayload = $records[$index * 3 + 2][0]->data()['messages'];
+            $firstCall = $firstPagePayload[count($firstPagePayload) - 2]['tool_calls'][0];
+            $firstResult = $firstPagePayload[count($firstPagePayload) - 1];
+            $secondCall = $secondPagePayload[count($secondPagePayload) - 2]['tool_calls'][0];
+            $secondResult = $secondPagePayload[count($secondPagePayload) - 1];
+            $firstResultData = json_decode($firstResult['content'], true);
+            $secondResultData = json_decode($secondResult['content'], true);
+
+            $this->assertSame($scenario['name'].'-page-1', $firstCall['id']);
+            $this->assertSame(1, json_decode($firstCall['function']['arguments'], true)['page']);
+            $this->assertSame($firstCall['id'], $firstResult['tool_call_id']);
+            $this->assertSame(1, $firstResultData['meta']['current_page']);
+            $this->assertSame(2, $firstResultData['meta']['last_page']);
+            $this->assertSame($scenario['name'].'-page-2', $secondCall['id']);
+            $this->assertSame(2, json_decode($secondCall['function']['arguments'], true)['page']);
+            $this->assertSame($secondCall['id'], $secondResult['tool_call_id']);
+            $this->assertSame(2, $secondResultData['meta']['current_page']);
+            $this->assertSame(2, $secondResultData['meta']['last_page']);
+        }
+    }
+
+    public function test_paginated_resource_rejects_page_beyond_last_page_without_extra_execution(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        InventoryItem::factory()->create(['nama_jenis_barang' => 'slice-bound-1']);
+        InventoryItem::factory()->create(['nama_jenis_barang' => 'slice-bound-2']);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-bound-page-1',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"slice-bound","page":1,"per_page":1}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-bound-page-2',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"slice-bound","page":2,"per_page":1}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-bound-page-3',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"slice-bound","page":3,"per_page":1}'],
+            ]]]]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Loop halaman inventaris'])
+            ->assertStatus(503)
+            ->assertJsonPath('error_code', 'assistant_pagination_out_of_bounds');
+
+        $this->assertCount(3, Http::recorded());
+        $thirdPayload = Http::recorded()[2][0]->data()['messages'];
+        $this->assertCount(6, $thirdPayload);
+        $this->assertSame('call-bound-page-2', $thirdPayload[5]['tool_call_id']);
+    }
+
     public function test_resource_tools_reject_unknown_arguments(): void
     {
         $user = User::factory()->create();
@@ -602,6 +719,68 @@ class AssistantTest extends TestCase
         $this->assertSame(1, $toolResult['meta']['total']);
     }
 
+    public function test_invalid_resource_arguments_receive_one_bounded_self_correction(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        InventoryItem::factory()->create(['nama_jenis_barang' => 'Koreksi pagination']);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-invalid-arguments',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"page":0,"per_page":1}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-corrected-arguments',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"page":1,"per_page":1}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Data berhasil diperoleh.']]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Cari data inventaris'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Data berhasil diperoleh.');
+
+        $this->assertCount(3, Http::recorded());
+        $correctionMessages = Http::recorded()[1][0]->data()['messages'];
+        $error = json_decode($correctionMessages[3]['content'], true);
+        $this->assertSame('tool', $correctionMessages[3]['role']);
+        $this->assertSame('call-invalid-arguments', $correctionMessages[3]['tool_call_id']);
+        $this->assertSame(['error' => 'invalid_arguments'], $error);
+        $correctedMessages = Http::recorded()[2][0]->data()['messages'];
+        $this->assertSame('call-corrected-arguments', $correctedMessages[4]['tool_calls'][0]['id']);
+        $this->assertSame('call-corrected-arguments', $correctedMessages[5]['tool_call_id']);
+    }
+
+    public function test_invalid_resource_arguments_allow_only_one_self_correction(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-invalid-once',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"page":0}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-invalid-twice',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"per_page":51}'],
+            ]]]]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Cari data inventaris'])
+            ->assertStatus(503)
+            ->assertJsonPath('error_code', 'assistant_execution_failed');
+
+        $this->assertCount(2, Http::recorded());
+        $secondPayload = Http::recorded()[1][0]->data()['messages'];
+        $this->assertSame(['error' => 'invalid_arguments'], json_decode($secondPayload[3]['content'], true));
+    }
+
     public function test_tool_call_is_executed_and_followed_by_final_answer(): void
     {
         $user = User::factory()->create();
@@ -781,6 +960,100 @@ class AssistantTest extends TestCase
             ->assertJsonPath('message', 'Assistant gagal memproses permintaan.')
             ->assertJsonPath('error_code', 'assistant_execution_failed')
             ->assertJsonStructure(['request_id']);
+    }
+
+    public function test_follow_up_conversation_requires_fresh_resource_call_without_stale_tool_results(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        InventoryItem::factory()->create(['nama_jenis_barang' => 'Data lama']);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-follow-up-old',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"Data lama"}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Data lama ditemukan.']]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-follow-up-fresh',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"Data terbaru"}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Data terbaru ditemukan.']]]]);
+
+        $first = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', ['message' => 'Cari data lama'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Data lama ditemukan.');
+        $conversationId = $first->json('conversation_id');
+        InventoryItem::factory()->create(['nama_jenis_barang' => 'Data terbaru']);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', [
+                'conversation_id' => $conversationId,
+                'message' => 'Perbarui data inventaris',
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Data terbaru ditemukan.');
+
+        $followUpPayload = Http::recorded()[2][0]->data()['messages'];
+        $this->assertStringContainsString('fresh resource tool call', $followUpPayload[0]['content']);
+        $this->assertSame('user', $followUpPayload[3]['role']);
+        $this->assertFalse(collect($followUpPayload)->contains(fn (array $message): bool => ($message['role'] ?? null) === 'tool'));
+        $freshRequestMessages = Http::recorded()[3][0]->data()['messages'];
+        $this->assertSame('inventory_items', $freshRequestMessages[4]['tool_calls'][0]['function']['name']);
+        $freshToolResult = json_decode($freshRequestMessages[5]['content'], true);
+        $this->assertSame('Data terbaru', $freshToolResult['data'][0]['name']);
+    }
+
+    public function test_explicit_refresh_flag_uses_fresh_allowlisted_resource_call(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+        InventoryItem::factory()->create(['nama_jenis_barang' => 'Refresh terbaru']);
+
+        Http::fakeSequence()
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'tool_calls' => [[
+                'id' => 'call-explicit-refresh',
+                'type' => 'function',
+                'function' => ['name' => 'inventory_items', 'arguments' => '{"search":"Refresh terbaru"}'],
+            ]]]]]])
+            ->push(['choices' => [['message' => ['role' => 'assistant', 'content' => 'Refresh selesai.']]]]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', [
+                'message' => 'Tampilkan data inventaris',
+                'refresh' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Refresh selesai.');
+
+        $payload = Http::recorded()[0][0]->data()['messages'];
+        $this->assertStringContainsString('fresh resource tool call', $payload[0]['content']);
+        $this->assertSame('user', $payload[1]['role']);
+        $this->assertSame('inventory_items', Http::recorded()[1][0]->data()['messages'][2]['tool_calls'][0]['function']['name']);
+    }
+
+    public function test_rejected_conversation_id_does_not_emit_follow_up_prompt_semantics(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('inventory.view');
+
+        Http::fake(['*' => Http::response([
+            'choices' => [['message' => ['role' => 'assistant', 'content' => 'Percakapan baru.']]],
+        ])]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/assistant/chat', [
+                'conversation_id' => '00000000-0000-0000-0000-000000000001',
+                'message' => 'Mulai lagi',
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Percakapan baru.');
+
+        $messages = Http::recorded()[0][0]->data()['messages'];
+        $this->assertStringNotContainsString('fresh resource tool call', $messages[0]['content']);
     }
 
     public function test_server_conversation_context_takes_precedence_over_client_history(): void
