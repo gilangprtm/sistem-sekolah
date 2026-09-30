@@ -26,6 +26,11 @@ class RolePermissionSeeder extends Seeder
     private const PERMISSIONS = [
         'users.manage',
         'roles.manage',
+        'student.view',
+        'student.create',
+        'student.update',
+        'student.delete',
+        'student.assign-account',
         'inventory.view',
         'inventory.create',
         'inventory.delete',

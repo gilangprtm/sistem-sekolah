@@ -7,6 +7,7 @@ import {
     LayoutGrid,
     Lock,
     PackageSearch,
+    UserRound,
     Users,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
@@ -117,6 +118,15 @@ export function AppSidebar({
             title: 'Inventaris Ruangan',
             url: '/inventory-rooms',
             icon: DoorOpen,
+        });
+    }
+
+    if (can('student.view')) {
+        adminItems.push({
+            id: 'students',
+            title: 'Siswa',
+            url: '/students',
+            icon: UserRound,
         });
     }
 

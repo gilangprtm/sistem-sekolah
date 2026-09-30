@@ -57,6 +57,12 @@ const searchItems: SearchItem[] = [
         url: '/inventory-rooms',
     },
     {
+        id: 'students',
+        group: 'Manajemen',
+        label: 'Siswa',
+        url: '/students',
+    },
+    {
         id: 'users',
         group: 'Manajemen',
         label: 'Users',
@@ -108,6 +114,10 @@ export function SearchDialog() {
 
         if (item.id === 'inventory-rooms') {
             return can('inventory.room.view');
+        }
+
+        if (item.id === 'students') {
+            return can('student.view');
         }
 
         if (item.id === 'users') {
