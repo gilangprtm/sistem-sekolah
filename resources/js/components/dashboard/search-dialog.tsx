@@ -63,6 +63,18 @@ const searchItems: SearchItem[] = [
         url: '/academic-years',
     },
     {
+        id: 'subjects',
+        group: 'Kurikulum',
+        label: 'Mata Pelajaran',
+        url: '/subjects',
+    },
+    {
+        id: 'teacher-subjects',
+        group: 'Kurikulum',
+        label: 'Guru Mata Pelajaran',
+        url: '/teacher-subjects',
+    },
+    {
         id: 'students',
         group: 'Administrasi',
         label: 'Siswa',
@@ -138,6 +150,14 @@ export function SearchDialog() {
 
         if (item.id === 'academic-years') {
             return can('curriculum.view');
+        }
+
+        if (item.id === 'subjects') {
+            return can('subject.view');
+        }
+
+        if (item.id === 'teacher-subjects') {
+            return can('curriculum.teacher_subject.view');
         }
 
         if (item.id === 'users') {

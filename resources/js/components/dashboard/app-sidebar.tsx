@@ -150,6 +150,24 @@ export function AppSidebar({
         });
     }
 
+    if (can('subject.view')) {
+        curriculumItems.push({
+            id: 'subjects',
+            title: 'Mata Pelajaran',
+            url: '/subjects',
+            icon: BookOpen,
+        });
+    }
+
+    if (can('curriculum.teacher_subject.view')) {
+        curriculumItems.push({
+            id: 'teacher-subjects',
+            title: 'Guru Mata Pelajaran',
+            url: '/teacher-subjects',
+            icon: GraduationCap,
+        });
+    }
+
     if (can('users.manage')) {
         adminItems.push({
             id: 'users',
