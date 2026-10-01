@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
@@ -7,6 +8,7 @@ import DataTableShell from '@/components/data-table/data-table-shell';
 import DataTableToolbar from '@/components/data-table/data-table-toolbar';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -53,7 +55,10 @@ type RolesPageProps = {
         total: number;
     };
     permissions: PermissionItem[];
-    filters: { search?: string; per_page?: number };
+    filters: { search?: string; module?: string; per_page?: number };
+    filterOptions: {
+        modules: { value: string; label: string }[];
+    };
 };
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Roles', href: '/roles' }];
@@ -62,8 +67,11 @@ export default function RolesIndex({
     roles,
     permissions,
     filters,
+    filterOptions,
 }: RolesPageProps) {
+    const [selected, setSelected] = useState<number[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
+    const [module, setModule] = useState(filters.module ?? '');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<RoleItem | null>(null);
     const [form, setForm] = useState({
@@ -177,12 +185,41 @@ export default function RolesIndex({
         });
     };
 
-    const navigate = (page: number, perPage = roles.per_page) => {
-        router.get(
-            '/roles',
-            { search, page, per_page: perPage },
-            { preserveState: true, preserveScroll: true, replace: true },
-        );
+    const filterParams = (): Record<string, string> => {
+        const params: Record<string, string> = {};
+
+        if (search) {
+            params.search = search;
+        }
+
+        if (module) {
+            params.module = module;
+        }
+
+        return params;
+    };
+
+    const navigate = (params: Record<string, string | number>) => {
+        router.get('/roles', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const applyFilters = () => {
+        navigate({ ...filterParams(), page: 1, per_page: roles.per_page });
+    };
+
+    const resetFilters = () => {
+        setSearch('');
+        setModule('');
+        setSelected([]);
+        navigate({ page: 1, per_page: roles.per_page });
+    };
+
+    const goToPage = (page: number) => {
+        navigate({ ...filterParams(), page, per_page: roles.per_page });
     };
 
     return (
@@ -198,30 +235,88 @@ export default function RolesIndex({
                     <Button onClick={openCreate}>Tambah Role</Button>
                 </div>
 
-                <DataTableToolbar className="rounded-xl border">
-                    <div className="flex w-full flex-col gap-2 sm:flex-row">
-                        <Input
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                    navigate(1);
-                                }
-                            }}
-                            placeholder="Cari nama role..."
-                            className="sm:max-w-sm"
-                        />
-                        <Button variant="secondary" onClick={() => navigate(1)}>
-                            Cari
-                        </Button>
+                <div className="grid gap-4 rounded-xl border p-4">
+                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
+                        <div className="grid gap-2 md:col-span-6">
+                            <Label htmlFor="role-search">Search</Label>
+                            <div className="relative">
+                                <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="role-search"
+                                    value={search}
+                                    onChange={(event) =>
+                                        setSearch(event.target.value)
+                                    }
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            applyFilters();
+                                        }
+                                    }}
+                                    placeholder="Nama role..."
+                                    className="pl-8"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid gap-2 md:col-span-3">
+                            <Label>Modul Permission</Label>
+                            <SearchableCombobox
+                                value={module}
+                                options={[
+                                    { value: '', label: 'Semua' },
+                                    ...filterOptions.modules,
+                                ]}
+                                onChange={setModule}
+                                placeholder="Semua"
+                                searchPlaceholder="Cari modul..."
+                                emptyMessage="Modul tidak ditemukan."
+                            />
+                        </div>
+                        <div className="flex gap-2 md:col-span-3">
+                            <Button onClick={applyFilters}>Filter</Button>
+                            <Button variant="outline" onClick={resetFilters}>
+                                Reset
+                            </Button>
+                        </div>
                     </div>
-                </DataTableToolbar>
+                </div>
 
                 <DataTableShell>
+                    <DataTableToolbar>
+                        <div className="text-sm text-muted-foreground">
+                            {selected.length} dari {roles.total} baris dipilih.
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelected([])}
+                            disabled={!selected.length}
+                        >
+                            Hapus pilihan
+                        </Button>
+                    </DataTableToolbar>
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
                             <TableHeader>
-                                <TableRow>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={
+                                                roles.data.length > 0 &&
+                                                selected.length ===
+                                                    roles.data.length
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setSelected(
+                                                    checked
+                                                        ? roles.data.map(
+                                                              (role) => role.id,
+                                                          )
+                                                        : [],
+                                                )
+                                            }
+                                            aria-label="Pilih semua role"
+                                        />
+                                    </TableHead>
                                     <TableHead>Role</TableHead>
                                     <TableHead>Jumlah User</TableHead>
                                     <TableHead>Permissions</TableHead>
@@ -233,6 +328,28 @@ export default function RolesIndex({
                             <TableBody>
                                 {roles.data.map((role) => (
                                     <TableRow key={role.id}>
+                                        <TableCell className="w-12">
+                                            <Checkbox
+                                                checked={selected.includes(
+                                                    role.id,
+                                                )}
+                                                onCheckedChange={(checked) =>
+                                                    setSelected((current) =>
+                                                        checked
+                                                            ? [
+                                                                  ...current,
+                                                                  role.id,
+                                                              ]
+                                                            : current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      role.id,
+                                                              ),
+                                                    )
+                                                }
+                                                aria-label={`Pilih ${role.name}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {role.name}
                                         </TableCell>
@@ -296,7 +413,7 @@ export default function RolesIndex({
                                     </TableRow>
                                 ))}
                                 {roles.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={4}>
+                                    <DataTableEmptyState colSpan={5}>
                                         Tidak ada data role.
                                     </DataTableEmptyState>
                                 )}
@@ -306,8 +423,14 @@ export default function RolesIndex({
                     <DataTablePagination
                         resource={roles}
                         noun="role"
-                        onPageChange={navigate}
-                        onPerPageChange={(perPage) => navigate(1, perPage)}
+                        onPageChange={goToPage}
+                        onPerPageChange={(perPage) =>
+                            navigate({
+                                ...filterParams(),
+                                page: 1,
+                                per_page: perPage,
+                            })
+                        }
                     />
                 </DataTableShell>
 

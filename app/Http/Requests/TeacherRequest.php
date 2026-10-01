@@ -37,6 +37,8 @@ class TeacherRequest extends FormRequest
         return [
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id'), Rule::unique('m_teacher', 'user_id')->ignore($teacherId)],
             'staff_type' => ['required', Rule::in(['guru', 'staff'])],
+            'nip' => ['nullable', 'string', 'regex:/^[0-9]{18}$/', Rule::unique('m_teacher', 'nip')->ignore($teacherId)],
+            'nuptk' => ['nullable', 'string', 'regex:/^[0-9]{16}$/', Rule::unique('m_teacher', 'nuptk')->ignore($teacherId)],
             'full_name' => ['required', 'string', 'max:255'],
             'gender' => ['nullable', Rule::in(['L', 'P'])],
             'birth_place' => ['nullable', 'string', 'max:255'],

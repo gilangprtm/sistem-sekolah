@@ -1,4 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import { Search } from 'lucide-react';
 import { useState } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
@@ -7,6 +8,7 @@ import DataTableShell from '@/components/data-table/data-table-shell';
 import DataTableToolbar from '@/components/data-table/data-table-toolbar';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -63,7 +65,15 @@ type UsersPageProps = {
         total: number;
     };
     roles: Role[];
-    filters: { search?: string; per_page?: number };
+    filters: {
+        search?: string;
+        role?: string;
+        status?: string;
+        per_page?: number;
+    };
+    filterOptions: {
+        statuses: { value: string; label: string }[];
+    };
     generated_accounts?: GeneratedAccounts;
 };
 
@@ -73,9 +83,14 @@ export default function UsersIndex({
     users,
     roles,
     filters,
+    filterOptions,
     generated_accounts,
 }: UsersPageProps) {
     const { auth } = usePage<UsersPageProps>().props;
+    const [selected, setSelected] = useState<number[]>([]);
+    const [search, setSearch] = useState(filters.search ?? '');
+    const [role, setRole] = useState(filters.role ?? '');
+    const [status, setStatus] = useState(filters.status ?? '');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<UserItem | null>(null);
     const [form, setForm] = useState({
@@ -91,7 +106,6 @@ export default function UsersIndex({
         new Date().getFullYear().toString(),
     );
     const [generatorCount, setGeneratorCount] = useState('1');
-    const [search, setSearch] = useState(filters.search ?? '');
 
     const openCreate = () => {
         setEditing(null);
@@ -194,12 +208,46 @@ export default function UsersIndex({
         });
     };
 
-    const navigate = (page: number, perPage = users.per_page) => {
-        router.get(
-            '/users',
-            { search, page, per_page: perPage },
-            { preserveState: true, preserveScroll: true, replace: true },
-        );
+    const filterParams = (): Record<string, string> => {
+        const params: Record<string, string> = {};
+
+        if (search) {
+            params.search = search;
+        }
+
+        if (role) {
+            params.role = role;
+        }
+
+        if (status) {
+            params.status = status;
+        }
+
+        return params;
+    };
+
+    const navigate = (params: Record<string, string | number>) => {
+        router.get('/users', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    const applyFilters = () => {
+        navigate({ ...filterParams(), page: 1, per_page: users.per_page });
+    };
+
+    const resetFilters = () => {
+        setSearch('');
+        setRole('');
+        setStatus('');
+        setSelected([]);
+        navigate({ page: 1, per_page: users.per_page });
+    };
+
+    const goToPage = (page: number) => {
+        navigate({ ...filterParams(), page, per_page: users.per_page });
     };
 
     return (
@@ -220,30 +268,105 @@ export default function UsersIndex({
                     </div>
                 </div>
 
-                <DataTableToolbar className="rounded-xl border">
-                    <div className="flex w-full flex-col gap-2 sm:flex-row">
-                        <Input
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                    navigate(1);
-                                }
-                            }}
-                            placeholder="Cari nama / email..."
-                            className="sm:max-w-sm"
-                        />
-                        <Button variant="secondary" onClick={() => navigate(1)}>
-                            Cari
-                        </Button>
+                <div className="grid gap-4 rounded-xl border p-4">
+                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
+                        <div className="grid gap-2 md:col-span-5">
+                            <Label htmlFor="user-search">Search</Label>
+                            <div className="relative">
+                                <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="user-search"
+                                    value={search}
+                                    onChange={(event) =>
+                                        setSearch(event.target.value)
+                                    }
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            applyFilters();
+                                        }
+                                    }}
+                                    placeholder="Nama / email..."
+                                    className="pl-8"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid gap-2 md:col-span-2">
+                            <Label>Role</Label>
+                            <SearchableCombobox
+                                value={role}
+                                options={[
+                                    { value: '', label: 'Semua' },
+                                    ...roles.map((item) => ({
+                                        value: `${item.id}`,
+                                        label: item.name,
+                                    })),
+                                ]}
+                                onChange={setRole}
+                                placeholder="Semua"
+                                searchPlaceholder="Cari role..."
+                                emptyMessage="Role tidak ditemukan."
+                            />
+                        </div>
+                        <div className="grid gap-2 md:col-span-2">
+                            <Label>Status</Label>
+                            <SearchableCombobox
+                                value={status}
+                                options={[
+                                    { value: '', label: 'Semua' },
+                                    ...filterOptions.statuses,
+                                ]}
+                                onChange={setStatus}
+                                placeholder="Semua"
+                                searchPlaceholder="Cari status..."
+                                emptyMessage="Status tidak ditemukan."
+                            />
+                        </div>
+                        <div className="flex gap-2 md:col-span-3">
+                            <Button onClick={applyFilters}>Filter</Button>
+                            <Button variant="outline" onClick={resetFilters}>
+                                Reset
+                            </Button>
+                        </div>
                     </div>
-                </DataTableToolbar>
+                </div>
 
                 <DataTableShell>
+                    <DataTableToolbar>
+                        <div className="text-sm text-muted-foreground">
+                            {selected.length} dari {users.total} baris dipilih.
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelected([])}
+                            disabled={!selected.length}
+                        >
+                            Hapus pilihan
+                        </Button>
+                    </DataTableToolbar>
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
                             <TableHeader>
-                                <TableRow>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={
+                                                users.data.length > 0 &&
+                                                selected.length ===
+                                                    users.data.length
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setSelected(
+                                                    checked
+                                                        ? users.data.map(
+                                                              (user) => user.id,
+                                                          )
+                                                        : [],
+                                                )
+                                            }
+                                            aria-label="Pilih semua user"
+                                        />
+                                    </TableHead>
                                     <TableHead>Nama</TableHead>
                                     <TableHead>Email</TableHead>
                                     <TableHead>Role</TableHead>
@@ -256,6 +379,28 @@ export default function UsersIndex({
                             <TableBody>
                                 {users.data.map((user) => (
                                     <TableRow key={user.id}>
+                                        <TableCell className="w-12">
+                                            <Checkbox
+                                                checked={selected.includes(
+                                                    user.id,
+                                                )}
+                                                onCheckedChange={(checked) =>
+                                                    setSelected((current) =>
+                                                        checked
+                                                            ? [
+                                                                  ...current,
+                                                                  user.id,
+                                                              ]
+                                                            : current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      user.id,
+                                                              ),
+                                                    )
+                                                }
+                                                aria-label={`Pilih ${user.name}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {user.name}
                                         </TableCell>
@@ -264,19 +409,13 @@ export default function UsersIndex({
                                             {user.roles.length === 0
                                                 ? '-'
                                                 : user.roles
-                                                      .map((role) => role.name)
+                                                      .map((item) => item.name)
                                                       .join(', ')}
                                         </TableCell>
                                         <TableCell>
-                                            {user.email_verified_at ? (
-                                                <span className="text-emerald-600">
-                                                    Verified
-                                                </span>
-                                            ) : (
-                                                <span className="text-amber-600">
-                                                    Unverified
-                                                </span>
-                                            )}
+                                            {user.email_verified_at
+                                                ? 'Verified'
+                                                : 'Unverified'}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <DataTableRowActions
@@ -304,7 +443,7 @@ export default function UsersIndex({
                                     </TableRow>
                                 ))}
                                 {users.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={5}>
+                                    <DataTableEmptyState colSpan={6}>
                                         Tidak ada data user.
                                     </DataTableEmptyState>
                                 )}
@@ -314,8 +453,14 @@ export default function UsersIndex({
                     <DataTablePagination
                         resource={users}
                         noun="user"
-                        onPageChange={navigate}
-                        onPerPageChange={(perPage) => navigate(1, perPage)}
+                        onPageChange={goToPage}
+                        onPerPageChange={(perPage) =>
+                            navigate({
+                                ...filterParams(),
+                                page: 1,
+                                per_page: perPage,
+                            })
+                        }
                     />
                 </DataTableShell>
 

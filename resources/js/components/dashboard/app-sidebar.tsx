@@ -94,6 +94,7 @@ export function AppSidebar({
     ];
     const inventoryItems: NavMainItem[] = [];
     const adminItems: NavMainItem[] = [];
+    const curriculumItems: NavMainItem[] = [];
 
     if (can('inventory.dashboard.view')) {
         inventoryItems.push({
@@ -140,6 +141,15 @@ export function AppSidebar({
         });
     }
 
+    if (can('curriculum.view')) {
+        curriculumItems.push({
+            id: 'academic-years',
+            title: 'Tahun Ajaran & Semester',
+            url: '/academic-years',
+            icon: LayoutDashboard,
+        });
+    }
+
     if (can('users.manage')) {
         adminItems.push({
             id: 'users',
@@ -163,8 +173,11 @@ export function AppSidebar({
         ...(inventoryItems.length > 0
             ? [{ id: 2, label: 'Inventaris', items: inventoryItems }]
             : []),
+        ...(curriculumItems.length > 0
+            ? [{ id: 3, label: 'Kurikulum', items: curriculumItems }]
+            : []),
         ...(adminItems.length > 0
-            ? [{ id: 3, label: 'Administrasi', items: adminItems }]
+            ? [{ id: 4, label: 'Administrasi', items: adminItems }]
             : []),
     ];
 

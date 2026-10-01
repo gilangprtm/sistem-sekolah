@@ -21,7 +21,10 @@ class UserController extends Controller
     public function index(Request $request): Response
     {
         $search = $request->string('search')->trim()->toString();
+        $role = $request->string('role')->toString();
+        $status = $request->string('status')->toString();
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
+        $roles = Role::query()->orderBy('name')->get(['id', 'name']);
 
         $users = User::query()
             ->with('roles')
@@ -31,14 +34,23 @@ class UserController extends Controller
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
+            ->when($role !== '', fn ($query) => $query->whereHas('roles', fn ($roleQuery) => $roleQuery->whereKey($role)))
+            ->when($status === 'verified', fn ($query) => $query->whereNotNull('email_verified_at'))
+            ->when($status === 'unverified', fn ($query) => $query->whereNull('email_verified_at'))
             ->orderBy('name')
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('users/index', [
             'users' => $users,
-            'roles' => Role::orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['search', 'per_page']),
+            'roles' => $roles,
+            'filters' => $request->only(['search', 'role', 'status', 'per_page']),
+            'filterOptions' => [
+                'statuses' => [
+                    ['value' => 'verified', 'label' => 'Verified'],
+                    ['value' => 'unverified', 'label' => 'Unverified'],
+                ],
+            ],
             'generated_accounts' => $request->session()->get('generated_accounts'),
         ]);
     }

@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -50,6 +51,28 @@ class UserManagementTest extends TestCase
                     ->where('users.per_page', 1)
                     ->where('users.total', 1)
                     ->where('users.data.0.email', 'target@example.com');
+            });
+    }
+
+    public function test_users_page_filters_by_role_and_verification_status(): void
+    {
+        $admin = User::factory()->create(['email_verified_at' => now()]);
+        $admin->assignRole('Super Admin');
+        $teacherRole = Role::findByName('Guru');
+        $target = User::factory()->create(['name' => 'Verified Guru', 'email_verified_at' => now()]);
+        $target->assignRole($teacherRole);
+        User::factory()->create(['name' => 'Unverified Guru']);
+
+        $this->actingAs($admin)
+            ->get("/users?role={$teacherRole->id}&status=verified&per_page=1&page=1")
+            ->assertOk()
+            ->assertInertia(function ($page) use ($teacherRole) {
+                $page->component('users/index')
+                    ->where('filters.role', (string) $teacherRole->id)
+                    ->where('filters.status', 'verified')
+                    ->where('users.per_page', 1)
+                    ->where('users.total', 1)
+                    ->where('users.data.0.name', 'Verified Guru');
             });
     }
 

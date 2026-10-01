@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Student;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -195,6 +196,31 @@ class StudentManagementTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('students/index')
                 ->where('filters.search', 'aminah')
                 ->where('students.per_page', 1));
+    }
+
+    public function test_student_list_applies_gender_and_status_filters_server_side(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        Student::factory()->create([
+            'full_name' => 'Siswa Aktif Perempuan',
+            'gender' => 'P',
+            'status' => 'active',
+        ]);
+        Student::factory()->create([
+            'full_name' => 'Siswa Tidak Aktif Laki-laki',
+            'gender' => 'L',
+            'status' => 'inactive',
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/students?gender=P&status=active')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.gender', 'P')
+                ->where('filters.status', 'active')
+                ->where('students.total', 1)
+                ->where('students.data.0.full_name', 'Siswa Aktif Perempuan'));
     }
 
     public function test_non_admin_and_guest_cannot_manage_students(): void

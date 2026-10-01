@@ -68,6 +68,23 @@ class RoleManagementTest extends TestCase
             });
     }
 
+    public function test_roles_page_filters_by_permission_module(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get('/roles?module=inventory&per_page=1&page=1')
+            ->assertOk()
+            ->assertInertia(function ($page) {
+                $page->component('roles/index')
+                    ->where('filters.module', 'inventory')
+                    ->where('filters.per_page', '1')
+                    ->where('filterOptions.modules', fn ($modules) => $modules->contains('value', 'inventory'))
+                    ->where('roles.data.0.name', 'Admin Inventaris');
+            });
+    }
+
     public function test_non_admin_cannot_access_roles_page(): void
     {
         $user = User::factory()->create();

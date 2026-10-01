@@ -195,4 +195,100 @@ class TeacherManagementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('teachers/index')->where('filters.search', 'aminah')->where('teachers.per_page', 1));
     }
+
+    public function test_teacher_list_applies_type_gender_and_status_filters_server_side(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        Teacher::factory()->create([
+            'full_name' => 'Guru Aktif Perempuan',
+            'staff_type' => 'guru',
+            'gender' => 'P',
+            'status' => 'active',
+        ]);
+        Teacher::factory()->create([
+            'full_name' => 'Staff Tidak Aktif Laki-laki',
+            'staff_type' => 'staff',
+            'gender' => 'L',
+            'status' => 'inactive',
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/teachers?staff_type=guru&gender=P&status=active')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.staff_type', 'guru')
+                ->where('filters.gender', 'P')
+                ->where('filters.status', 'active')
+                ->where('teachers.total', 1)
+                ->where('teachers.data.0.full_name', 'Guru Aktif Perempuan'));
+    }
+
+    public function test_teacher_accepts_nip_and_nuptk_for_guru_and_staff_and_exposes_them(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)->post('/teachers', [
+            'staff_type' => 'guru',
+            'nip' => '123456789012345678',
+            'nuptk' => '1234567890123456',
+            'full_name' => 'Guru Dengan Identitas',
+            'status' => 'active',
+        ])->assertRedirect('/teachers');
+
+        $teacher = Teacher::query()->firstOrFail();
+        $this->assertSame('123456789012345678', $teacher->nip);
+        $this->assertSame('1234567890123456', $teacher->nuptk);
+
+        $this->actingAs($admin)
+            ->get('/teachers')
+            ->assertInertia(fn ($page) => $page
+                ->where('teachers.data.0.nip', '123456789012345678')
+                ->where('teachers.data.0.nuptk', '1234567890123456'));
+    }
+
+    public function test_teacher_rejects_non_ascii_digit_or_wrong_length_nip_and_nuptk(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->post('/teachers', [
+                'staff_type' => 'staff',
+                'nip' => '１２３４５６７８９０１２３４５６７８',
+                'nuptk' => '123456789012345',
+                'full_name' => 'Staff Invalid Identity',
+                'status' => 'active',
+            ])
+            ->assertSessionHasErrors(['nip', 'nuptk']);
+    }
+
+    public function test_teacher_rejects_duplicate_nip_and_nuptk_globally(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)->post('/teachers', [
+            'staff_type' => 'guru',
+            'nip' => '123456789012345678',
+            'nuptk' => '1234567890123456',
+            'full_name' => 'First Identity',
+            'status' => 'active',
+        ])->assertRedirect('/teachers');
+
+        $this->actingAs($admin)->post('/teachers', [
+            'staff_type' => 'staff',
+            'nip' => '123456789012345678',
+            'full_name' => 'Duplicate NIP',
+            'status' => 'active',
+        ])->assertSessionHasErrors('nip');
+
+        $this->actingAs($admin)->post('/teachers', [
+            'staff_type' => 'staff',
+            'nuptk' => '1234567890123456',
+            'full_name' => 'Duplicate NUPTK',
+            'status' => 'active',
+        ])->assertSessionHasErrors('nuptk');
+    }
 }

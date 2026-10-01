@@ -15,6 +15,8 @@ class StudentController extends Controller
     public function index(Request $request): Response
     {
         $search = $request->string('search')->trim()->toString();
+        $gender = $request->string('gender')->toString();
+        $status = $request->string('status')->toString();
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
 
         $students = Student::query()
@@ -26,13 +28,25 @@ class StudentController extends Controller
                         ->orWhereHas('user', fn ($user) => $user->where('email', 'like', "%{$search}%"));
                 });
             })
+            ->when($gender !== '', fn ($query) => $query->where('gender', $gender))
+            ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->orderBy('full_name')
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('students/index', [
             'students' => $students,
-            'filters' => $request->only(['search', 'per_page']),
+            'filters' => $request->only(['search', 'gender', 'status', 'per_page']),
+            'filterOptions' => [
+                'genders' => [
+                    ['value' => 'L', 'label' => 'Laki-laki'],
+                    ['value' => 'P', 'label' => 'Perempuan'],
+                ],
+                'statuses' => [
+                    ['value' => 'active', 'label' => 'Aktif'],
+                    ['value' => 'inactive', 'label' => 'Tidak aktif'],
+                ],
+            ],
         ]);
     }
 

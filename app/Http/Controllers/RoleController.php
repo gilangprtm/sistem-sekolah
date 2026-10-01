@@ -18,6 +18,7 @@ class RoleController extends Controller
     public function index(Request $request): Response
     {
         $search = $request->string('search')->trim()->toString();
+        $module = $request->string('module')->toString();
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
 
         $roles = Role::query()
@@ -26,16 +27,29 @@ class RoleController extends Controller
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%");
             })
+            ->when($module !== '', fn ($query) => $query->whereHas('permissions', fn ($permissionQuery) => $permissionQuery->where('name', 'like', "{$module}.%")))
             ->orderBy('name')
             ->paginate($perPage)
             ->withQueryString();
 
         $permissions = Permission::orderBy('name')->get(['id', 'name']);
+        $modules = Permission::query()
+            ->pluck('name')
+            ->map(fn (string $name): string => (string) str($name)->before('.'))
+            ->unique()
+            ->sort()
+            ->values();
 
         return Inertia::render('roles/index', [
             'roles' => $roles,
             'permissions' => $permissions,
-            'filters' => $request->only(['search', 'per_page']),
+            'filters' => $request->only(['search', 'module', 'per_page']),
+            'filterOptions' => [
+                'modules' => $modules->map(fn (string $value): array => [
+                    'value' => $value,
+                    'label' => ucfirst($value),
+                ])->values(),
+            ],
         ]);
     }
 

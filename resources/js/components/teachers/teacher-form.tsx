@@ -28,6 +28,8 @@ export type TeacherFormTeacher = {
     id: number;
     user_id: number | null;
     staff_type: string;
+    nip: string | null;
+    nuptk: string | null;
     full_name: string;
     gender: string | null;
     birth_place: string | null;
@@ -38,6 +40,8 @@ export type TeacherFormTeacher = {
 type Form = {
     user_id: string;
     staff_type: string;
+    nip: string;
+    nuptk: string;
     full_name: string;
     gender: string;
     birth_place: string;
@@ -53,6 +57,8 @@ type Props = {
 const empty: Form = {
     user_id: '',
     staff_type: 'guru',
+    nip: '',
+    nuptk: '',
     full_name: '',
     gender: '',
     birth_place: '',
@@ -65,6 +71,8 @@ const valueOf = (teacher?: TeacherFormTeacher): Form =>
         ? {
               user_id: teacher.user_id?.toString() ?? '',
               staff_type: teacher.staff_type,
+              nip: teacher.nip ?? '',
+              nuptk: teacher.nuptk ?? '',
               full_name: teacher.full_name,
               gender: teacher.gender ?? '',
               birth_place: teacher.birth_place ?? '',
@@ -154,6 +162,30 @@ export default function TeacherForm({
                         Hapus hubungan akun
                     </Button>
                     <InputError message={errors.user_id} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="teacher-nip">NIP</Label>
+                    <Input
+                        id="teacher-nip"
+                        value={form.nip}
+                        onChange={(event) => update('nip', event.target.value)}
+                        inputMode="numeric"
+                        maxLength={18}
+                    />
+                    <InputError message={errors.nip} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="teacher-nuptk">NUPTK</Label>
+                    <Input
+                        id="teacher-nuptk"
+                        value={form.nuptk}
+                        onChange={(event) =>
+                            update('nuptk', event.target.value)
+                        }
+                        inputMode="numeric"
+                        maxLength={16}
+                    />
+                    <InputError message={errors.nuptk} />
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="teacher-name">Nama Lengkap</Label>

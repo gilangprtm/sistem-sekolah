@@ -57,26 +57,32 @@ const searchItems: SearchItem[] = [
         url: '/inventory-rooms',
     },
     {
+        id: 'academic-years',
+        group: 'Kurikulum',
+        label: 'Tahun Ajaran & Semester',
+        url: '/academic-years',
+    },
+    {
         id: 'students',
-        group: 'Manajemen',
+        group: 'Administrasi',
         label: 'Siswa',
         url: '/students',
     },
     {
         id: 'teachers',
-        group: 'Manajemen',
+        group: 'Administrasi',
         label: 'Guru & Staff',
         url: '/teachers',
     },
     {
         id: 'users',
-        group: 'Manajemen',
+        group: 'Administrasi',
         label: 'Users',
         url: '/users',
     },
     {
         id: 'roles',
-        group: 'Manajemen',
+        group: 'Administrasi',
         label: 'Roles & Permissions',
         url: '/roles',
     },
@@ -128,6 +134,10 @@ export function SearchDialog() {
 
         if (item.id === 'teachers') {
             return can('teacher.view');
+        }
+
+        if (item.id === 'academic-years') {
+            return can('curriculum.view');
         }
 
         if (item.id === 'users') {
