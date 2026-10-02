@@ -10,11 +10,12 @@ class AssistantToolRegistry
     public function forUser(User $user): array
     {
         if (! $user->can('inventory.view')) {
-            return [];
+            return [$this->teacherSubjectsTool()];
         }
 
         return [
             $this->tool('inventory_items', 'Daftar resource aset inventaris secara read-only. Gunakan filter resource dan pagination bila diperlukan.', [
+
                 'search' => ['type' => ['string', 'null'], 'maxLength' => 100],
                 'inventory_category_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
                 'inventory_type_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
@@ -43,14 +44,27 @@ class AssistantToolRegistry
                 'page' => ['type' => 'integer', 'minimum' => 1],
                 'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50],
             ]),
+            $this->teacherSubjectsTool(),
         ];
+    }
+
+    /** @return array{type: string, function: array<string, mixed>}
+     */
+    private function teacherSubjectsTool(): array
+    {
+        return $this->tool('teacher_subjects', 'Cari nama Guru Mata Pelajaran aktif secara read-only berdasarkan kode atau nama mata pelajaran.', [
+            'subject_search' => ['type' => ['string', 'null'], 'maxLength' => 100],
+            'page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 1],
+            'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 25],
+        ]);
     }
 
     /**
      * @param  array<string, array<string, mixed>>  $properties
+     * @param  array<int, string>  $required
      * @return array{type: string, function: array<string, mixed>}
      */
-    private function tool(string $name, string $description, array $properties): array
+    private function tool(string $name, string $description, array $properties, array $required = []): array
     {
         return [
             'type' => 'function',
@@ -61,6 +75,7 @@ class AssistantToolRegistry
                     'type' => 'object',
                     'properties' => $properties,
                     'additionalProperties' => false,
+                    ...($required === [] ? [] : ['required' => $required]),
                 ],
             ],
         ];

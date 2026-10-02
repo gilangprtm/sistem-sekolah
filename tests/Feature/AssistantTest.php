@@ -98,7 +98,7 @@ class AssistantTest extends TestCase
                 ->map(fn (object $tool): string => $tool->function->name)
                 ->all();
 
-            return $names === ['inventory_items', 'inventory_registers', 'inventory_rooms', 'inventory_categories'];
+            return $names === ['inventory_items', 'inventory_registers', 'inventory_rooms', 'inventory_categories', 'teacher_subjects'];
         });
     }
 
@@ -412,7 +412,9 @@ class AssistantTest extends TestCase
             ->assertOk();
 
         Http::assertSent(function ($request): bool {
-            return ! array_key_exists('tools', $request->data());
+            $tools = $request->data()['tools'] ?? [];
+
+            return count($tools) === 1 && $tools[0]['function']['name'] === 'teacher_subjects';
         });
     }
 

@@ -204,6 +204,7 @@ class AssistantOrchestrator
             'inventory_registers',
             'inventory_rooms',
             'inventory_categories',
+            'teacher_subjects',
         ], true);
     }
 

@@ -2,11 +2,13 @@
 
 namespace App\Services\Assistant;
 
+use App\Models\TeacherSubject;
 use App\Models\User;
 use App\Services\InventoryCategoryService;
 use App\Services\InventoryItemService;
 use App\Services\InventoryRegisterService;
 use App\Services\InventoryRoomService;
+use Illuminate\Support\Facades\DB;
 
 class AssistantToolExecutor
 {
@@ -23,15 +25,74 @@ class AssistantToolExecutor
      */
     public function execute(User $user, string $name, array $arguments): array
     {
-        abort_unless($user->can('inventory.view'), 403);
+        if ($name !== 'teacher_subjects') {
+            abort_unless($user->can('inventory.view'), 403);
+        }
 
         return match ($name) {
+            'teacher_subjects' => $this->queryTeacherSubjects($arguments),
             'inventory_items' => $this->queryInventoryItemsResource($arguments),
             'inventory_registers' => $this->queryInventoryRegistersResource($arguments),
             'inventory_rooms' => $this->queryInventoryRoomsResource($arguments),
             'inventory_categories' => $this->queryInventoryCategoriesResource($arguments),
             default => throw new \InvalidArgumentException('Unknown assistant tool.'),
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function queryTeacherSubjects(array $arguments): array
+    {
+        $this->assertAllowedArguments($arguments, ['subject_search', 'page', 'per_page']);
+        $subjectSearch = $arguments['subject_search'] ?? null;
+        if ($subjectSearch !== null && ! is_string($subjectSearch)) {
+            throw new \InvalidArgumentException('Invalid teacher subject search.');
+        }
+        $subjectSearch = is_string($subjectSearch) ? trim($subjectSearch) : null;
+        if ($subjectSearch !== null && mb_strlen($subjectSearch) > 100) {
+            throw new \InvalidArgumentException('Invalid teacher subject search.');
+        }
+        $subjectSearch = $subjectSearch === '' ? null : $subjectSearch;
+
+        $page = $this->paginationArgument($arguments, 'page', 1, 50);
+        $perPage = $this->paginationArgument($arguments, 'per_page', 25, 50);
+        $search = $subjectSearch === null ? null : mb_strtolower($subjectSearch);
+        $matches = TeacherSubject::query()
+            ->join('m_teacher', 'm_teacher.id', '=', 'm_teacher_subjects.teacher_id')
+            ->join('m_subjects', 'm_subjects.id', '=', 'm_teacher_subjects.subject_id')
+            ->where('m_teacher.staff_type', 'guru')
+            ->where('m_teacher.status', 'active')
+            ->where('m_subjects.status', 'active')
+            ->when($search !== null, function ($query) use ($search): void {
+                $query->where(function ($searchQuery) use ($search): void {
+                    $searchQuery->whereRaw('LOWER(m_subjects.code) LIKE ?', ['%'.$search.'%'])
+                        ->orWhereRaw('LOWER(m_subjects.name) LIKE ?', ['%'.$search.'%']);
+                });
+            })
+            ->select('m_teacher.id as teacher_id', 'm_teacher.full_name')
+            ->groupBy('m_teacher.id', 'm_teacher.full_name');
+        $orderedMatches = DB::query()
+            ->fromSub($matches, 'teacher_subject_matches')
+            ->orderByRaw('LOWER(full_name)')
+            ->orderBy('teacher_id');
+        $total = (clone $orderedMatches)->count();
+        $lastPage = max((int) ceil($total / $perPage), 1);
+        $data = $orderedMatches
+            ->forPage($page, $perPage)
+            ->pluck('full_name')
+            ->all();
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => $lastPage,
+            ],
+        ];
     }
 
     /**
