@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $code
  * @property string $name
  * @property string $status
+ * @property int $jp_per_class
+ * @property string $color
  */
 class Subject extends Model
 {
@@ -20,7 +22,15 @@ class Subject extends Model
 
     protected $table = 'm_subjects';
 
-    protected $fillable = ['code', 'name', 'status'];
+    protected $fillable = ['code', 'name', 'status', 'jp_per_class', 'color'];
+
+    protected function casts(): array
+    {
+        return [
+            'jp_per_class' => 'integer',
+            'color' => 'string',
+        ];
+    }
 
     /** @return HasMany<TeacherSubject, $this> */
     public function teacherSubjects(): HasMany

@@ -69,6 +69,18 @@ const searchItems: SearchItem[] = [
         url: '/subjects',
     },
     {
+        id: 'rombels',
+        group: 'Kurikulum',
+        label: 'Rombel',
+        url: '/rombels',
+    },
+    {
+        id: 'schedules',
+        group: 'Kurikulum',
+        label: 'Jadwal Pelajaran',
+        url: '/schedule',
+    },
+    {
         id: 'teacher-subjects',
         group: 'Kurikulum',
         label: 'Guru Mata Pelajaran',
@@ -158,6 +170,14 @@ export function SearchDialog() {
 
         if (item.id === 'teacher-subjects') {
             return can('curriculum.teacher_subject.view');
+        }
+
+        if (item.id === 'rombels') {
+            return can('curriculum.rombel.view');
+        }
+
+        if (item.id === 'schedules') {
+            return can('curriculum.view');
         }
 
         if (item.id === 'users') {

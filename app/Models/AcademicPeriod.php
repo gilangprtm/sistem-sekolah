@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AcademicPeriod extends Model
 {
@@ -20,6 +21,12 @@ class AcademicPeriod extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    /** @return HasMany<RombelPeriodUsage, $this> */
+    public function rombelUsages(): HasMany
+    {
+        return $this->hasMany(RombelPeriodUsage::class);
     }
 
     public function activate(): void

@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
+    CalendarDays,
     DoorOpen,
     FolderGit2,
     GraduationCap,
@@ -8,6 +9,7 @@ import {
     LayoutGrid,
     Lock,
     PackageSearch,
+    School,
     UserRound,
     Users,
 } from 'lucide-react';
@@ -156,6 +158,24 @@ export function AppSidebar({
             title: 'Mata Pelajaran',
             url: '/subjects',
             icon: BookOpen,
+        });
+    }
+
+    if (can('curriculum.rombel.view')) {
+        curriculumItems.push({
+            id: 'rombels',
+            title: 'Rombel',
+            url: '/rombels',
+            icon: School,
+        });
+    }
+
+    if (can('curriculum.view')) {
+        curriculumItems.push({
+            id: 'schedules',
+            title: 'Jadwal Pelajaran',
+            url: '/schedule',
+            icon: CalendarDays,
         });
     }
 

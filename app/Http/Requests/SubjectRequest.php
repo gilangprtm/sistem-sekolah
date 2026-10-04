@@ -31,9 +31,16 @@ class SubjectRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $subject = $this->route('subject');
+        $color = $this->input('color');
+        if ($color === null && $subject instanceof Subject) {
+            $color = $subject->color;
+        }
+
         $this->merge([
             'code' => is_string($this->input('code')) ? trim($this->input('code')) : $this->input('code'),
             'name' => is_string($this->input('name')) ? trim($this->input('name')) : $this->input('name'),
+            'color' => is_string($color) ? strtoupper(trim($color)) : ($color ?? '#F3F4F6'),
         ]);
     }
 
@@ -58,6 +65,8 @@ class SubjectRequest extends FormRequest
                 Rule::unique('m_subjects', 'name')->ignore($subjectId),
             ],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
+            'jp_per_class' => ['sometimes', 'integer', 'between:1,15'],
+            'color' => ['required', 'string', 'regex:/^#[0-9A-F]{6}$/'],
         ];
     }
 

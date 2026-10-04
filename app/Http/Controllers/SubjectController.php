@@ -47,6 +47,8 @@ class SubjectController extends Controller
                 'code' => $request->validated('code'),
                 'name' => $request->validated('name'),
                 'status' => $request->validated('status', 'active'),
+                'jp_per_class' => $request->validated('jp_per_class', 1),
+                'color' => $request->validated('color', '#F3F4F6'),
             ]);
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages([

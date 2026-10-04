@@ -16,6 +16,8 @@ class SubjectFactory extends Factory
             'code' => fake()->unique()->regexify('[A-Z]{3}'),
             'name' => fake()->unique()->words(2, true),
             'status' => 'active',
+            'jp_per_class' => 1,
+            'color' => '#F3F4F6',
         ];
     }
 }

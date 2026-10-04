@@ -44,13 +44,14 @@ class SubjectManagementTest extends TestCase
                 ->where('filters.status', 'active'));
     }
 
-    public function test_subject_create_trims_valid_display_values(): void
+    public function test_subject_create_trims_valid_display_values_and_uses_default_jp_per_class(): void
     {
         $this->actingAs($this->admin())
             ->post('/subjects', [
                 'code' => '  IPA_1  ',
                 'name' => '  Ilmu Pengetahuan Alam  ',
                 'status' => 'active',
+                'color' => ' #dcebff ',
             ])
             ->assertRedirect('/subjects')
             ->assertSessionHasNoErrors();
@@ -59,7 +60,69 @@ class SubjectManagementTest extends TestCase
             'code' => 'IPA_1',
             'name' => 'Ilmu Pengetahuan Alam',
             'status' => 'active',
+            'jp_per_class' => 1,
+            'color' => '#DCEBFF',
         ]);
+    }
+
+    public function test_subject_create_and_update_persist_valid_jp_per_class(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->post('/subjects', [
+                'code' => 'IPA',
+                'name' => 'Ilmu Pengetahuan Alam',
+                'status' => 'active',
+                'jp_per_class' => 8,
+                'color' => '#FDE68A',
+            ])
+            ->assertRedirect('/subjects')
+            ->assertSessionHasNoErrors();
+
+        $subject = Subject::query()->where('code', 'IPA')->firstOrFail();
+        $this->assertSame(8, $subject->jp_per_class);
+
+        $this->actingAs($admin)
+            ->patch("/subjects/{$subject->id}", [
+                'code' => 'IPA',
+                'name' => 'Ilmu Pengetahuan Alam',
+                'status' => 'active',
+                'jp_per_class' => 12,
+                'color' => '#BFDBFE',
+            ])
+            ->assertRedirect('/subjects')
+            ->assertSessionHasNoErrors();
+
+        $subject->refresh();
+        $this->assertSame(12, $subject->jp_per_class);
+        $this->assertSame('#BFDBFE', $subject->color);
+    }
+
+    public function test_subject_rejects_invalid_color(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/subjects', [
+                'code' => 'WARNA',
+                'name' => 'Warna Invalid',
+                'status' => 'active',
+                'color' => 'blue',
+            ])
+            ->assertSessionHasErrors('color');
+    }
+
+    public function test_subject_rejects_jp_per_class_outside_positive_bounded_range(): void
+    {
+        foreach ([0, 16] as $jpPerClass) {
+            $this->actingAs($this->admin())
+                ->post('/subjects', [
+                    'code' => "JP{$jpPerClass}",
+                    'name' => "Jam {$jpPerClass}",
+                    'status' => 'active',
+                    'jp_per_class' => $jpPerClass,
+                ])
+                ->assertSessionHasErrors('jp_per_class');
+        }
     }
 
     public function test_subject_rejects_lowercase_code_and_empty_trimmed_name(): void
