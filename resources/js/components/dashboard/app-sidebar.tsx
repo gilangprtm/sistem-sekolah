@@ -177,6 +177,12 @@ export function AppSidebar({
             url: '/schedule',
             icon: CalendarDays,
         });
+        curriculumItems.push({
+            id: 'management-class',
+            title: 'Manajemen Kelas',
+            url: '/management-class',
+            icon: Users,
+        });
     }
 
     if (can('curriculum.teacher_subject.view')) {

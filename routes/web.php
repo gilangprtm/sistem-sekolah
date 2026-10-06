@@ -17,6 +17,7 @@ require __DIR__.'/subjects.php';
 require __DIR__.'/teacher-subjects.php';
 require __DIR__.'/rombels.php';
 require __DIR__.'/academic-period-rombels.php';
+require __DIR__.'/management-class.php';
 require __DIR__.'/schedules.php';
 require __DIR__.'/roles.php';
 require __DIR__.'/inventory.php';

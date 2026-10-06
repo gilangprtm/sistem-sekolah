@@ -81,6 +81,12 @@ const searchItems: SearchItem[] = [
         url: '/schedule',
     },
     {
+        id: 'management-class',
+        group: 'Kurikulum',
+        label: 'Manajemen Kelas',
+        url: '/management-class',
+    },
+    {
         id: 'teacher-subjects',
         group: 'Kurikulum',
         label: 'Guru Mata Pelajaran',
@@ -176,7 +182,7 @@ export function SearchDialog() {
             return can('curriculum.rombel.view');
         }
 
-        if (item.id === 'schedules') {
+        if (item.id === 'schedules' || item.id === 'management-class') {
             return can('curriculum.view');
         }
 
