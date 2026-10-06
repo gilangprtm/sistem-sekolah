@@ -98,7 +98,7 @@ class AssistantTest extends TestCase
                 ->map(fn (object $tool): string => $tool->function->name)
                 ->all();
 
-            return $names === ['inventory_items', 'inventory_registers', 'inventory_rooms', 'inventory_categories', 'teacher_subjects'];
+            return $names === ['curriculum_class_query', 'inventory_items', 'inventory_registers', 'inventory_rooms', 'inventory_categories', 'teacher_subjects'];
         });
     }
 
@@ -414,7 +414,9 @@ class AssistantTest extends TestCase
         Http::assertSent(function ($request): bool {
             $tools = $request->data()['tools'] ?? [];
 
-            return count($tools) === 1 && $tools[0]['function']['name'] === 'teacher_subjects';
+            return count($tools) === 2
+                && $tools[0]['function']['name'] === 'curriculum_class_query'
+                && $tools[1]['function']['name'] === 'teacher_subjects';
         });
     }
 

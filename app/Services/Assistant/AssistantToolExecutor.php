@@ -2,8 +2,12 @@
 
 namespace App\Services\Assistant;
 
+use App\Models\AcademicYear;
+use App\Models\HomeroomAssignment;
+use App\Models\StudentPlacement;
 use App\Models\TeacherSubject;
 use App\Models\User;
+use App\Models\YearClass;
 use App\Services\InventoryCategoryService;
 use App\Services\InventoryItemService;
 use App\Services\InventoryRegisterService;
@@ -25,11 +29,12 @@ class AssistantToolExecutor
      */
     public function execute(User $user, string $name, array $arguments): array
     {
-        if ($name !== 'teacher_subjects') {
+        if (! in_array($name, ['teacher_subjects', 'curriculum_class_query'], true)) {
             abort_unless($user->can('inventory.view'), 403);
         }
 
         return match ($name) {
+            'curriculum_class_query' => $this->queryClasses($arguments),
             'teacher_subjects' => $this->queryTeacherSubjects($arguments),
             'inventory_items' => $this->queryInventoryItemsResource($arguments),
             'inventory_registers' => $this->queryInventoryRegistersResource($arguments),
@@ -37,6 +42,95 @@ class AssistantToolExecutor
             'inventory_categories' => $this->queryInventoryCategoriesResource($arguments),
             default => throw new \InvalidArgumentException('Unknown assistant tool.'),
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function queryClasses(array $arguments): array
+    {
+        $this->assertAllowedArguments($arguments, ['academic_year_search', 'class_search', 'student_search', 'include', 'page', 'per_page']);
+
+        $academicYearSearch = $this->nullableString($arguments, 'academic_year_search');
+        $academicYear = AcademicYear::query()
+            ->when($academicYearSearch === null, fn ($query) => $query->where('status', 'active'))
+            ->when($academicYearSearch !== null, fn ($query) => $query->where('year', $academicYearSearch))
+            ->first();
+        if ($academicYear === null) {
+            return ['data' => [], 'meta' => ['current_page' => $this->paginationArgument($arguments, 'page'), 'per_page' => $this->paginationArgument($arguments, 'per_page', 25, 50), 'total' => 0, 'last_page' => 1]];
+        }
+
+        $classSearch = $this->nullableString($arguments, 'class_search');
+        $studentSearch = $this->nullableString($arguments, 'student_search');
+        $include = $arguments['include'] ?? ['class_summary', 'homeroom_teacher', 'student_count', 'student_placements'];
+        if (! is_array($include) || $include === [] || array_diff($include, ['class_summary', 'homeroom_teacher', 'student_count', 'student_placements']) !== []) {
+            throw new \InvalidArgumentException('Invalid class query include.');
+        }
+        $page = $this->paginationArgument($arguments, 'page');
+        $perPage = $this->paginationArgument($arguments, 'per_page', 25, 50);
+        $classes = YearClass::query()
+            ->with('rombel:id,code,name,grade_level,parallel_code')
+            ->where('academic_year_id', $academicYear->id)
+            ->whereHas('rombel', function ($query) use ($classSearch): void {
+                $query->where('status', 'active')->when($classSearch !== null, function ($searchQuery) use ($classSearch): void {
+                    $like = '%'.mb_strtolower($classSearch).'%';
+                    $searchQuery->where(function ($classQuery) use ($like): void {
+                        $classQuery->whereRaw('LOWER(code) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(name) LIKE ?', [$like]);
+                    });
+                });
+            })
+            ->when($studentSearch !== null, function ($query) use ($academicYear, $studentSearch): void {
+                $like = '%'.mb_strtolower($studentSearch).'%';
+                $query->whereIn('rombel_id', StudentPlacement::query()
+                    ->join('m_students', 'm_students.id', '=', 'tr_curriculum_student_placements.student_id')
+                    ->where('tr_curriculum_student_placements.academic_year_id', $academicYear->id)
+                    ->where('tr_curriculum_student_placements.status', 'active')
+                    ->where(function ($studentQuery) use ($like): void {
+                        $studentQuery->whereRaw('LOWER(m_students.full_name) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(m_students.nis) LIKE ?', [$like]);
+                    })
+                    ->select('tr_curriculum_student_placements.rombel_id'));
+            })
+            ->orderBy('rombel_id');
+        $total = (clone $classes)->count();
+        $selectedClasses = $classes->forPage($page, $perPage)->get();
+        $rombelIds = $selectedClasses->pluck('rombel_id');
+        $homerooms = HomeroomAssignment::query()
+            ->with('teacher:id,full_name')
+            ->where('academic_year_id', $academicYear->id)
+            ->whereIn('rombel_id', $rombelIds)
+            ->where('status', 'active')
+            ->get()
+            ->groupBy('rombel_id');
+        $placements = StudentPlacement::query()
+            ->with('student:id,nis,full_name')
+            ->where('academic_year_id', $academicYear->id)
+            ->whereIn('rombel_id', $rombelIds)
+            ->where('status', 'active')
+            ->get()
+            ->groupBy('rombel_id');
+        $data = $selectedClasses->map(function (YearClass $yearClass) use ($academicYear, $homerooms, $placements, $studentSearch, $include): array {
+            $rombel = $yearClass->rombel;
+            $homeroom = $homerooms->get($yearClass->rombel_id, collect())->first()?->teacher;
+            $allStudents = $placements->get($yearClass->rombel_id, collect());
+            $students = $allStudents->filter(function ($placement) use ($studentSearch): bool {
+                return $studentSearch === null || str_contains(mb_strtolower($placement->student->full_name), mb_strtolower($studentSearch)) || str_contains(mb_strtolower((string) $placement->student->nis), mb_strtolower($studentSearch));
+            })->map(fn ($placement): array => [
+                'full_name' => $placement->student->full_name,
+            ])->values()->all();
+
+            return [
+                'academic_year' => ['id' => $academicYear->id, 'year' => $academicYear->year],
+                'class_summary' => in_array('class_summary', $include, true) ? $rombel->only(['id', 'code', 'name', 'grade_level', 'parallel_code']) : null,
+                'homeroom_teacher' => in_array('homeroom_teacher', $include, true) ? $homeroom?->only(['id', 'full_name']) : null,
+                'student_count' => in_array('student_count', $include, true) ? $allStudents->count() : null,
+                'student_placements' => in_array('student_placements', $include, true) ? $students : null,
+            ];
+        })->all();
+
+        return ['data' => $data, 'meta' => ['current_page' => $page, 'per_page' => $perPage, 'total' => $total, 'last_page' => max((int) ceil($total / $perPage), 1)]];
     }
 
     /**

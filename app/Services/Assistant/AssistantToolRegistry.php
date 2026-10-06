@@ -10,10 +10,11 @@ class AssistantToolRegistry
     public function forUser(User $user): array
     {
         if (! $user->can('inventory.view')) {
-            return [$this->teacherSubjectsTool()];
+            return [$this->classQueryTool(), $this->teacherSubjectsTool()];
         }
 
         return [
+            $this->classQueryTool(),
             $this->tool('inventory_items', 'Daftar resource aset inventaris secara read-only. Gunakan filter resource dan pagination bila diperlukan.', [
 
                 'search' => ['type' => ['string', 'null'], 'maxLength' => 100],
@@ -46,6 +47,20 @@ class AssistantToolRegistry
             ]),
             $this->teacherSubjectsTool(),
         ];
+    }
+
+    /** @return array{type: string, function: array<string, mixed>}
+     */
+    private function classQueryTool(): array
+    {
+        return $this->tool('curriculum_class_query', 'Cari data kelas kurikulum secara read-only, termasuk wali kelas, jumlah siswa, dan daftar siswa aktif.', [
+            'academic_year_search' => ['type' => ['string', 'null'], 'maxLength' => 100],
+            'class_search' => ['type' => ['string', 'null'], 'maxLength' => 100],
+            'student_search' => ['type' => ['string', 'null'], 'maxLength' => 100],
+            'include' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['class_summary', 'homeroom_teacher', 'student_count', 'student_placements']], 'minItems' => 1, 'maxItems' => 4],
+            'page' => ['type' => 'integer', 'minimum' => 1, 'default' => 1],
+            'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 25],
+        ]);
     }
 
     /** @return array{type: string, function: array<string, mixed>}
