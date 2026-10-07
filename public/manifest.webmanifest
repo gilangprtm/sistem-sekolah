@@ -1,0 +1,11 @@
+{
+  "name": "Portal Siswa SMPN 17 Denpasar",
+  "short_name": "Portal Siswa",
+  "description": "Portal siswa SMPN 17 Denpasar",
+  "start_url": "/student",
+  "scope": "/student",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait-primary"
+}
