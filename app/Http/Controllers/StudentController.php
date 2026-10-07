@@ -12,6 +12,7 @@ use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -32,24 +33,29 @@ class StudentController extends Controller
 
     public function cards(Request $request): Response
     {
+        $angkatanOptions = $this->studentAngkatanOptions();
+
         return Inertia::render('students/cards', [
-            'students' => $this->paginatedStudents($request),
-            'filters' => $request->only(['search', 'gender', 'status', 'per_page']),
-            'filterOptions' => $this->studentFilterOptions(),
+            'students' => $this->paginatedStudents($request, $angkatanOptions),
+            'filters' => $request->only(['search', 'gender', 'status', 'tahun_angkatan', 'per_page']),
+            'filterOptions' => array_merge(
+                $this->studentFilterOptions(),
+                ['angkatans' => $angkatanOptions],
+            ),
         ]);
     }
 
-    public function cardsPrint(): Response
+    public function cardsPrint(Request $request): Response
     {
-        $students = Student::query()
-            ->with('user:id,email')
-            ->orderBy('full_name')
+        $angkatanOptions = $this->studentAngkatanOptions();
+        $students = $this->studentQuery($request, $angkatanOptions)
             ->get()
             ->map(fn (Student $student): array => $this->cardPayload($student))
             ->values();
 
         return Inertia::render('students/cards-print', [
             'students' => $students,
+            'filters' => $request->only(['search', 'gender', 'status', 'tahun_angkatan']),
         ]);
     }
 
@@ -142,14 +148,30 @@ class StudentController extends Controller
     }
 
     /**
+     * @param array<int, int>|null $angkatanOptions
      * @return LengthAwarePaginator<int, Student>
      */
-    private function paginatedStudents(Request $request): LengthAwarePaginator
+    private function paginatedStudents(Request $request, ?array $angkatanOptions = null): LengthAwarePaginator
+    {
+        $perPage = min(max($request->integer('per_page', 10), 1), 50);
+
+        return $this->studentQuery($request, $angkatanOptions)
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /**
+     * @param array<int, int>|null $angkatanOptions
+     * @return Builder<Student>
+     */
+    private function studentQuery(Request $request, ?array $angkatanOptions = null): Builder
     {
         $search = $request->string('search')->trim()->toString();
         $gender = $request->string('gender')->toString();
         $status = $request->string('status')->toString();
-        $perPage = min(max($request->integer('per_page', 10), 1), 50);
+        $tahunAngkatan = $angkatanOptions === null
+            ? null
+            : $this->validatedAngkatan($request->input('tahun_angkatan'), $angkatanOptions);
 
         return Student::query()
             ->with('user:id,name,email')
@@ -162,9 +184,38 @@ class StudentController extends Controller
             })
             ->when($gender !== '', fn ($query) => $query->where('gender', $gender))
             ->when($status !== '', fn ($query) => $query->where('status', $status))
-            ->orderBy('full_name')
-            ->paginate($perPage)
-            ->withQueryString();
+            ->when($tahunAngkatan !== null, fn ($query) => $query->where('tahun_angkatan', $tahunAngkatan))
+            ->orderBy('full_name');
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function studentAngkatanOptions(): array
+    {
+        return Student::query()
+            ->whereNotNull('tahun_angkatan')
+            ->distinct()
+            ->orderBy('tahun_angkatan')
+            ->pluck('tahun_angkatan')
+            ->map(static fn (int $year): int => $year)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param mixed $value
+     * @param array<int, int> $angkatanOptions
+     */
+    private function validatedAngkatan(mixed $value, array $angkatanOptions): ?int
+    {
+        if ((! is_string($value) && ! is_int($value)) || ! preg_match('/^\d+$/', (string) $value)) {
+            return null;
+        }
+
+        $year = (int) $value;
+
+        return in_array($year, $angkatanOptions, true) ? $year : null;
     }
 
     /**

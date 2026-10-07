@@ -141,11 +141,32 @@ class StudentCardTest extends TestCase
         $this->assertStringContainsString('canvas.toBlob', $cardSource);
         $this->assertStringContainsString('toast.error', $cardSource);
         $this->assertStringContainsString('const dataUrl = await imageDataUrl(source)', $cardSource);
-        $this->assertStringContainsString('context.drawImage(logo', $cardSource);
+        $this->assertStringContainsString('CARD_BACKGROUND', $cardSource);
+        $this->assertStringContainsString('context.drawImage(background', $cardSource);
+        $this->assertStringContainsString('drawBarcode(', $cardSource);
+        $this->assertStringContainsString('drawQrCode(', $cardSource);
+        $this->assertStringContainsString('const qr = qrCode === null ? null : await loadImage(qrCode);', $cardSource);
+        $this->assertStringContainsString('qrCode={qrCode}', $cardSource);
+        $this->assertStringContainsString('QR_X = 820', $cardSource);
+        $this->assertStringContainsString('QR_Y = 445', $cardSource);
+        $this->assertStringContainsString('QR_SIZE = 130', $cardSource);
         $this->assertStringContainsString("canvas.toBlob((blob) =>", $cardSource);
         $this->assertStringNotContainsString('foreignObject', $cardSource);
         $this->assertStringNotContainsString('image.remove()', $cardSource);
         $this->assertStringNotContainsString('window.print()', $cardSource);
+    }
+
+    public function test_student_card_renders_connected_account_qr_code_contract(): void
+    {
+        $cardSource = file_get_contents(resource_path('js/pages/students/card.tsx'));
+
+        $this->assertIsString($cardSource);
+        $this->assertStringContainsString('qrCode: string | null', $cardSource);
+        $this->assertStringContainsString('drawQrCode(context, qr, codeX, codeY, codeWidth, codeHeight)', $cardSource);
+        $this->assertStringContainsString('if (qrCode !== null)', $cardSource);
+        $this->assertStringContainsString('alt="QR Code akun siswa"', $cardSource);
+        $this->assertStringContainsString("'Oktober'", $cardSource);
+        $this->assertStringContainsString('${day} ${INDONESIAN_MONTHS[monthIndex]} ${year}', $cardSource);
     }
 
     public function test_student_card_does_not_render_qr_without_connected_account(): void
@@ -163,6 +184,39 @@ class StudentCardTest extends TestCase
                 ->where('qrCode', null));
     }
 
+    public function test_student_cards_filters_by_tahun_angkatan_and_exposes_sorted_options(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        Student::factory()->create(['full_name' => 'Siswa 2024', 'tahun_angkatan' => 2024]);
+        Student::factory()->create(['full_name' => 'Siswa 2025', 'tahun_angkatan' => 2025]);
+        Student::factory()->create(['full_name' => 'Siswa Tanpa Angkatan', 'tahun_angkatan' => null]);
+
+        $this->actingAs($admin)
+            ->get('/students/cards?tahun_angkatan=2025&per_page=10')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('students/cards')
+                ->where('students.data', fn ($students) => $students->count() === 1 && $students->first()['full_name'] === 'Siswa 2025')
+                ->where('filters.tahun_angkatan', '2025')
+                ->where('filterOptions.angkatans', [2024, 2025]));
+    }
+
+    public function test_student_cards_ignores_invalid_or_unselected_tahun_angkatan_filter(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        Student::factory()->create(['full_name' => 'Siswa 2024', 'tahun_angkatan' => 2024]);
+        Student::factory()->create(['full_name' => 'Siswa 2025', 'tahun_angkatan' => 2025]);
+
+        $this->actingAs($admin)
+            ->get('/students/cards?tahun_angkatan=not-a-year&per_page=10')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('students.total', 2)
+                ->where('filterOptions.angkatans', [2024, 2025]));
+    }
+
     public function test_student_cards_has_a_dedicated_read_only_route_and_table_surface(): void
     {
         $admin = User::factory()->create();
@@ -177,6 +231,34 @@ class StudentCardTest extends TestCase
                 ->where('students.data.0.full_name', 'Siswa Kartu')
                 ->where('students.per_page', 1)
                 ->where('filters.search', 'kartu'));
+    }
+
+    public function test_student_cards_print_uses_active_list_filters_and_card_download_surface(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        Student::factory()->create(['full_name' => 'Siswa Cetak 2024', 'tahun_angkatan' => 2024, 'gender' => 'L', 'status' => 'active']);
+        Student::factory()->create(['full_name' => 'Siswa Cetak 2025', 'tahun_angkatan' => 2025, 'gender' => 'L', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->get('/students/cards/print?search=Cetak&gender=L&status=active&tahun_angkatan=2025')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('students/cards-print')
+                ->where('students.0.student.full_name', 'Siswa Cetak 2025')
+                ->where('filters.search', 'Cetak')
+                ->where('filters.tahun_angkatan', '2025'));
+
+        $source = file_get_contents(resource_path('js/pages/students/cards-print.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString("application/zip", $source);
+        $this->assertStringContainsString('downloadCards', $source);
+        $this->assertStringContainsString('CARD_BACKGROUND', $source);
+        $this->assertStringContainsString('aria-live="polite"', $source);
+        $this->assertStringContainsString('Menyiapkan kartu pelajar', $source);
+        $this->assertStringContainsString('setIsDownloading(false)', $source);
+        $this->assertStringContainsString('toast.error', $source);
+        $this->assertStringNotContainsString('window.print()', $source);
     }
 
     public function test_student_cards_print_has_a_dedicated_print_surface_with_all_students(): void

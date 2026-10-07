@@ -43,6 +43,7 @@ import type { BreadcrumbItem } from '@/types';
 type Student = {
     id: number;
     nis: string | null;
+    tahun_angkatan: number | null;
     full_name: string;
     gender: string | null;
     status: string;
@@ -63,8 +64,13 @@ type Props = {
         search?: string;
         gender?: string;
         status?: string;
+        tahun_angkatan?: string;
     };
-    filterOptions: { genders: FilterOption[]; statuses: FilterOption[] };
+    filterOptions: {
+        genders: FilterOption[];
+        statuses: FilterOption[];
+        angkatans: number[];
+    };
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -102,6 +108,9 @@ export default function StudentCards({
     const [search, setSearch] = useState(filters.search ?? '');
     const [gender, setGender] = useState(filters.gender ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
+    const [tahunAngkatan, setTahunAngkatan] = useState(
+        filters.tahun_angkatan ?? '',
+    );
     const pageNumbers = getPageNumbers(
         students.current_page,
         students.last_page,
@@ -120,6 +129,10 @@ export default function StudentCards({
 
         if (status) {
             params.status = status;
+        }
+
+        if (tahunAngkatan) {
+            params.tahun_angkatan = tahunAngkatan;
         }
 
         return params;
@@ -141,12 +154,14 @@ export default function StudentCards({
         setSearch('');
         setGender('');
         setStatus('');
+        setTahunAngkatan('');
         navigate({ page: 1, per_page: students.per_page });
     };
 
     const goToPage = (page: number) => {
         navigate({ ...filterParams(), page, per_page: students.per_page });
     };
+    const printQuery = new URLSearchParams(filterParams()).toString();
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -160,7 +175,9 @@ export default function StudentCards({
                     />
                     {canPrint && (
                         <Button asChild>
-                            <Link href="/students/cards/print">
+                            <Link
+                                href={`/students/cards/print${printQuery ? `?${printQuery}` : ''}`}
+                            >
                                 <Printer />
                                 Cetak Semua Kartu
                             </Link>
@@ -218,7 +235,24 @@ export default function StudentCards({
                                 emptyMessage="Status tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="grid gap-2 md:col-span-2">
+                            <Label>Angkatan</Label>
+                            <SearchableCombobox
+                                value={tahunAngkatan}
+                                options={[
+                                    { value: '', label: 'Semua' },
+                                    ...filterOptions.angkatans.map((year) => ({
+                                        value: `${year}`,
+                                        label: `${year}`,
+                                    })),
+                                ]}
+                                onChange={setTahunAngkatan}
+                                placeholder="Semua"
+                                searchPlaceholder="Cari angkatan..."
+                                emptyMessage="Angkatan tidak ditemukan."
+                            />
+                        </div>
+                        <div className="flex gap-2 md:col-span-1">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset
@@ -238,6 +272,7 @@ export default function StudentCards({
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead>Nama</TableHead>
                                     <TableHead>NIS</TableHead>
+                                    <TableHead>Angkatan</TableHead>
                                     <TableHead>Akun</TableHead>
                                     <TableHead>Gender</TableHead>
                                     <TableHead>Status</TableHead>
@@ -254,6 +289,9 @@ export default function StudentCards({
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
                                             {student.nis || '-'}
+                                        </TableCell>
+                                        <TableCell>
+                                            {student.tahun_angkatan || '-'}
                                         </TableCell>
                                         <TableCell>
                                             {student.user?.email ||
@@ -290,7 +328,7 @@ export default function StudentCards({
                                 {students.data.length === 0 && (
                                     <TableRow>
                                         <TableCell
-                                            colSpan={6}
+                                            colSpan={7}
                                             className="text-center text-muted-foreground"
                                         >
                                             <div className="flex flex-col items-center gap-2 py-8">

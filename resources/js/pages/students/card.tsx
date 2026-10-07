@@ -29,6 +29,27 @@ type Props = {
     qrCode: string | null;
 };
 
+const CARD_ASSET_WIDTH = 1011;
+const CARD_ASSET_HEIGHT = 639;
+const CARD_BACKGROUND = '/images/base_kartupelajar.png';
+const QR_X = 820;
+const QR_Y = 445;
+const QR_SIZE = 130;
+const INDONESIAN_MONTHS = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+];
+
 function fileNameForStudent(name: string): string {
     const slug = name
         .normalize('NFKD')
@@ -56,7 +77,8 @@ async function imageDataUrl(source: string): Promise<string> {
     return await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
+        reader.onerror = () =>
+            reject(new Error('Aset kartu tidak dapat dimuat.'));
         reader.readAsDataURL(blob);
     });
 }
@@ -75,52 +97,155 @@ async function loadImage(source: string): Promise<HTMLImageElement> {
     return image;
 }
 
-function drawWrappedText(
+function formatBirthDate(value: string | null): string | null {
+    if (value === null || value === '') {
+        return null;
+    }
+
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+
+    if (match === null) {
+        return value;
+    }
+
+    const [, year, month, day] = match;
+    const monthIndex = Number(month) - 1;
+
+    return monthIndex < 0 || monthIndex >= INDONESIAN_MONTHS.length
+        ? value
+        : `${day} ${INDONESIAN_MONTHS[monthIndex]} ${year}`;
+}
+
+function birthDetailsForStudent(student: Student): string {
+    return [student.birth_place, formatBirthDate(student.birth_date)]
+        .filter(Boolean)
+        .join(', ');
+}
+
+function initialsForStudent(name: string): string {
+    return name
+        .split(/\s+/)
+        .map((part) => part[0])
+        .filter(Boolean)
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+}
+
+function barcodePattern(value: string): boolean[] {
+    const pattern = [true, false, true, false, true, true, false];
+
+    for (const character of value || '-') {
+        const code = character.charCodeAt(0);
+
+        for (let bit = 6; bit >= 0; bit -= 1) {
+            pattern.push(((code >> bit) & 1) === 1);
+        }
+
+        pattern.push(false);
+    }
+
+    pattern.push(true, false, true);
+
+    return pattern;
+}
+
+function drawRoundedImage(
+    context: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+): void {
+    context.save();
+    context.beginPath();
+    context.moveTo(x + radius, y);
+    context.lineTo(x + width - radius, y);
+    context.quadraticCurveTo(x + width, y, x + width, y + radius);
+    context.lineTo(x + width, y + height - radius);
+    context.quadraticCurveTo(
+        x + width,
+        y + height,
+        x + width - radius,
+        y + height,
+    );
+    context.lineTo(x + radius, y + height);
+    context.quadraticCurveTo(x, y + height, x, y + height - radius);
+    context.lineTo(x, y + radius);
+    context.quadraticCurveTo(x, y, x + radius, y);
+    context.closePath();
+    context.clip();
+    context.drawImage(image, x, y, width, height);
+    context.restore();
+}
+
+function drawTextFit(
     context: CanvasRenderingContext2D,
     value: string,
     x: number,
     y: number,
     maxWidth: number,
-    lineHeight: number,
-    maxLines = 2,
-): number {
-    const words = value.split(/\s+/).filter(Boolean);
-    let line = '';
-    let lineCount = 0;
+    fontSize: number,
+    weight: number,
+): void {
+    let currentSize = fontSize;
+    context.font = `${weight} ${currentSize}px Arial, sans-serif`;
 
-    for (const word of words) {
-        const candidate = line === '' ? word : `${line} ${word}`;
+    while (context.measureText(value).width > maxWidth && currentSize > 10) {
+        currentSize -= 1;
+        context.font = `${weight} ${currentSize}px Arial, sans-serif`;
+    }
 
-        if (context.measureText(candidate).width > maxWidth && line !== '') {
-            context.fillText(line, x, y + lineCount * lineHeight);
-            line = word;
-            lineCount += 1;
+    context.fillText(value, x, y);
+}
 
-            if (lineCount >= maxLines - 1) {
-                break;
-            }
-        } else {
-            line = candidate;
+function drawBarcode(
+    context: CanvasRenderingContext2D,
+    value: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: string,
+): void {
+    const pattern = barcodePattern(value);
+    const moduleWidth = width / pattern.length;
+
+    context.fillStyle = color;
+
+    pattern.forEach((isBar, index) => {
+        if (isBar) {
+            context.fillRect(x + index * moduleWidth, y, moduleWidth, height);
         }
-    }
+    });
+}
 
-    if (lineCount < maxLines && line !== '') {
-        context.fillText(line, x, y + lineCount * lineHeight);
-        lineCount += 1;
-    }
+function drawQrCode(
+    context: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+): void {
+    const size = Math.min(width, height);
+    const offsetX = x + (width - size) / 2;
+    const offsetY = y + (height - size) / 2;
 
-    return lineCount;
+    context.imageSmoothingEnabled = false;
+    context.drawImage(image, offsetX, offsetY, size, size);
 }
 
 async function downloadCardImage(
     card: HTMLElement,
     student: Student,
-    placement: Placement,
     qrCode: string | null,
 ): Promise<void> {
     const bounds = card.getBoundingClientRect();
     const width = Math.ceil(bounds.width);
-    const height = Math.ceil(bounds.height);
+    const height = Math.ceil(width * (CARD_ASSET_HEIGHT / CARD_ASSET_WIDTH));
 
     if (width <= 0 || height <= 0) {
         throw new Error(
@@ -128,11 +253,12 @@ async function downloadCardImage(
         );
     }
 
-    const logo = await loadImage('/images/logo-sekolah.png');
+    const background = await loadImage(CARD_BACKGROUND);
     const photo =
         student.photo_url === null ? null : await loadImage(student.photo_url);
     const qr = qrCode === null ? null : await loadImage(qrCode);
     const scale = Math.max(window.devicePixelRatio || 1, 1);
+    const coordinateScale = width / CARD_ASSET_WIDTH;
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(width * scale);
     canvas.height = Math.ceil(height * scale);
@@ -143,89 +269,96 @@ async function downloadCardImage(
     }
 
     context.scale(scale, scale);
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, width, height);
-    context.strokeStyle = '#cbd5e1';
-    context.lineWidth = 1;
-    context.strokeRect(0.5, 0.5, width - 1, height - 1);
-    context.drawImage(logo, 12, 12, 32, 32);
-    context.fillStyle = '#0f172a';
-    context.font = '700 7px Arial, sans-serif';
-    context.fillText('KARTU PELAJAR', 52, 20);
-    context.font = '600 8px Arial, sans-serif';
-    context.fillText('SMP Negeri 17 Denpasar', 52, 32);
-    context.strokeStyle = '#e2e8f0';
-    context.beginPath();
-    context.moveTo(12, 50);
-    context.lineTo(width - 12, 50);
-    context.stroke();
+    context.drawImage(background, 0, 0, width, height);
 
-    const textX = 12;
-    const textWidth = width - 12 - 16 - 64 - 8;
-    let textY = 64;
-    const drawField = (label: string, value: string, lines = 1): void => {
-        context.fillStyle = '#64748b';
-        context.font = '600 6px Arial, sans-serif';
-        context.fillText(label.toUpperCase(), textX, textY);
-        context.fillStyle = '#0f172a';
-        context.font =
-            label === 'Nama Lengkap'
-                ? '700 8px Arial, sans-serif'
-                : '400 8px Arial, sans-serif';
-        const count = drawWrappedText(
-            context,
-            value || '-',
-            textX,
-            textY + 9,
-            textWidth,
-            9,
-            lines,
-        );
-        textY += 9 + count * 9 + 3;
-    };
-
-    drawField('Nama Lengkap', student.full_name);
-    drawField('NIS', student.nis ?? '-');
-    drawField(
-        'Tempat, Tanggal Lahir',
-        [student.birth_place, student.birth_date].filter(Boolean).join(', ') ||
-            '-',
-    );
-    drawField('Alamat', student.address ?? '-', 2);
-
-    if (placement !== null) {
-        drawField(
-            'Kelas',
-            `${placement.rombel || '-'} (${placement.academic_year})`,
-        );
-    }
-
-    const imageX = width - 12 - 64;
-    const imageY = qr === null ? height - 12 - 64 : height - 12 - 128;
+    const photoX = 43 * coordinateScale;
+    const photoY = 202 * coordinateScale;
+    const photoWidth = 249 * coordinateScale;
+    const photoHeight = 337 * coordinateScale;
 
     if (photo === null) {
-        context.fillStyle = '#f1f5f9';
-        context.fillRect(imageX, imageY, 64, 64);
-        context.fillStyle = '#64748b';
-        context.font = '600 12px Arial, sans-serif';
+        context.fillStyle = '#d7d8df';
+        context.fillRect(photoX, photoY, photoWidth, photoHeight);
+        context.fillStyle = '#53627a';
         context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.font = `700 ${48 * coordinateScale}px Arial, sans-serif`;
         context.fillText(
-            student.full_name
-                .split(/\s+/)
-                .map((part) => part[0])
-                .join('')
-                .slice(0, 2)
-                .toUpperCase(),
-            imageX + 32,
-            imageY + 38,
+            initialsForStudent(student.full_name),
+            photoX + photoWidth / 2,
+            photoY + photoHeight / 2,
         );
         context.textAlign = 'start';
+        context.textBaseline = 'alphabetic';
     } else {
-        context.drawImage(photo, imageX, imageY, 64, 64);
+        drawRoundedImage(
+            context,
+            photo,
+            photoX,
+            photoY,
+            photoWidth,
+            photoHeight,
+            26 * coordinateScale,
+        );
     }
 
-    if (qr !== null) {
-        context.drawImage(qr, imageX, height - 12 - 64, 64, 64);
+    const textX = 329 * coordinateScale;
+    const valueX = 546 * coordinateScale;
+    const textWidth = width - valueX - 36 * coordinateScale;
+    const textColor = '#024059';
+    const barcodeValue = student.nis || String(student.id);
+    const birthDetails = birthDetailsForStudent(student) || '-';
+    const codeX = QR_X * coordinateScale;
+    const codeY = QR_Y * coordinateScale;
+    const codeWidth = QR_SIZE * coordinateScale;
+    const codeHeight = QR_SIZE * coordinateScale;
+    const fields = [
+        { label: 'Nama Lengkap', value: student.full_name, y: 303 },
+        { label: 'NISN', value: student.nis || '-', y: 340 },
+        { label: 'T.T.L', value: birthDetails, y: 376 },
+        { label: 'Alamat', value: student.address || '-', y: 412 },
+    ];
+
+    context.fillStyle = textColor;
+    context.font = `700 ${48 * coordinateScale}px Arial, sans-serif`;
+    drawTextFit(
+        context,
+        'KARTU PELAJAR SISWA',
+        textX,
+        245 * coordinateScale,
+        width - textX - 25 * coordinateScale,
+        48 * coordinateScale,
+        700,
+    );
+
+    fields.forEach(({ label, value, y }) => {
+        context.fillStyle = textColor;
+        context.font = `700 ${25 * coordinateScale}px Arial, sans-serif`;
+        context.fillText(label, textX, y * coordinateScale);
+        context.fillText(':', 527 * coordinateScale, y * coordinateScale);
+        drawTextFit(
+            context,
+            value,
+            valueX,
+            y * coordinateScale,
+            textWidth,
+            25 * coordinateScale,
+            700,
+        );
+    });
+
+    if (qr === null) {
+        drawBarcode(
+            context,
+            barcodeValue,
+            codeX,
+            codeY,
+            codeWidth,
+            codeHeight,
+            textColor,
+        );
+    } else {
+        drawQrCode(context, qr, codeX, codeY, codeWidth, codeHeight);
     }
 
     const pngBlob = await new Promise<Blob>((resolve, reject) => {
@@ -252,7 +385,31 @@ async function downloadCardImage(
     window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
 }
 
-export default function StudentCard({ student, placement, qrCode }: Props) {
+function Barcode({ value, qrCode }: { value: string; qrCode: string | null }) {
+    if (qrCode !== null) {
+        return (
+            <img
+                src={qrCode}
+                alt="QR Code akun siswa"
+                className="size-full object-contain"
+            />
+        );
+    }
+
+    return (
+        <div className="flex h-full w-full" aria-label={`Barcode ${value}`}>
+            {barcodePattern(value).map((isBar, index) => (
+                <span
+                    key={`${value}-${index}`}
+                    className={isBar ? 'bg-[#024059]' : 'bg-transparent'}
+                    style={{ flex: '1 1 0%' }}
+                />
+            ))}
+        </div>
+    );
+}
+
+export default function StudentCard({ student, qrCode }: Props) {
     const { auth } = usePage<{
         auth?: { permissions?: string[]; roles?: string[] };
     }>().props;
@@ -265,9 +422,8 @@ export default function StudentCard({ student, placement, qrCode }: Props) {
         { title: 'Siswa', href: '/students' },
         { title: 'Kartu Pelajar', href: `/students/cards/${student.id}` },
     ];
-    const birthDetails = [student.birth_place, student.birth_date]
-        .filter(Boolean)
-        .join(', ');
+    const birthDetails = birthDetailsForStudent(student);
+    const barcodeValue = student.nis || String(student.id);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -300,7 +456,6 @@ export default function StudentCard({ student, placement, qrCode }: Props) {
                                         await downloadCardImage(
                                             cardRef.current,
                                             student,
-                                            placement,
                                             qrCode,
                                         );
                                     } catch (error) {
@@ -328,92 +483,76 @@ export default function StudentCard({ student, placement, qrCode }: Props) {
                 <div className="flex justify-center print:block">
                     <article
                         ref={cardRef}
-                        className="relative flex aspect-[3/2] h-[5.4cm] w-[8.56cm] flex-col overflow-hidden rounded-lg border border-slate-300 bg-white p-3 text-slate-900 shadow-sm print:rounded-none print:shadow-none"
+                        className="relative aspect-[1011/639] w-full max-w-[1011px] overflow-hidden rounded-[2.5%] border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat shadow-sm print:rounded-none print:shadow-none"
+                        style={{
+                            backgroundImage: `url(${CARD_BACKGROUND})`,
+                            containerType: 'inline-size',
+                        }}
                         aria-label={`Kartu Pelajar ${student.full_name}`}
                     >
-                        <header className="flex items-center gap-2 border-b border-slate-200 pb-2">
-                            <img
-                                src="/images/logo-sekolah.png"
-                                alt="Logo SMP Negeri 17 Denpasar"
-                                className="size-8 object-contain"
-                            />
-                            <div className="min-w-0">
-                                <p className="text-[7px] font-bold tracking-wide uppercase">
-                                    Kartu Pelajar
-                                </p>
-                                <p className="truncate text-[8px] font-semibold">
-                                    SMP Negeri 17 Denpasar
-                                </p>
+                        <h1 className="sr-only">Kartu Pelajar Siswa</h1>
+                        <div
+                            className="absolute overflow-hidden rounded-[10%]"
+                            style={{
+                                left: '4.25%',
+                                top: '31.61%',
+                                width: '24.63%',
+                                height: '52.74%',
+                            }}
+                        >
+                            {student.photo_url !== null ? (
+                                <img
+                                    src={student.photo_url}
+                                    alt={`Foto ${student.full_name}`}
+                                    className="size-full object-cover"
+                                />
+                            ) : (
+                                <div className="flex size-full items-center justify-center bg-[#d7d8df] text-[4.7cqw] font-bold text-[#53627a]">
+                                    {initialsForStudent(student.full_name)}
+                                </div>
+                            )}
+                        </div>
+                        <div className="absolute top-[31.92%] left-[32.54%] max-w-[64%] truncate text-[clamp(1rem,4.75cqw,3rem)] leading-none font-bold text-[#024059]">
+                            KARTU PELAJAR SISWA
+                        </div>
+                        <div className="absolute top-[44.3%] right-[3.5%] left-[32.54%] text-[clamp(0.5rem,2.47cqw,1.55rem)] leading-[1.45] font-bold text-[#024059]">
+                            <div className="flex">
+                                <span className="w-[21.5%] shrink-0">
+                                    Nama Lengkap
+                                </span>
+                                <span className="w-[1.9%] shrink-0">:</span>
+                                <span className="min-w-0 truncate">
+                                    {student.full_name}
+                                </span>
                             </div>
-                        </header>
-
-                        <div className="flex min-h-0 flex-1 gap-2 pt-2">
-                            <div className="min-w-0 flex-1 space-y-1 text-[8px] leading-tight">
-                                <div>
-                                    <p className="text-[6px] text-slate-500 uppercase">
-                                        Nama Lengkap
-                                    </p>
-                                    <p className="font-bold">
-                                        {student.full_name}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[6px] text-slate-500 uppercase">
-                                        NIS
-                                    </p>
-                                    <p>{student.nis || '-'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[6px] text-slate-500 uppercase">
-                                        Tempat, Tanggal Lahir
-                                    </p>
-                                    <p>{birthDetails || '-'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[6px] text-slate-500 uppercase">
-                                        Alamat
-                                    </p>
-                                    <p className="line-clamp-2">
-                                        {student.address || '-'}
-                                    </p>
-                                </div>
-                                {placement !== null && (
-                                    <div>
-                                        <p className="text-[6px] text-slate-500 uppercase">
-                                            Kelas
-                                        </p>
-                                        <p>
-                                            {placement.rombel || '-'} (
-                                            {placement.academic_year})
-                                        </p>
-                                    </div>
-                                )}
+                            <div className="flex">
+                                <span className="w-[21.5%] shrink-0">NISN</span>
+                                <span className="w-[1.9%] shrink-0">:</span>
+                                <span className="min-w-0 truncate">
+                                    {student.nis || '-'}
+                                </span>
                             </div>
-                            <div className="flex w-16 shrink-0 flex-col items-center justify-end gap-2">
-                                {student.photo_url !== null ? (
-                                    <img
-                                        src={student.photo_url}
-                                        alt={`Foto ${student.full_name}`}
-                                        className="size-16 rounded-sm object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex size-16 items-center justify-center rounded-sm bg-slate-100 text-[12px] font-semibold text-slate-500">
-                                        {student.full_name
-                                            .split(' ')
-                                            .map((part) => part[0])
-                                            .join('')
-                                            .slice(0, 2)
-                                            .toUpperCase()}
-                                    </div>
-                                )}
-                                {qrCode !== null && (
-                                    <img
-                                        src={qrCode}
-                                        alt="QR Code akun siswa"
-                                        className="size-16 object-contain"
-                                    />
-                                )}
+                            <div className="flex">
+                                <span className="w-[21.5%] shrink-0">
+                                    T.T.L
+                                </span>
+                                <span className="w-[1.9%] shrink-0">:</span>
+                                <span className="min-w-0 truncate">
+                                    {birthDetails || '-'}
+                                </span>
                             </div>
+                            <div className="flex">
+                                <span className="w-[21.5%] shrink-0">
+                                    Alamat
+                                </span>
+                                <span className="w-[1.9%] shrink-0">:</span>
+                                <span className="min-w-0 truncate">
+                                    {student.address || '-'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="absolute right-[6%] bottom-[10%] aspect-square w-[13%]">
+                            <Barcode value={barcodeValue} qrCode={qrCode} />
                         </div>
                     </article>
                 </div>
