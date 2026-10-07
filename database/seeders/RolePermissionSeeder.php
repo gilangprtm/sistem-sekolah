@@ -18,6 +18,7 @@ class RolePermissionSeeder extends Seeder
         'Guru',
         'Admin Perpustakaan',
         'Siswa',
+        'Kesiswaan',
         'Staff',
     ];
 
@@ -28,6 +29,8 @@ class RolePermissionSeeder extends Seeder
         'users.manage',
         'roles.manage',
         'student.view',
+        'student.card.view',
+        'student.card.print',
         'student.create',
         'student.update',
         'student.delete',
@@ -137,5 +140,10 @@ class RolePermissionSeeder extends Seeder
         Role::findByName('Guru', 'web')->syncPermissions([]);
         Role::findByName('Admin Perpustakaan', 'web')->syncPermissions([]);
         Role::findByName('Siswa', 'web')->syncPermissions([]);
+
+        // Kesiswaan hanya mengelola akses kartu pelajar, tanpa CRUD master siswa.
+        Role::findByName('Kesiswaan', 'web')->syncPermissions([
+            'student.card.view',
+        ]);
     }
 }

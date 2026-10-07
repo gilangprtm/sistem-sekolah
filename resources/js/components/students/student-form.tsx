@@ -2,6 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
+import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -33,6 +34,9 @@ export type StudentAccount = {
 export type StudentFormValue = {
     user_id: string;
     nis: string;
+    tahun_angkatan: string;
+    photo: File | null;
+    remove_photo: boolean;
     full_name: string;
     gender: string;
     birth_place: string;
@@ -45,6 +49,8 @@ export type StudentFormStudent = {
     id: number;
     user_id: number | null;
     nis: string | null;
+    tahun_angkatan: number | null;
+    photo_url: string | null;
     full_name: string;
     gender: string | null;
     birth_place: string | null;
@@ -62,6 +68,9 @@ type Props = {
 const emptyForm: StudentFormValue = {
     user_id: '',
     nis: '',
+    tahun_angkatan: '',
+    photo: null,
+    remove_photo: false,
     full_name: '',
     gender: '',
     birth_place: '',
@@ -78,6 +87,9 @@ function toFormValue(student?: StudentFormStudent): StudentFormValue {
     return {
         user_id: student.user_id?.toString() ?? '',
         nis: student.nis ?? '',
+        tahun_angkatan: student.tahun_angkatan?.toString() ?? '',
+        photo: null,
+        remove_photo: false,
         full_name: student.full_name,
         gender: student.gender ?? '',
         birth_place: student.birth_place ?? '',
@@ -99,13 +111,47 @@ export default function StudentForm({
     const [processing, setProcessing] = useState(false);
     const [birthDateOpen, setBirthDateOpen] = useState(false);
 
-    const update = (key: keyof StudentFormValue, value: string) =>
-        setForm((current) => ({ ...current, [key]: value }));
+    const update = (
+        key: keyof StudentFormValue,
+        value: string | boolean | File | null,
+    ) => setForm((current) => ({ ...current, [key]: value }));
+
+    const handleYearChange = (value: string) => {
+        update('tahun_angkatan', value.replace(/\D/g, ''));
+    };
+
+    const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] ?? null;
+
+        if (
+            file !== null &&
+            (!file.type.startsWith('image/') || file.size > 1024 * 1024)
+        ) {
+            update('photo', null);
+            setErrors((current) => ({
+                ...current,
+                photo: 'Foto harus berupa gambar dengan ukuran maksimal 1 MB.',
+            }));
+            event.target.value = '';
+
+            return;
+        }
+
+        update('photo', file);
+        update('remove_photo', false);
+        setErrors((current) => {
+            const next = { ...current };
+            delete next.photo;
+
+            return next;
+        });
+    };
 
     const submit = () => {
         setProcessing(true);
         const options = {
             preserveScroll: true,
+            forceFormData: true,
             onSuccess: () => setProcessing(false),
             onError: (requestErrors: Record<string, string>) => {
                 setErrors(requestErrors);
@@ -114,7 +160,11 @@ export default function StudentForm({
         };
 
         if (mode === 'edit' && student) {
-            router.patch(`/students/${student.id}`, form, options);
+            router.post(
+                `/students/${student.id}`,
+                { ...form, _method: 'patch' },
+                options,
+            );
 
             return;
         }
@@ -168,6 +218,57 @@ export default function StudentForm({
                                 Hapus hubungan akun
                             </Button>
                             <InputError message={errors.user_id} />
+                        </div>
+                        <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="student-tahun-angkatan">
+                                Tahun Angkatan
+                            </Label>
+                            <Input
+                                id="student-tahun-angkatan"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                minLength={4}
+                                maxLength={4}
+                                min={1900}
+                                max={new Date().getFullYear()}
+                                value={form.tahun_angkatan}
+                                onChange={(event) =>
+                                    handleYearChange(event.target.value)
+                                }
+                            />
+                            <InputError message={errors.tahun_angkatan} />
+                        </div>
+                        <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="student-photo">Foto Siswa</Label>
+                            {student?.photo_url && !form.remove_photo && (
+                                <div className="flex items-center gap-3">
+                                    <img
+                                        src={student.photo_url}
+                                        alt={`Foto ${student.full_name}`}
+                                        className="size-16 rounded-md object-cover"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() =>
+                                            update('remove_photo', true)
+                                        }
+                                    >
+                                        Hapus foto saat disimpan
+                                    </Button>
+                                </div>
+                            )}
+                            <Input
+                                id="student-photo"
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePhotoChange}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Hanya gambar, maksimal 1 MB.
+                            </p>
+                            <InputError message={errors.photo} />
                         </div>
                         <div className="grid min-w-0 gap-2">
                             <Label htmlFor="student-full-name">

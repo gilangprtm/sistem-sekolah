@@ -14,9 +14,15 @@ class Student extends Model
 
     protected $table = 'm_students';
 
+    protected $hidden = [
+        'photo_path',
+    ];
+
     protected $fillable = [
         'user_id',
         'nis',
+        'tahun_angkatan',
+        'photo_path',
         'full_name',
         'gender',
         'birth_place',
@@ -29,6 +35,7 @@ class Student extends Model
     {
         return [
             'birth_date' => 'date:Y-m-d',
+            'tahun_angkatan' => 'integer',
         ];
     }
 

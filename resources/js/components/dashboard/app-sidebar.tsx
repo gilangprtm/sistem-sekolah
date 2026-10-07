@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
+    CreditCard,
     CalendarDays,
     DoorOpen,
     FolderGit2,
@@ -97,6 +98,16 @@ export function AppSidebar({
     const inventoryItems: NavMainItem[] = [];
     const adminItems: NavMainItem[] = [];
     const curriculumItems: NavMainItem[] = [];
+    const studentAffairsItems: NavMainItem[] = [];
+
+    if (can('student.card.view')) {
+        studentAffairsItems.push({
+            id: 'student-cards',
+            title: 'Kartu Pelajar',
+            url: '/students/cards',
+            icon: CreditCard,
+        });
+    }
 
     if (can('inventory.dashboard.view')) {
         inventoryItems.push({
@@ -220,8 +231,11 @@ export function AppSidebar({
         ...(curriculumItems.length > 0
             ? [{ id: 3, label: 'Kurikulum', items: curriculumItems }]
             : []),
+        ...(studentAffairsItems.length > 0
+            ? [{ id: 4, label: 'Kesiswaan', items: studentAffairsItems }]
+            : []),
         ...(adminItems.length > 0
-            ? [{ id: 4, label: 'Administrasi', items: adminItems }]
+            ? [{ id: 5, label: 'Administrasi', items: adminItems }]
             : []),
     ];
 

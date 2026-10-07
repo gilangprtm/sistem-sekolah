@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 
-import { Search } from 'lucide-react';
+import { CreditCard, Search } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -93,6 +93,13 @@ const searchItems: SearchItem[] = [
         url: '/teacher-subjects',
     },
     {
+        id: 'student-cards',
+        group: 'Kesiswaan',
+        label: 'Kartu Pelajar',
+        url: '/students/cards',
+        icon: CreditCard,
+    },
+    {
         id: 'students',
         group: 'Administrasi',
         label: 'Siswa',
@@ -156,6 +163,10 @@ export function SearchDialog() {
 
         if (item.id === 'inventory-rooms') {
             return can('inventory.room.view');
+        }
+
+        if (item.id === 'student-cards') {
+            return can('student.card.view');
         }
 
         if (item.id === 'students') {

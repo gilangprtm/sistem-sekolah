@@ -6,6 +6,8 @@ use App\Models\Student;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class StudentManagementTest extends TestCase
@@ -94,6 +96,111 @@ class StudentManagementTest extends TestCase
             'gender' => 'P',
             'status' => 'active',
         ]);
+    }
+
+    public function test_student_create_persists_tahun_angkatan_and_exposes_it_on_the_index(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->post('/students', [
+                'full_name' => 'Siswa Angkatan 2024',
+                'tahun_angkatan' => 2024,
+                'status' => 'active',
+            ])
+            ->assertRedirect('/students');
+
+        $studentId = (int) $this->app['db']->table('m_students')->value('id');
+        $this->assertDatabaseHas('m_students', [
+            'id' => $studentId,
+            'tahun_angkatan' => 2024,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/students')
+            ->assertInertia(fn ($page) => $page
+                ->where('students.data.0.id', $studentId)
+                ->where('students.data.0.tahun_angkatan', 2024));
+    }
+
+    public function test_student_tahun_angkatan_must_be_a_valid_year_when_provided(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->post('/students', [
+                'full_name' => 'Siswa Angkatan Invalid',
+                'tahun_angkatan' => 'dua ribu dua puluh empat',
+                'status' => 'active',
+            ])
+            ->assertSessionHasErrors('tahun_angkatan');
+    }
+
+    public function test_student_create_persists_official_photo_and_exposes_it_on_the_form(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $photo = UploadedFile::fake()->create('student-photo.jpg', 100, 'image/jpeg');
+
+        $this->actingAs($admin)
+            ->post('/students', [
+                'full_name' => 'Siswa Dengan Foto',
+                'status' => 'active',
+                'photo' => $photo,
+            ])
+            ->assertRedirect('/students');
+
+        $student = Student::query()->firstOrFail();
+
+        $this->assertNotNull($student->photo_path);
+        $this->assertTrue(Storage::disk('public')->exists($student->photo_path));
+
+        $this->actingAs($admin)
+            ->get("/students/{$student->id}/edit")
+            ->assertInertia(fn ($page) => $page
+                ->where('student.id', $student->id)
+                ->where('student.photo_url', fn ($url): bool => is_string($url) && $url !== ''));
+    }
+
+    public function test_student_photo_must_be_an_image_within_one_megabyte(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->post('/students', [
+                'full_name' => 'Siswa Dokumen',
+                'status' => 'active',
+                'photo' => UploadedFile::fake()->create('student.pdf', 100, 'application/pdf'),
+            ])
+            ->assertSessionHasErrors('photo');
+
+        $this->actingAs($admin)
+            ->post('/students', [
+                'full_name' => 'Siswa Foto Besar',
+                'status' => 'active',
+                'photo' => UploadedFile::fake()->create('student.jpg', 1025, 'image/jpeg'),
+            ])
+            ->assertSessionHasErrors('photo');
+    }
+
+    public function test_student_year_input_accepts_only_digits_from_the_form_contract(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get('/students/create')
+            ->assertInertia(fn ($page) => $page->component('students/create'));
+
+        $source = file_get_contents(resource_path('js/components/students/student-form.tsx'));
+
+        $this->assertNotFalse($source);
+        $this->assertStringContainsString("replace(/\\D/g, '')", $source);
     }
 
     public function test_student_create_rejects_non_siswa_or_already_linked_account(): void

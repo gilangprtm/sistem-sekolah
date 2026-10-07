@@ -19,6 +19,7 @@ class StudentFactory extends Factory
     {
         return [
             'full_name' => fake()->name(),
+            'tahun_angkatan' => null,
             'status' => 'active',
         ];
     }

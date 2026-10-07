@@ -3,6 +3,18 @@
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware(['auth', 'verified', 'can:student.card.view'])->group(function (): void {
+    Route::get('/students/cards', [StudentController::class, 'cards'])->name('students.cards.index');
+});
+
+Route::middleware(['auth', 'verified', 'can:student.card.print'])->group(function (): void {
+    Route::get('/students/cards/print', [StudentController::class, 'cardsPrint'])->name('students.cards.print');
+});
+
+Route::middleware(['auth', 'verified', 'can:student.card.view'])->group(function (): void {
+    Route::get('/students/cards/{student}', [StudentController::class, 'card'])->name('students.cards.show');
+});
+
 Route::middleware(['auth', 'verified', 'can:student.view'])->group(function (): void {
     Route::get('/students', [StudentController::class, 'index'])->name('students.index');
     Route::get('/students/create', [StudentController::class, 'create'])->middleware('can:student.create')->name('students.create');

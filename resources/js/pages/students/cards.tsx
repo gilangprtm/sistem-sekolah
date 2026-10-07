@@ -1,9 +1,9 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ChevronsLeft,
     ChevronsRight,
-    MoreHorizontal,
-    Plus,
+    CreditCard,
+    Printer,
     Search,
     UserRound,
 } from 'lucide-react';
@@ -11,13 +11,6 @@ import { useState } from 'react';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -50,7 +43,6 @@ import type { BreadcrumbItem } from '@/types';
 type Student = {
     id: number;
     nis: string | null;
-    tahun_angkatan: number | null;
     full_name: string;
     gender: string | null;
     status: string;
@@ -71,12 +63,14 @@ type Props = {
         search?: string;
         gender?: string;
         status?: string;
-        per_page?: number;
     };
     filterOptions: { genders: FilterOption[]; statuses: FilterOption[] };
 };
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Siswa', href: '/students' }];
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Kesiswaan', href: '/students/cards' },
+    { title: 'Kartu Pelajar', href: '/students/cards' },
+];
 
 function getPageNumbers(currentPage: number, pageCount: number) {
     if (pageCount <= 3) {
@@ -94,12 +88,17 @@ function getPageNumbers(currentPage: number, pageCount: number) {
     return [currentPage - 1, currentPage, currentPage + 1];
 }
 
-export default function StudentsIndex({
+export default function StudentCards({
     students,
     filters,
     filterOptions,
 }: Props) {
-    const [selected, setSelected] = useState<number[]>([]);
+    const { auth } = usePage<{
+        auth?: { permissions?: string[]; roles?: string[] };
+    }>().props;
+    const canPrint =
+        auth?.roles?.includes('Super Admin') ||
+        auth?.permissions?.includes('student.card.print');
     const [search, setSearch] = useState(filters.search ?? '');
     const [gender, setGender] = useState(filters.gender ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
@@ -127,7 +126,7 @@ export default function StudentsIndex({
     };
 
     const navigate = (params: Record<string, string | number>) => {
-        router.get('/students', params, {
+        router.get('/students/cards', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -149,40 +148,34 @@ export default function StudentsIndex({
         navigate({ ...filterParams(), page, per_page: students.per_page });
     };
 
-    const remove = (student: Student) => {
-        if (!confirm(`Hapus data Siswa "${student.full_name}"?`)) {
-            return;
-        }
-
-        router.delete(`/students/${student.id}`, { preserveScroll: true });
-    };
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Siswa" />
+            <Head title="Kartu Pelajar" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                     <Heading
                         variant="small"
-                        title="Master Siswa"
-                        description="Kelola data profil Siswa dan akun yang terhubung"
+                        title="Kartu Pelajar"
+                        description="Pilih siswa untuk membuka dan mencetak kartu pelajar"
                     />
-                    <Button asChild>
-                        <Link href="/students/create">
-                            <Plus />
-                            Tambah Siswa
-                        </Link>
-                    </Button>
+                    {canPrint && (
+                        <Button asChild>
+                            <Link href="/students/cards/print">
+                                <Printer />
+                                Cetak Semua Kartu
+                            </Link>
+                        </Button>
+                    )}
                 </div>
 
                 <div className="grid gap-4 rounded-xl border p-4">
                     <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
                         <div className="grid gap-2 md:col-span-5">
-                            <Label htmlFor="student-search">Search</Label>
+                            <Label htmlFor="student-card-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    id="student-search"
+                                    id="student-card-search"
                                     value={search}
                                     onChange={(event) =>
                                         setSearch(event.target.value)
@@ -235,47 +228,16 @@ export default function StudentsIndex({
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                    <div className="flex flex-col gap-3 border-b px-4 py-4 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {students.total} baris
-                            dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
+                    <div className="border-b px-4 py-4 text-sm text-muted-foreground">
+                        Menampilkan {students.data.length} dari {students.total}{' '}
+                        siswa.
                     </div>
                     <div className="overflow-x-auto">
                         <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                students.data.length > 0 &&
-                                                selected.length ===
-                                                    students.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? students.data.map(
-                                                              (student) =>
-                                                                  student.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua siswa"
-                                        />
-                                    </TableHead>
                                     <TableHead>Nama</TableHead>
                                     <TableHead>NIS</TableHead>
-                                    <TableHead>Tahun Angkatan</TableHead>
                                     <TableHead>Akun</TableHead>
                                     <TableHead>Gender</TableHead>
                                     <TableHead>Status</TableHead>
@@ -287,36 +249,11 @@ export default function StudentsIndex({
                             <TableBody>
                                 {students.data.map((student) => (
                                     <TableRow key={student.id}>
-                                        <TableCell className="w-12">
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    student.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  student.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      student.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${student.full_name}`}
-                                            />
-                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {student.full_name}
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
                                             {student.nis || '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {student.tahun_angkatan || '-'}
                                         </TableCell>
                                         <TableCell>
                                             {student.user?.email ||
@@ -335,47 +272,31 @@ export default function StudentsIndex({
                                                 : 'Tidak aktif'}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-sm"
-                                                        className="text-muted-foreground"
-                                                        aria-label={`Aksi ${student.full_name}`}
-                                                    >
-                                                        <MoreHorizontal />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem asChild>
-                                                        <Link
-                                                            href={`/students/${student.id}/edit`}
-                                                        >
-                                                            Edit
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        variant="destructive"
-                                                        onClick={() =>
-                                                            remove(student)
-                                                        }
-                                                    >
-                                                        Hapus
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                asChild
+                                            >
+                                                <Link
+                                                    href={`/students/cards/${student.id}`}
+                                                >
+                                                    <CreditCard />
+                                                    Kartu Pelajar
+                                                </Link>
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
                                 {students.data.length === 0 && (
                                     <TableRow>
                                         <TableCell
-                                            colSpan={8}
+                                            colSpan={6}
                                             className="text-center text-muted-foreground"
                                         >
                                             <div className="flex flex-col items-center gap-2 py-8">
                                                 <UserRound className="h-8 w-8 text-muted-foreground/50" />
-                                                Belum ada data Siswa.
+                                                Belum ada data siswa untuk
+                                                dicetak.
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -384,9 +305,9 @@ export default function StudentsIndex({
                         </Table>
                     </div>
                     <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {students.total} baris
-                            dipilih.
+                        <div className="text-sm font-medium text-muted-foreground">
+                            Halaman {students.current_page} dari{' '}
+                            {students.last_page}
                         </div>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6">
                             <div className="flex items-center gap-2">
@@ -418,10 +339,6 @@ export default function StudentsIndex({
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="text-sm font-medium text-muted-foreground">
-                                Halaman {students.current_page} dari{' '}
-                                {students.last_page}
-                            </div>
                             {students.last_page > 1 && (
                                 <Pagination className="mx-0 w-auto justify-start sm:justify-end">
                                     <PaginationContent className="gap-1">
@@ -429,9 +346,6 @@ export default function StudentsIndex({
                                             <PaginationLink
                                                 href="#"
                                                 aria-label="Halaman pertama"
-                                                aria-disabled={
-                                                    students.current_page === 1
-                                                }
                                                 className={
                                                     students.current_page === 1
                                                         ? 'pointer-events-none opacity-50'
@@ -455,9 +369,6 @@ export default function StudentsIndex({
                                             <PaginationPrevious
                                                 href="#"
                                                 text="Prev"
-                                                aria-disabled={
-                                                    students.current_page === 1
-                                                }
                                                 className={
                                                     students.current_page === 1
                                                         ? 'pointer-events-none opacity-50'
@@ -510,10 +421,6 @@ export default function StudentsIndex({
                                             <PaginationNext
                                                 href="#"
                                                 text="Next"
-                                                aria-disabled={
-                                                    students.current_page ===
-                                                    students.last_page
-                                                }
                                                 className={
                                                     students.current_page ===
                                                     students.last_page
@@ -539,10 +446,6 @@ export default function StudentsIndex({
                                             <PaginationLink
                                                 href="#"
                                                 aria-label="Halaman terakhir"
-                                                aria-disabled={
-                                                    students.current_page ===
-                                                    students.last_page
-                                                }
                                                 className={
                                                     students.current_page ===
                                                     students.last_page
