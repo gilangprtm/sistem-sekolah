@@ -11,6 +11,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__.'/dashboard.php';
 require __DIR__.'/users.php';
 require __DIR__.'/students.php';
+require __DIR__.'/student-app.php';
 require __DIR__.'/teachers.php';
 require __DIR__.'/academic-years.php';
 require __DIR__.'/subjects.php';

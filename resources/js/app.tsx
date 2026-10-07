@@ -2,6 +2,8 @@ import { createInertiaApp } from '@inertiajs/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
+import StudentAppLayout from '@/layouts/student-app-layout';
+import { registerStudentPwa } from '@/lib/register-student-pwa';
 import DashboardLayout from '@/layouts/app/dashboard-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -29,6 +31,8 @@ createInertiaApp({
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
+            case name.startsWith('student-app/'):
+                return StudentAppLayout;
             case name.startsWith('settings/'):
                 return [DashboardLayout, SettingsLayout];
             case name.startsWith('dashboard/'):
@@ -61,3 +65,4 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+registerStudentPwa();
