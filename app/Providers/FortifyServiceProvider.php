@@ -27,11 +27,11 @@ class FortifyServiceProvider extends ServiceProvider
             {
                 public function toResponse($request)
                 {
-                    $route = $request->user()->hasRole('Siswa')
-                        ? 'student-app.dashboard'
-                        : 'dashboard';
+                    if ($request->user()->hasRole('Siswa')) {
+                        return redirect()->route('student-app.dashboard');
+                    }
 
-                    return redirect()->intended(route($route, absolute: false));
+                    return redirect()->intended(route('dashboard', absolute: false));
                 }
             };
         });

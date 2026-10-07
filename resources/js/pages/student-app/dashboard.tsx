@@ -5,12 +5,22 @@ import {
     BookOpen,
     CalendarDays,
     ClipboardList,
+    Download,
+    Info,
     Library,
     Megaphone,
     Sparkles,
     Trophy,
     UserRound,
+    X,
 } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+    dismissStudentPwaInstall,
+    installStudentPwa,
+    useStudentPwaInstall,
+} from '@/hooks/use-student-pwa-install';
 
 type Props = {
     student: {
@@ -34,6 +44,11 @@ const menuItems = [
 
 export default function StudentDashboard({ student, rombel }: Props) {
     const firstName = student?.full_name?.trim().split(/\s+/)[0] ?? 'Siswa';
+    const { canInstall, isDismissed, isInstalled, isIos } =
+        useStudentPwaInstall();
+    const [isInstalling, setIsInstalling] = useState(false);
+    const showInstallPrompt =
+        !isInstalled && !isDismissed && (canInstall || isIos);
 
     return (
         <>
@@ -50,32 +65,112 @@ export default function StudentDashboard({ student, rombel }: Props) {
                             {student?.full_name ?? 'Siswa'}
                         </h2>
                         <p className="truncate text-xs text-muted-foreground">
-                            {[rombel, student?.nis ? `NIS ${student.nis}` : null]
+                            {[
+                                rombel,
+                                student?.nis ? `NIS ${student.nis}` : null,
+                            ]
                                 .filter(Boolean)
                                 .join(' · ') || 'Portal Siswa'}
                         </p>
                     </div>
                 </div>
 
+                {showInstallPrompt && (
+                    <div
+                        className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-violet-950 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-100"
+                        role="status"
+                    >
+                        <div className="flex items-start gap-3">
+                            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-200 text-violet-800 dark:bg-violet-900 dark:text-violet-100">
+                                {canInstall ? (
+                                    <Download
+                                        className="size-5"
+                                        aria-hidden="true"
+                                    />
+                                ) : (
+                                    <Info
+                                        className="size-5"
+                                        aria-hidden="true"
+                                    />
+                                )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold">
+                                    Pasang Portal Siswa
+                                </p>
+                                {canInstall ? (
+                                    <p className="mt-1 text-xs leading-5 text-violet-800 dark:text-violet-200">
+                                        Akses lebih cepat dari layar utama
+                                        perangkat.
+                                    </p>
+                                ) : (
+                                    <p className="mt-1 text-xs leading-5 text-violet-800 dark:text-violet-200">
+                                        Di Safari iPhone/iPad: ketuk Bagikan,
+                                        lalu pilih Tambahkan ke Layar Utama.
+                                    </p>
+                                )}
+                                {canInstall && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="mt-3"
+                                        disabled={isInstalling}
+                                        onClick={async () => {
+                                            setIsInstalling(true);
+
+                                            try {
+                                                await installStudentPwa();
+                                            } finally {
+                                                setIsInstalling(false);
+                                            }
+                                        }}
+                                    >
+                                        <Download aria-hidden="true" />
+                                        {isInstalling
+                                            ? 'Menyiapkan…'
+                                            : 'Pasang aplikasi'}
+                                    </Button>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                className="rounded-md p-1 text-violet-700 hover:bg-violet-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700 dark:text-violet-200 dark:hover:bg-violet-900"
+                                aria-label="Tutup petunjuk pemasangan aplikasi"
+                                onClick={dismissStudentPwaInstall}
+                            >
+                                <X className="size-4" aria-hidden="true" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-950 via-violet-800 to-fuchsia-700 p-5 text-white shadow-sm">
-                    <div className="absolute -right-10 -top-12 size-40 rounded-full bg-white/10" />
-                    <div className="absolute -bottom-16 right-12 size-32 rounded-full bg-fuchsia-300/10" />
+                    <div className="absolute -top-12 -right-10 size-40 rounded-full bg-white/10" />
+                    <div className="absolute right-12 -bottom-16 size-32 rounded-full bg-fuchsia-300/10" />
                     <div className="relative flex min-h-36 flex-col justify-end">
                         <img
                             src="/images/logo-sekolah.png"
                             alt=""
                             className="mb-4 size-12 object-contain"
                         />
-                        <p className="text-sm text-violet-100">Selamat datang, {firstName}</p>
-                        <h3 className="mt-1 text-xl font-semibold">Portal Siswa SMPN 17 Denpasar</h3>
-                        <p className="mt-1 text-xs text-violet-100">Belajar · Berkarya · Berkarakter</p>
+                        <p className="text-sm text-violet-100">
+                            Selamat datang, {firstName}
+                        </p>
+                        <h3 className="mt-1 text-xl font-semibold">
+                            Portal Siswa SMPN 17 Denpasar
+                        </h3>
+                        <p className="mt-1 text-xs text-violet-100">
+                            Belajar · Berkarya · Berkarakter
+                        </p>
                     </div>
                 </div>
 
                 <div>
                     <div className="mb-3 flex items-center justify-between">
                         <h3 className="font-semibold">Layanan Siswa</h3>
-                        <span className="text-xs text-muted-foreground">Segera tersedia</span>
+                        <span className="text-xs text-muted-foreground">
+                            Segera tersedia
+                        </span>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
@@ -97,7 +192,9 @@ export default function StudentDashboard({ student, rombel }: Props) {
                                 >
                                     <Icon className="size-5" />
                                 </span>
-                                <span className="text-xs font-medium">{label}</span>
+                                <span className="text-xs font-medium">
+                                    {label}
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -105,7 +202,8 @@ export default function StudentDashboard({ student, rombel }: Props) {
 
                 {!student && (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                        Akun ini belum terhubung dengan data siswa. Hubungi administrator sekolah untuk menghubungkan akun.
+                        Akun ini belum terhubung dengan data siswa. Hubungi
+                        administrator sekolah untuk menghubungkan akun.
                     </div>
                 )}
 
@@ -114,9 +212,12 @@ export default function StudentDashboard({ student, rombel }: Props) {
                         <BookOpen className="size-5" />
                     </div>
                     <div>
-                        <p className="text-sm font-medium">Satu aplikasi untuk kebutuhan siswa</p>
+                        <p className="text-sm font-medium">
+                            Satu aplikasi untuk kebutuhan siswa
+                        </p>
                         <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                            Fitur akan aktif bertahap sesuai modul yang tersedia di sistem sekolah.
+                            Fitur akan aktif bertahap sesuai modul yang tersedia
+                            di sistem sekolah.
                         </p>
                     </div>
                 </div>

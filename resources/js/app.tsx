@@ -2,13 +2,13 @@ import { createInertiaApp } from '@inertiajs/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
-import StudentAppLayout from '@/layouts/student-app-layout';
-import { registerStudentPwa } from '@/lib/register-student-pwa';
 import DashboardLayout from '@/layouts/app/dashboard-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import type { PreferenceValueMap } from '@/lib/preferences/preferences-config';
+import StudentAppLayout from '@/layouts/student-app-layout';
 import { PREFERENCE_DEFAULTS } from '@/lib/preferences/preferences-config';
+import type { PreferenceValueMap } from '@/lib/preferences/preferences-config';
+import { registerStudentPwa } from '@/lib/register-student-pwa';
 import { ThemeBootScript } from '@/scripts/theme-boot';
 import { PreferencesStoreProvider } from '@/stores/preferences/preferences-provider';
 

@@ -48,6 +48,49 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('student-app.dashboard', absolute: false));
     }
 
+    public function test_student_login_ignores_intended_admin_dashboard_url(): void
+    {
+        Role::create(['name' => 'Siswa']);
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+
+        $this->get(route('dashboard'));
+
+        $response = $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $response->assertRedirect(route('student-app.dashboard', absolute: false));
+    }
+
+    public function test_student_portal_contains_pwa_install_affordance_contract(): void
+    {
+        $dashboardSource = file_get_contents(resource_path('js/pages/student-app/dashboard.tsx'));
+        $hookSource = file_get_contents(resource_path('js/hooks/use-student-pwa-install.ts'));
+
+        $this->assertIsString($dashboardSource);
+        $this->assertIsString($hookSource);
+        $this->assertStringContainsString('Pasang aplikasi', $dashboardSource);
+        $this->assertStringContainsString('Bagikan', $dashboardSource);
+        $this->assertStringContainsString('beforeinstallprompt', $hookSource);
+        $this->assertStringContainsString('appinstalled', $hookSource);
+        $this->assertStringContainsString('localStorage', $hookSource);
+        $this->assertStringContainsString('preventDefault', $hookSource);
+    }
+
+    public function test_student_role_middleware_allows_student_app_route(): void
+    {
+        Role::create(['name' => 'Siswa']);
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+
+        $this->actingAs($user)
+            ->get(route('student-app.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('student-app/dashboard'));
+    }
+
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
     {
         $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
