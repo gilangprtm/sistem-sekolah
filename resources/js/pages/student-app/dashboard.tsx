@@ -12,7 +12,6 @@ import {
     Megaphone,
     Sparkles,
     Trophy,
-    UserRound,
     X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -59,10 +58,7 @@ function NewsSection({ news }: { news: NewsItem[] }) {
     );
 
     return (
-        <section
-            aria-labelledby="student-news-heading"
-            className="space-y-3"
-        >
+        <section aria-labelledby="student-news-heading" className="space-y-3">
             <div className="flex items-center justify-between gap-3">
                 <h3 id="student-news-heading" className="font-semibold">
                     Berita Sekolah
@@ -111,14 +107,13 @@ function NewsSection({ news }: { news: NewsItem[] }) {
                             </div>
                             <div className="space-y-2 p-3">
                                 <p className="text-xs text-muted-foreground">
-                                    {new Date(item.publishedAt).toLocaleDateString(
-                                        'id-ID',
-                                        {
-                                            day: 'numeric',
-                                            month: 'long',
-                                            year: 'numeric',
-                                        },
-                                    )}
+                                    {new Date(
+                                        item.publishedAt,
+                                    ).toLocaleDateString('id-ID', {
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric',
+                                    })}
                                 </p>
                                 <h4 className="line-clamp-2 text-sm leading-5 font-semibold">
                                     {item.title}
@@ -173,7 +168,7 @@ function NewsLoading() {
     );
 }
 
-export default function StudentDashboard({ student, rombel, news }: Props) {
+export default function StudentDashboard({ student, news }: Props) {
     const firstName = student?.full_name?.trim().split(/\s+/)[0] ?? 'Siswa';
     const { canInstall, isDismissed, isInstalled, isIos } =
         useStudentPwaInstall();
@@ -186,36 +181,6 @@ export default function StudentDashboard({ student, rombel, news }: Props) {
             <Head title="Beranda Siswa" />
 
             <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <div className="relative size-16 shrink-0 overflow-hidden rounded-full bg-violet-100 text-violet-700">
-                        {student?.photo_url ? (
-                            <img
-                                src={student.photo_url}
-                                alt={`Foto ${student.full_name}`}
-                                className="size-full object-cover"
-                            />
-                        ) : (
-                            <div className="grid size-full place-items-center">
-                                <UserRound className="size-7" aria-hidden="true" />
-                            </div>
-                        )}
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-sm text-muted-foreground">Halo,</p>
-                        <h2 className="truncate text-xl font-semibold tracking-tight">
-                            {student?.full_name ?? 'Siswa'}
-                        </h2>
-                        <p className="truncate text-xs text-muted-foreground">
-                            {[
-                                rombel,
-                                student?.nis ? `NIS ${student.nis}` : null,
-                            ]
-                                .filter(Boolean)
-                                .join(' · ') || 'Portal Siswa'}
-                        </p>
-                    </div>
-                </div>
-
                 {showInstallPrompt && (
                     <div
                         className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-violet-950 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-100"
@@ -307,7 +272,7 @@ export default function StudentDashboard({ student, rombel, news }: Props) {
                             Portal Siswa SMPN 17 Denpasar
                         </h3>
                         <p className="mt-1 text-xs text-violet-100">
-                            Belajar · Berkarya · Berkarakter
+                            Vidyayā Vindate Khīrtim
                         </p>
                     </div>
                 </div>

@@ -26,6 +26,18 @@ export default function StudentAppLayout({
     const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {
+        const root = document.documentElement;
+        const body = document.body;
+        root.classList.add('student-app-active');
+        body.classList.add('student-app-active');
+
+        return () => {
+            root.classList.remove('student-app-active');
+            body.classList.remove('student-app-active');
+        };
+    }, []);
+
+    useEffect(() => {
         const removeStartListener = router.on('start', () => {
             setIsNavigating(true);
         });
@@ -41,7 +53,7 @@ export default function StudentAppLayout({
 
     return (
         <div className="min-h-dvh bg-muted/30">
-            <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-background shadow-sm">
+            <div className="student-app-scroll-container mx-auto flex h-dvh max-h-dvh min-h-dvh w-full max-w-lg flex-col overflow-y-auto bg-background shadow-sm">
                 {isNavigating && (
                     <div
                         className="fixed inset-x-0 top-0 z-[60] mx-auto h-1 max-w-lg overflow-hidden bg-violet-100"

@@ -202,6 +202,27 @@
     .no-scrollbar::-webkit-scrollbar {
         display: none;
     }
+
+    .student-app-scroll-container {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .student-app-scroll-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    html.student-app-active,
+    body.student-app-active {
+        overflow: hidden;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    html.student-app-active::-webkit-scrollbar,
+    body.student-app-active::-webkit-scrollbar {
+        display: none;
+    }
 }
 
 /* Font overrides — target :root so they beat @theme inline's :root rules */

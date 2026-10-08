@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
 use App\Models\Rombel;
+use App\Models\ScheduleCustomSlot;
 use App\Models\ScheduleEntry;
 use App\Models\SchedulePlan;
 use App\Models\Student;
@@ -89,6 +90,15 @@ class StudentAppScheduleTest extends TestCase
             'payload_hash' => hash('sha256', 'student-schedule'),
             'published_at' => now(),
         ]);
+        ScheduleCustomSlot::query()->create([
+            'schedule_plan_id' => $plan->id,
+            'academic_period_id' => $period->id,
+            'day' => 'friday',
+            'lesson_number' => 6,
+            'start_time' => '11:30',
+            'end_time' => '12:10',
+            'label' => 'Kegiatan Jumat',
+        ]);
         $entry = ScheduleEntry::query()->create([
             'schedule_plan_id' => $plan->id,
             'teaching_assignment_id' => $this->createTeachingAssignment($plan, $period, $rombel, $subject, $teacher, $teacherSubject)->id,
@@ -105,7 +115,6 @@ class StudentAppScheduleTest extends TestCase
             'teacher_name' => 'Guru Jadwal',
             'rombel_code' => 'VII-A',
         ]);
-
         $this->actingAs($user)
             ->get(route('student-app.schedule'))
             ->assertOk()
@@ -116,11 +125,83 @@ class StudentAppScheduleTest extends TestCase
                 ->where('days.0.key', 'monday')
                 ->where('days.0.entries.0.id', $entry->id)
                 ->where('days.0.entries.0.subjectName', 'Matematika')
-                ->where('days.0.entries.0.teacherName', 'Guru Jadwal'));
+                ->where('days.0.entries', fn ($entries) => count($entries) === 1)
+                ->where('days.0.entries.0.teacherName', 'Guru Jadwal')
+                ->has('days.0.rows', 11)
+                ->where('days.0.rows.6.type', 'lesson')
+                ->where('days.0.rows.6.start', '11:10')
+                ->where('days.0.rows.7.type', 'break')
+                ->where('days.0.rows.7.start', '11:50')
+                ->has('days.4.rows', 9)
+                ->where('days.4.rows.6.type', 'break')
+                ->where('days.4.rows.6.start', '11:10')
+                ->where('days.4.rows.7.type', 'custom')
+                ->where('days.4.rows.7.label', 'Kegiatan Jumat')
+                ->where('days.4.rows.7.start', '11:30')
+                ->where('days.4.rows.7.end', '12:10'));
+
+        $source = file_get_contents(resource_path('js/pages/student-app/schedule.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString('Jam Pelajaran', $source);
+        $this->assertStringContainsString('Waktu', $source);
+        $this->assertStringContainsString('min-w-[520px]', $source);
+        $this->assertStringContainsString('selectedDayKey', $source);
+        $this->assertStringContainsString('setSelectedDayKey', $source);
+        $this->assertStringContainsString('Pilih hari jadwal', $source);
+        $this->assertStringContainsString('selectedDay.rows.map', $source);
+        $this->assertStringContainsString('selectedDay.entries.filter', $source);
+        $this->assertStringContainsString('role="tablist"', $source);
+        $this->assertStringContainsString('role="tab"', $source);
+        $this->assertStringContainsString('aria-selected={isSelected}', $source);
+        $this->assertStringContainsString('grid-cols-5', $source);
+        $this->assertStringContainsString('h-12 min-h-12 w-full grid-cols-5 items-stretch gap-1', $source);
+        $this->assertStringContainsString('overflow-hidden rounded-lg border', $source);
+        $this->assertStringContainsString('h-full min-h-10 w-full min-w-0', $source);
+        $this->assertStringContainsString('px-1 py-2 text-center', $source);
+        $this->assertStringContainsString('w-32 min-w-32 border-r', $source);
+        $this->assertStringContainsString('entry.subjectCode !==', $source);
+        $this->assertStringContainsString('entry.subjectName', $source);
+        $this->assertStringContainsString('focus-visible:ring-2', $source);
+        $this->assertStringNotContainsString('timetableRows', $source);
+        $this->assertStringNotContainsString('configuredRows', $source);
+        $this->assertStringNotContainsString('configuredTimes', $source);
+        $this->assertStringContainsString('Jam Pelajaran', $source);
+        $this->assertStringContainsString('Waktu', $source);
+        $this->assertStringNotContainsString('>Hari<', $source);
+        $this->assertStringNotContainsString('>Kelas<', $source);
 
         $this->assertDatabaseMissing('tr_curriculum_schedule_entries', [
             'rombel_id' => $otherRombel->id,
         ]);
+    }
+
+    public function test_duplicate_identical_entries_are_deduplicated_per_day_and_slot(): void
+    {
+        $entry = new ScheduleEntry([
+            'id' => 1,
+            'day' => 'monday',
+            'lesson_number' => 1,
+            'start_time' => '07:30',
+            'end_time' => '08:10',
+            'subject_code' => 'IPA',
+            'subject_name' => 'Ilmu Pengetahuan Alam',
+            'teacher_name' => 'Guru IPA',
+        ]);
+        $duplicate = new ScheduleEntry($entry->getAttributes());
+        $distinctSubject = new ScheduleEntry([
+            ...$entry->getAttributes(),
+            'id' => 2,
+            'subject_code' => 'IPS',
+            'subject_name' => 'Ilmu Pengetahuan Sosial',
+        ]);
+        $controller = app(\App\Http\Controllers\StudentApp\ScheduleController::class);
+        $method = new \ReflectionMethod($controller, 'groupEntriesByDay');
+
+        $days = $method->invoke($controller, collect([$entry, $duplicate, $distinctSubject]), collect());
+
+        $this->assertCount(2, $days[0]['entries']);
+        $this->assertSame(['IPA', 'IPS'], array_column($days[0]['entries'], 'subjectCode'));
+        $this->assertSame('break', $days[0]['rows'][3]['type']);
     }
 
     private function createTeachingAssignment(
