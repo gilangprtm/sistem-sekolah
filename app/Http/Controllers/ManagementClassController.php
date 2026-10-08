@@ -84,6 +84,21 @@ class ManagementClassController extends Controller
             }
         }
 
+        $lookupPerPage = min(max($request->integer('lookup_per_page', 10), 1), 50);
+        $lookupSearch = $request->string('lookup_search')->trim()->toString();
+        $studentLookup = Student::query()
+            ->where('status', 'active')
+            ->when($lookupSearch !== '', function ($query) use ($lookupSearch): void {
+                $query->where(function ($studentQuery) use ($lookupSearch): void {
+                    $studentQuery
+                        ->where('full_name', 'like', "%{$lookupSearch}%")
+                        ->orWhere('nis', 'like', "%{$lookupSearch}%");
+                });
+            })
+            ->orderBy('full_name')
+            ->paginate($lookupPerPage, ['id', 'nis', 'full_name'], 'lookup_page')
+            ->withQueryString();
+
         return Inertia::render('management-class/manage', [
             'years' => $years,
             'selectedYear' => $selectedYear,
@@ -93,7 +108,8 @@ class ManagementClassController extends Controller
             'registeredRombelIds' => $registeredRombelIds,
             'selectedStudents' => $selectedStudents,
             'availableRombels' => $availableRombels,
-            'students' => Student::query()->where('status', 'active')->orderBy('full_name')->get(['id', 'nis', 'full_name']),
+            'studentLookup' => $studentLookup,
+            'lookupFilters' => ['search' => $lookupSearch],
             'teachers' => Teacher::query()->where('status', 'active')->where('staff_type', 'guru')->orderBy('full_name')->get(['id', 'full_name']),
         ]);
     }
@@ -297,7 +313,12 @@ class ManagementClassController extends Controller
             throw $exception;
         }
 
-        return back()->with('success', 'Manajemen kelas berhasil diperbarui.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Manajemen kelas berhasil diperbarui.',
+        ]);
+
+        return back();
     }
 
     public function storeStudent(Request $request): RedirectResponse

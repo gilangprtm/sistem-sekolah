@@ -1,34 +1,16 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import {
-    ChevronsLeft,
-    ChevronsRight,
-    CreditCard,
-    Printer,
-    Search,
-    UserRound,
-} from 'lucide-react';
+import { CreditCard, Printer, Search, UserRound } from 'lucide-react';
 import { useState } from 'react';
+import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
+import DataTablePagination from '@/components/data-table/data-table-pagination';
+import DataTableShell from '@/components/data-table/data-table-shell';
+import DataTableToolbar from '@/components/data-table/data-table-toolbar';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -78,22 +60,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Kartu Pelajar', href: '/students/cards' },
 ];
 
-function getPageNumbers(currentPage: number, pageCount: number) {
-    if (pageCount <= 3) {
-        return Array.from({ length: pageCount }, (_, index) => index + 1);
-    }
-
-    if (currentPage <= 2) {
-        return [1, 2, 3];
-    }
-
-    if (currentPage >= pageCount - 1) {
-        return [pageCount - 2, pageCount - 1, pageCount];
-    }
-
-    return [currentPage - 1, currentPage, currentPage + 1];
-}
-
 export default function StudentCards({
     students,
     filters,
@@ -111,10 +77,7 @@ export default function StudentCards({
     const [tahunAngkatan, setTahunAngkatan] = useState(
         filters.tahun_angkatan ?? '',
     );
-    const pageNumbers = getPageNumbers(
-        students.current_page,
-        students.last_page,
-    );
+    const [selected, setSelected] = useState<number[]>([]);
 
     const filterParams = (): Record<string, string> => {
         const params: Record<string, string> = {};
@@ -261,15 +224,45 @@ export default function StudentCards({
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                    <div className="border-b px-4 py-4 text-sm text-muted-foreground">
-                        Menampilkan {students.data.length} dari {students.total}{' '}
-                        siswa.
-                    </div>
+                <DataTableShell>
+                    <DataTableToolbar>
+                        <div className="text-sm text-muted-foreground">
+                            {selected.length} dari {students.total} baris
+                            dipilih.
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelected([])}
+                            disabled={!selected.length}
+                        >
+                            Hapus pilihan
+                        </Button>
+                    </DataTableToolbar>
                     <div className="overflow-x-auto">
                         <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={
+                                                students.data.length > 0 &&
+                                                selected.length ===
+                                                    students.data.length
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setSelected(
+                                                    checked
+                                                        ? students.data.map(
+                                                              (student) =>
+                                                                  student.id,
+                                                          )
+                                                        : [],
+                                                )
+                                            }
+                                            aria-label="Pilih semua siswa"
+                                        />
+                                    </TableHead>
                                     <TableHead>Nama</TableHead>
                                     <TableHead>NIS</TableHead>
                                     <TableHead>Angkatan</TableHead>
@@ -284,6 +277,28 @@ export default function StudentCards({
                             <TableBody>
                                 {students.data.map((student) => (
                                     <TableRow key={student.id}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selected.includes(
+                                                    student.id,
+                                                )}
+                                                onCheckedChange={(checked) =>
+                                                    setSelected((current) =>
+                                                        checked
+                                                            ? [
+                                                                  ...current,
+                                                                  student.id,
+                                                              ]
+                                                            : current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      student.id,
+                                                              ),
+                                                    )
+                                                }
+                                                aria-label={`Pilih siswa ${student.full_name}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {student.full_name}
                                         </TableCell>
@@ -326,192 +341,31 @@ export default function StudentCards({
                                     </TableRow>
                                 ))}
                                 {students.data.length === 0 && (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={7}
-                                            className="text-center text-muted-foreground"
-                                        >
-                                            <div className="flex flex-col items-center gap-2 py-8">
-                                                <UserRound className="h-8 w-8 text-muted-foreground/50" />
-                                                Belum ada data siswa untuk
-                                                dicetak.
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
+                                    <DataTableEmptyState
+                                        colSpan={8}
+                                        icon={
+                                            <UserRound className="h-8 w-8 text-muted-foreground/50" />
+                                        }
+                                    >
+                                        Belum ada data siswa untuk dicetak.
+                                    </DataTableEmptyState>
                                 )}
                             </TableBody>
                         </Table>
                     </div>
-                    <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm font-medium text-muted-foreground">
-                            Halaman {students.current_page} dari{' '}
-                            {students.last_page}
-                        </div>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-muted-foreground">
-                                    Baris per halaman
-                                </span>
-                                <Select
-                                    value={`${students.per_page}`}
-                                    onValueChange={(value) =>
-                                        navigate({
-                                            ...filterParams(),
-                                            page: 1,
-                                            per_page: value,
-                                        })
-                                    }
-                                >
-                                    <SelectTrigger className="h-8 w-18">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {[10, 20, 30, 40, 50].map((size) => (
-                                            <SelectItem
-                                                key={size}
-                                                value={`${size}`}
-                                            >
-                                                {size}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {students.last_page > 1 && (
-                                <Pagination className="mx-0 w-auto justify-start sm:justify-end">
-                                    <PaginationContent className="gap-1">
-                                        <PaginationItem className="hidden lg:block">
-                                            <PaginationLink
-                                                href="#"
-                                                aria-label="Halaman pertama"
-                                                className={
-                                                    students.current_page === 1
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : undefined
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-
-                                                    if (
-                                                        students.current_page >
-                                                        1
-                                                    ) {
-                                                        goToPage(1);
-                                                    }
-                                                }}
-                                            >
-                                                <ChevronsLeft />
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                        <PaginationItem>
-                                            <PaginationPrevious
-                                                href="#"
-                                                text="Prev"
-                                                className={
-                                                    students.current_page === 1
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : undefined
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-
-                                                    if (
-                                                        students.current_page >
-                                                        1
-                                                    ) {
-                                                        goToPage(
-                                                            students.current_page -
-                                                                1,
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                        </PaginationItem>
-                                        {pageNumbers[0] > 1 && (
-                                            <PaginationItem>
-                                                <PaginationEllipsis />
-                                            </PaginationItem>
-                                        )}
-                                        {pageNumbers.map((page) => (
-                                            <PaginationItem key={page}>
-                                                <PaginationLink
-                                                    href="#"
-                                                    isActive={
-                                                        page ===
-                                                        students.current_page
-                                                    }
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
-                                                        goToPage(page);
-                                                    }}
-                                                >
-                                                    {page}
-                                                </PaginationLink>
-                                            </PaginationItem>
-                                        ))}
-                                        {pageNumbers[pageNumbers.length - 1] <
-                                            students.last_page && (
-                                            <PaginationItem>
-                                                <PaginationEllipsis />
-                                            </PaginationItem>
-                                        )}
-                                        <PaginationItem>
-                                            <PaginationNext
-                                                href="#"
-                                                text="Next"
-                                                className={
-                                                    students.current_page ===
-                                                    students.last_page
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : undefined
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-
-                                                    if (
-                                                        students.current_page <
-                                                        students.last_page
-                                                    ) {
-                                                        goToPage(
-                                                            students.current_page +
-                                                                1,
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                        </PaginationItem>
-                                        <PaginationItem className="hidden lg:block">
-                                            <PaginationLink
-                                                href="#"
-                                                aria-label="Halaman terakhir"
-                                                className={
-                                                    students.current_page ===
-                                                    students.last_page
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : undefined
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-
-                                                    if (
-                                                        students.current_page <
-                                                        students.last_page
-                                                    ) {
-                                                        goToPage(
-                                                            students.last_page,
-                                                        );
-                                                    }
-                                                }}
-                                            >
-                                                <ChevronsRight />
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                    </PaginationContent>
-                                </Pagination>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                    <DataTablePagination
+                        resource={students}
+                        noun="siswa"
+                        onPageChange={goToPage}
+                        onPerPageChange={(perPage) =>
+                            navigate({
+                                ...filterParams(),
+                                page: 1,
+                                per_page: perPage,
+                            })
+                        }
+                    />
+                </DataTableShell>
             </div>
         </AppLayout>
     );

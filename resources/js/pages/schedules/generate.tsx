@@ -702,12 +702,15 @@ export default function ScheduleGenerate({
                     <DialogHeader>
                         <DialogTitle>Hapus jadwal jenjang?</DialogTitle>
                         <DialogDescription>
-                            Jadwal {grade} pada periode ini akan dihapus permanen.
-                            Tindakan ini tidak dapat dibatalkan.
+                            Jadwal {grade} pada periode ini akan dihapus
+                            permanen. Tindakan ini tidak dapat dibatalkan.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteOpen(false)}
+                        >
                             Batal
                         </Button>
                         <Button
@@ -728,7 +731,7 @@ export default function ScheduleGenerate({
                 </DialogContent>
             </Dialog>
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-w-4xl">
+                <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-hidden sm:!max-w-4xl">
                     <DialogHeader>
                         <DialogTitle>Rancang Pembagian Jadwal</DialogTitle>
                         <DialogDescription>

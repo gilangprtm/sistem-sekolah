@@ -97,5 +97,13 @@ class RombelManagementTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('Guru');
         $this->actingAs($user)->get('/rombels')->assertForbidden();
+
+        $source = file_get_contents(resource_path('js/pages/rombels/index.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString("import { Checkbox } from '@/components/ui/checkbox';", $source);
+        $this->assertStringContainsString("import DataTableToolbar from '@/components/data-table/data-table-toolbar';", $source);
+        $this->assertStringContainsString('aria-label="Pilih semua rombel"', $source);
+        $this->assertStringContainsString('Hapus pilihan', $source);
+        $this->assertStringContainsString('colSpan={6}', $source);
     }
 }

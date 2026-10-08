@@ -5,9 +5,11 @@ import DataTableEmptyState from '@/components/data-table/data-table-empty-state'
 import DataTablePagination from '@/components/data-table/data-table-pagination';
 import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
+import DataTableToolbar from '@/components/data-table/data-table-toolbar';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -66,6 +68,7 @@ export default function ManagementClass({
             selectedYear?.id.toString() ??
             '',
     );
+    const [selected, setSelected] = useState<number[]>([]);
 
     const filterParams = (): Record<string, string> => {
         const params: Record<string, string> = {};
@@ -120,8 +123,8 @@ export default function ManagementClass({
                 </div>
 
                 <div className="grid gap-4 rounded-xl border p-4">
-                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-5">
+                    <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-end">
+                        <div className="grid w-full flex-1 gap-2">
                             <Label htmlFor="management-class-search">
                                 Search
                             </Label>
@@ -143,7 +146,7 @@ export default function ManagementClass({
                                 />
                             </div>
                         </div>
-                        <div className="grid gap-2 md:col-span-4">
+                        <div className="grid w-full gap-2 md:w-80">
                             <Label>Tahun Ajaran</Label>
                             <SearchableCombobox
                                 value={yearId}
@@ -160,7 +163,7 @@ export default function ManagementClass({
                                 emptyMessage="Tahun Ajaran tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="flex w-full gap-2 md:w-auto">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset
@@ -170,10 +173,43 @@ export default function ManagementClass({
                 </div>
 
                 <DataTableShell>
+                    <DataTableToolbar>
+                        <div className="text-sm text-muted-foreground">
+                            {selected.length} dari {classes.total} baris
+                            dipilih.
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelected([])}
+                            disabled={!selected.length}
+                        >
+                            Hapus pilihan
+                        </Button>
+                    </DataTableToolbar>
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={
+                                                classes.data.length > 0 &&
+                                                selected.length ===
+                                                    classes.data.length
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setSelected(
+                                                    checked
+                                                        ? classes.data.map(
+                                                              (item) => item.id,
+                                                          )
+                                                        : [],
+                                                )
+                                            }
+                                            aria-label="Pilih semua kelas"
+                                        />
+                                    </TableHead>
                                     <TableHead>Rombel</TableHead>
                                     <TableHead>Tingkat</TableHead>
                                     <TableHead>Jumlah Siswa</TableHead>
@@ -186,6 +222,28 @@ export default function ManagementClass({
                             <TableBody>
                                 {classes.data.map((item) => (
                                     <TableRow key={item.id}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selected.includes(
+                                                    item.id,
+                                                )}
+                                                onCheckedChange={(checked) =>
+                                                    setSelected((current) =>
+                                                        checked
+                                                            ? [
+                                                                  ...current,
+                                                                  item.id,
+                                                              ]
+                                                            : current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      item.id,
+                                                              ),
+                                                    )
+                                                }
+                                                aria-label={`Pilih kelas ${item.rombel.name}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {item.rombel.code}
                                         </TableCell>
@@ -216,8 +274,8 @@ export default function ManagementClass({
                                     </TableRow>
                                 ))}
                                 {classes.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={5}>
-                                        Tidak ada data kelas.
+                                    <DataTableEmptyState colSpan={6}>
+                                        Belum ada data kelas.
                                     </DataTableEmptyState>
                                 )}
                             </TableBody>

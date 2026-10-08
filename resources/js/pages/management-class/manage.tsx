@@ -6,7 +6,7 @@ import {
     Trash2,
     UsersRound,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
@@ -31,6 +31,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useFlashToast } from '@/hooks/use-flash-toast';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -51,6 +52,13 @@ type ClassRow = {
     homeroom_assignments?: { teacher?: Teacher }[];
     homeroomAssignments?: { teacher?: Teacher }[];
 };
+type StudentLookup = {
+    data: Student[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+};
 type Props = {
     years: Year[];
     selectedYear: Year | null;
@@ -60,7 +68,8 @@ type Props = {
     availableRombels: Rombel[];
     registeredRombelIds: number[];
     selectedStudents: Student[];
-    students: Student[];
+    studentLookup: StudentLookup;
+    lookupFilters: { search: string };
     teachers: Teacher[];
 };
 
@@ -78,9 +87,12 @@ export default function ManagementClassManage({
     availableRombels,
     registeredRombelIds,
     selectedStudents,
-    students,
+    studentLookup,
+    lookupFilters,
     teachers,
 }: Props) {
+    useFlashToast();
+
     const currentTeacher = selectedTeacher;
     const [rombelId, setRombelId] = useState(
         selectedRombelId?.toString() ??
@@ -101,58 +113,31 @@ export default function ManagementClassManage({
         ),
     );
     const [lookupSelectedIds, setLookupSelectedIds] = useState<number[]>([]);
-    const [lookupSearch, setLookupSearch] = useState('');
+    const [lookupSearch, setLookupSearch] = useState(lookupFilters.search);
     const [lookupOpen, setLookupOpen] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
 
-    const selectedStudentRows = useMemo(
-        () =>
-            selectedStudentIds
-                .map((id) => selectedStudentDetails[id])
-                .filter(Boolean),
-        [selectedStudentDetails, selectedStudentIds],
-    );
-    useEffect(() => {
-        // Inertia can preserve this page instance while replacing server props.
-        // Sync the editable form with the newly selected class context.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setRombelId(
-            selectedRombelId?.toString() ??
-                selectedClass?.rombel_id.toString() ??
-                '',
-        );
-        setTeacherId(currentTeacher?.id.toString() ?? '');
-        setSelectedStudentIds(selectedStudents.map((student) => student.id));
-        setSelectedStudentDetails(
-            Object.fromEntries(
-                selectedStudents.map((student) => [student.id, student]),
-            ),
-        );
-        setErrors({});
-    }, [
-        currentTeacher?.id,
-        selectedClass?.rombel_id,
-        selectedRombelId,
-        selectedStudents,
-    ]);
+    const selectedStudentRows = selectedStudentIds
+        .map((id) => selectedStudentDetails[id])
+        .filter(Boolean);
 
     const selectedRombelAlreadyRegistered = registeredRombelIds.includes(
         Number(rombelId),
     );
-    const filteredStudents = useMemo(() => {
-        const query = lookupSearch.trim().toLowerCase();
-
-        if (!query) {
-            return students;
-        }
-
-        return students.filter((student) =>
-            [student.full_name, student.nis ?? ''].some((value) =>
-                value.toLowerCase().includes(query),
-            ),
+    const lookupStudents = (page = 1) => {
+        router.get(
+            '/management-class/manage',
+            {
+                academic_year_id: selectedYear?.id,
+                rombel_id: rombelId ? Number(rombelId) : undefined,
+                lookup_search: lookupSearch.trim() || undefined,
+                lookup_page: page,
+                lookup_per_page: studentLookup.per_page,
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
         );
-    }, [lookupSearch, students]);
+    };
 
     const openLookup = () => {
         setLookupSelectedIds(selectedStudentIds);
@@ -416,7 +401,10 @@ export default function ManagementClassManage({
                         <Button
                             onClick={submit}
                             disabled={
-                                processing || !selectedClass || !teacherId
+                                processing ||
+                                !selectedYear ||
+                                !rombelId ||
+                                !teacherId
                             }
                         >
                             {processing ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -443,11 +431,23 @@ export default function ManagementClassManage({
                                     onChange={(event) =>
                                         setLookupSearch(event.target.value)
                                     }
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            lookupStudents();
+                                        }
+                                    }}
                                     placeholder="Cari NIS atau nama siswa..."
                                     className="pl-8"
                                     aria-label="Cari siswa dalam lookup"
                                 />
                             </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => lookupStudents()}
+                            >
+                                Cari
+                            </Button>
                         </div>
                         <div className="max-h-[55vh] overflow-auto rounded-xl border">
                             <Table>
@@ -461,7 +461,7 @@ export default function ManagementClassManage({
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredStudents.map((student) => (
+                                    {studentLookup.data.map((student) => (
                                         <TableRow key={student.id}>
                                             <TableCell>
                                                 <Checkbox
@@ -487,7 +487,7 @@ export default function ManagementClassManage({
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {filteredStudents.length === 0 && (
+                                    {studentLookup.data.length === 0 && (
                                         <TableRow>
                                             <TableCell
                                                 colSpan={3}
@@ -499,6 +499,47 @@ export default function ManagementClassManage({
                                     )}
                                 </TableBody>
                             </Table>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span>
+                            Menampilkan {studentLookup.data.length} dari{' '}
+                            {studentLookup.total} siswa.
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={studentLookup.current_page <= 1}
+                                onClick={() =>
+                                    lookupStudents(
+                                        studentLookup.current_page - 1,
+                                    )
+                                }
+                            >
+                                Sebelumnya
+                            </Button>
+                            <span>
+                                Halaman {studentLookup.current_page} /{' '}
+                                {studentLookup.last_page}
+                            </span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                    studentLookup.current_page >=
+                                    studentLookup.last_page
+                                }
+                                onClick={() =>
+                                    lookupStudents(
+                                        studentLookup.current_page + 1,
+                                    )
+                                }
+                            >
+                                Berikutnya
+                            </Button>
                         </div>
                     </div>
                     <DialogFooter>

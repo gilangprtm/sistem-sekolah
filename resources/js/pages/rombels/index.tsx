@@ -5,10 +5,12 @@ import DataTableEmptyState from '@/components/data-table/data-table-empty-state'
 import DataTablePagination from '@/components/data-table/data-table-pagination';
 import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
+import DataTableToolbar from '@/components/data-table/data-table-toolbar';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -59,6 +61,7 @@ export default function RombelsIndex({
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
+    const [selected, setSelected] = useState<number[]>([]);
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Rombel | null>(null);
     const [form, setForm] = useState({
@@ -194,10 +197,44 @@ export default function RombelsIndex({
                     </div>
                 </div>
                 <DataTableShell>
+                    <DataTableToolbar>
+                        <div className="text-sm text-muted-foreground">
+                            {selected.length} dari {rombels.total} baris
+                            dipilih.
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelected([])}
+                            disabled={!selected.length}
+                        >
+                            Hapus pilihan
+                        </Button>
+                    </DataTableToolbar>
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={
+                                                rombels.data.length > 0 &&
+                                                selected.length ===
+                                                    rombels.data.length
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setSelected(
+                                                    checked
+                                                        ? rombels.data.map(
+                                                              (rombel) =>
+                                                                  rombel.id,
+                                                          )
+                                                        : [],
+                                                )
+                                            }
+                                            aria-label="Pilih semua rombel"
+                                        />
+                                    </TableHead>
                                     <TableHead>Kode</TableHead>
                                     <TableHead>Nama</TableHead>
                                     <TableHead>Tingkat</TableHead>
@@ -210,6 +247,28 @@ export default function RombelsIndex({
                             <TableBody>
                                 {rombels.data.map((rombel) => (
                                     <TableRow key={rombel.id}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selected.includes(
+                                                    rombel.id,
+                                                )}
+                                                onCheckedChange={(checked) =>
+                                                    setSelected((current) =>
+                                                        checked
+                                                            ? [
+                                                                  ...current,
+                                                                  rombel.id,
+                                                              ]
+                                                            : current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      rombel.id,
+                                                              ),
+                                                    )
+                                                }
+                                                aria-label={`Pilih rombel ${rombel.name}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium">
                                             {rombel.code}
                                         </TableCell>
@@ -257,7 +316,7 @@ export default function RombelsIndex({
                                     </TableRow>
                                 ))}
                                 {rombels.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={5}>
+                                    <DataTableEmptyState colSpan={6}>
                                         Tidak ada data rombel.
                                     </DataTableEmptyState>
                                 )}

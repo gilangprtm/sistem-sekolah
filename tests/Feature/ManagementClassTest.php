@@ -110,6 +110,69 @@ class ManagementClassTest extends TestCase
             ->assertOk();
     }
 
+    public function test_manage_page_allows_new_class_flow_without_selected_class_prop(): void
+    {
+        $year = $this->year();
+        $rombel = Rombel::factory()->create(['status' => 'active']);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $admin = $this->admin();
+
+        $response = $this->actingAs($admin)
+            ->get('/management-class/manage?academic_year_id='.$year->id.'&rombel_id='.$rombel->id);
+
+        $response->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('management-class/manage')
+                ->where('selectedClass', null)
+                ->where('selectedYear.id', $year->id)
+                ->where('selectedRombelId', $rombel->id)
+                ->where('teachers.0.id', $teacher->id));
+
+        $source = file_get_contents(resource_path('js/pages/management-class/manage.tsx'));
+        $this->assertStringContainsString('!selectedYear', $source);
+        $this->assertStringContainsString('!rombelId', $source);
+        $this->assertStringContainsString('!teacherId', $source);
+        $this->assertStringNotContainsString('!selectedClass || !teacherId', $source);
+    }
+
+    public function test_manage_student_lookup_is_bounded_and_searchable(): void
+    {
+        $year = $this->year();
+        $admin = $this->admin();
+        Student::factory()->count(3)->create(['status' => 'active']);
+        Student::factory()->create([
+            'status' => 'inactive',
+            'full_name' => 'Inactive Student',
+            'nis' => 'INACTIVE-001',
+        ]);
+        Student::factory()->create([
+            'status' => 'active',
+            'full_name' => 'Target Student',
+            'nis' => 'TARGET-001',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get('/management-class/manage?academic_year_id='.$year->id.'&lookup_search=TARGET&lookup_per_page=1');
+
+        $response->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('management-class/manage')
+                ->missing('students')
+                ->where('lookupFilters.search', 'TARGET')
+                ->where('studentLookup.total', 1)
+                ->where('studentLookup.per_page', 1)
+                ->where('studentLookup.data.0.full_name', 'Target Student'));
+
+        $source = file_get_contents(resource_path('js/pages/management-class/manage.tsx'));
+        $this->assertStringContainsString('const confirmStudents = () =>', $source);
+        $this->assertStringContainsString('setSelectedStudentIds(lookupSelectedIds)', $source);
+        $this->assertStringContainsString(
+            "{ preserveState: true, preserveScroll: true, replace: true }",
+            $source,
+        );
+        $this->assertStringNotContainsString('useEffect', $source);
+    }
+
     public function test_class_promotion_moves_all_students_from_vii_to_viii_and_viii_to_ix_by_parallel_code(): void
     {
         $year = $this->year();
@@ -423,7 +486,7 @@ class ManagementClassTest extends TestCase
         $this->assertStringContainsString('Sudah terdaftar', $source);
         $this->assertStringContainsString('Kelas ini sudah terdaftar', $source);
         $this->assertStringContainsString('yang dipilih', $source);
-        $this->assertStringContainsString('useEffect', $source);
+        $this->assertStringContainsString('useState', $source);
     }
 
     public function test_admin_can_update_class_wali_and_students_atomically(): void
@@ -445,7 +508,14 @@ class ManagementClassTest extends TestCase
             'rombel_id' => $rombel->id,
             'teacher_id' => $teachers[1]->id,
             'student_ids' => [$students[1]->id],
-        ])->assertRedirect();
+        ])->assertRedirect()
+            ->assertSessionHas('inertia.flash_data.toast.type', 'success')
+            ->assertSessionHas('inertia.flash_data.toast.message', 'Manajemen kelas berhasil diperbarui.');
+
+        $source = file_get_contents(resource_path('js/pages/management-class/manage.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString("import { useFlashToast } from '@/hooks/use-flash-toast';", $source);
+        $this->assertStringContainsString('useFlashToast();', $source);
 
         $this->assertDatabaseHas('tr_curriculum_homeroom_assignments', [
             'academic_year_id' => $year->id,
@@ -537,6 +607,12 @@ class ManagementClassTest extends TestCase
         $this->assertStringContainsString('Edit', $table);
         $this->assertStringContainsString('/management-class/manage?academic_year_id=', $table);
         $this->assertStringContainsString('rombel_id=${item.rombel_id}', $table);
+        $this->assertStringContainsString("import DataTableToolbar from '@/components/data-table/data-table-toolbar';", $table);
+        $this->assertStringContainsString("import { Checkbox } from '@/components/ui/checkbox';", $table);
+        $this->assertStringContainsString('<DataTableToolbar>', $table);
+        $this->assertStringContainsString('setSelected([])', $table);
+        $this->assertStringContainsString('aria-label="Pilih semua kelas"', $table);
+        $this->assertStringContainsString('Belum ada data kelas.', $table);
     }
 
     public function test_management_class_mutations_require_curriculum_update_permission(): void

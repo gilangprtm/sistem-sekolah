@@ -134,6 +134,11 @@ class StudentCardTest extends TestCase
         $this->assertIsString($cardSource);
         $this->assertStringNotContainsString('Kartu Pelajar', $masterSource);
         $this->assertStringContainsString('href={`/students/cards/${student.id}`}', $cardsSource);
+        $this->assertStringContainsString("import { Checkbox } from '@/components/ui/checkbox';", $cardsSource);
+        $this->assertStringContainsString("import DataTableToolbar from '@/components/data-table/data-table-toolbar';", $cardsSource);
+        $this->assertStringContainsString('aria-label="Pilih semua siswa"', $cardsSource);
+        $this->assertStringContainsString('Hapus pilihan', $cardsSource);
+        $this->assertStringContainsString('colSpan={8}', $cardsSource);
         $this->assertStringContainsString('href="/students/cards"', $cardSource);
         $this->assertStringContainsString('downloadCardImage', $cardSource);
         $this->assertStringContainsString('link.download = fileNameForStudent(student.full_name)', $cardSource);

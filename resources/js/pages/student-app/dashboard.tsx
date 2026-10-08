@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Deferred, Head } from '@inertiajs/react';
 import {
     ArrowUpRight,
     Award,
@@ -27,16 +27,17 @@ type NewsItem = {
     id: number;
     title: string;
     excerpt: string;
-    imageUrl: string;
+    imageUrl: string | null;
     publishedAt: string;
     url: string;
 };
 
 type Props = {
-    news: NewsItem[];
+    news?: NewsItem[];
     student: {
         full_name: string;
         nis: string | null;
+        photo_url: string | null;
     } | null;
     rombel: string | null;
 };
@@ -48,10 +49,129 @@ const menuItems = [
     { label: 'Presensi', icon: Bell },
     { label: 'Perpustakaan', icon: Library },
     { label: 'Pengumuman', icon: Megaphone },
-    { label: 'Profil', icon: UserRound },
     { label: 'Prestasi', icon: Trophy },
     { label: 'Ekstrakurikuler', icon: Sparkles },
 ];
+
+function NewsSection({ news }: { news: NewsItem[] }) {
+    const [failedNewsImages, setFailedNewsImages] = useState<Set<number>>(
+        () => new Set(),
+    );
+
+    return (
+        <section
+            aria-labelledby="student-news-heading"
+            className="space-y-3"
+        >
+            <div className="flex items-center justify-between gap-3">
+                <h3 id="student-news-heading" className="font-semibold">
+                    Berita Sekolah
+                </h3>
+                <a
+                    href="https://smpn17denpasar.sch.id/berita"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs font-medium text-violet-600"
+                >
+                    Lihat semua <ArrowUpRight className="size-3.5" />
+                </a>
+            </div>
+            {news.length > 0 ? (
+                <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+                    {news.map((item) => (
+                        <a
+                            key={item.id}
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group w-[76%] max-w-72 shrink-0 snap-start overflow-hidden rounded-2xl border bg-card shadow-xs"
+                        >
+                            <div className="aspect-[16/9] overflow-hidden bg-muted">
+                                {item.imageUrl &&
+                                !failedNewsImages.has(item.id) ? (
+                                    <img
+                                        src={item.imageUrl}
+                                        alt=""
+                                        loading="lazy"
+                                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                        onError={() =>
+                                            setFailedNewsImages((current) => {
+                                                const next = new Set(current);
+                                                next.add(item.id);
+
+                                                return next;
+                                            })
+                                        }
+                                    />
+                                ) : (
+                                    <div className="flex size-full items-center justify-center text-muted-foreground">
+                                        <BookOpen className="size-8" />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-2 p-3">
+                                <p className="text-xs text-muted-foreground">
+                                    {new Date(item.publishedAt).toLocaleDateString(
+                                        'id-ID',
+                                        {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric',
+                                        },
+                                    )}
+                                </p>
+                                <h4 className="line-clamp-2 text-sm leading-5 font-semibold">
+                                    {item.title}
+                                </h4>
+                                <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">
+                                    {item.excerpt}
+                                </p>
+                            </div>
+                        </a>
+                    ))}
+                </div>
+            ) : (
+                <p className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
+                    Berita sekolah belum tersedia saat ini.
+                </p>
+            )}
+        </section>
+    );
+}
+
+function NewsLoading() {
+    return (
+        <section
+            aria-labelledby="student-news-heading"
+            aria-busy="true"
+            className="space-y-3"
+        >
+            <div className="flex items-center justify-between gap-3">
+                <h3 id="student-news-heading" className="font-semibold">
+                    Berita Sekolah
+                </h3>
+                <span className="text-xs text-muted-foreground" role="status">
+                    Memuat...
+                </span>
+            </div>
+            <div className="flex gap-3 overflow-hidden" aria-hidden="true">
+                {[1, 2].map((item) => (
+                    <div
+                        key={item}
+                        className="w-[76%] max-w-72 shrink-0 overflow-hidden rounded-2xl border bg-card"
+                    >
+                        <div className="aspect-[16/9] animate-pulse bg-muted" />
+                        <div className="space-y-2 p-3">
+                            <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+                            <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
+                            <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
 
 export default function StudentDashboard({ student, rombel, news }: Props) {
     const firstName = student?.full_name?.trim().split(/\s+/)[0] ?? 'Siswa';
@@ -67,8 +187,18 @@ export default function StudentDashboard({ student, rombel, news }: Props) {
 
             <section className="space-y-6">
                 <div className="flex items-center gap-3">
-                    <div className="grid size-12 shrink-0 place-items-center rounded-full bg-violet-100 text-violet-700">
-                        <UserRound className="size-6" />
+                    <div className="relative size-16 shrink-0 overflow-hidden rounded-full bg-violet-100 text-violet-700">
+                        {student?.photo_url ? (
+                            <img
+                                src={student.photo_url}
+                                alt={`Foto ${student.full_name}`}
+                                className="size-full object-cover"
+                            />
+                        ) : (
+                            <div className="grid size-full place-items-center">
+                                <UserRound className="size-7" aria-hidden="true" />
+                            </div>
+                        )}
                     </div>
                     <div className="min-w-0">
                         <p className="text-sm text-muted-foreground">Halo,</p>
@@ -155,7 +285,13 @@ export default function StudentDashboard({ student, rombel, news }: Props) {
                     </div>
                 )}
 
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-950 via-violet-800 to-fuchsia-700 p-5 text-white shadow-sm">
+                <div className="relative overflow-hidden rounded-3xl bg-violet-950 p-5 text-white shadow-sm">
+                    <img
+                        src="/images/hero-background.png"
+                        alt=""
+                        className="absolute inset-0 size-full object-cover opacity-55"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-violet-950/90 via-violet-900/70 to-fuchsia-900/65" />
                     <div className="absolute -top-12 -right-10 size-40 rounded-full bg-white/10" />
                     <div className="absolute right-12 -bottom-16 size-32 rounded-full bg-fuchsia-300/10" />
                     <div className="relative flex min-h-36 flex-col justify-end">
@@ -211,66 +347,21 @@ export default function StudentDashboard({ student, rombel, news }: Props) {
                     </div>
                 </div>
 
-                <section aria-labelledby="student-news-heading" className="space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                        <h3 id="student-news-heading" className="font-semibold">Berita Sekolah</h3>
-                        <a
-                            href="https://smpn17denpasar.sch.id/berita"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs font-medium text-violet-600"
-                        >
-                            Lihat semua <ArrowUpRight className="size-3.5" />
-                        </a>
-                    </div>
-                    {news.length > 0 ? (
-                        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
-                            {news.map((item) => (
-                                <a
-                                    key={item.id}
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group w-[76%] max-w-72 shrink-0 snap-start overflow-hidden rounded-2xl border bg-card shadow-xs"
-                                >
-                                    <div className="aspect-[16/9] overflow-hidden bg-muted">
-                                        {item.imageUrl ? (
-                                            <img
-                                                src={item.imageUrl}
-                                                alt=""
-                                                loading="lazy"
-                                                className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                            />
-                                        ) : (
-                                            <div className="flex size-full items-center justify-center text-muted-foreground">
-                                                <BookOpen className="size-8" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="space-y-2 p-3">
-                                        <p className="text-xs text-muted-foreground">
-                                            {new Date(item.publishedAt).toLocaleDateString('id-ID', {
-                                                day: 'numeric',
-                                                month: 'long',
-                                                year: 'numeric',
-                                            })}
-                                        </p>
-                                        <h4 className="line-clamp-2 text-sm font-semibold leading-5">
-                                            {item.title}
-                                        </h4>
-                                        <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">
-                                            {item.excerpt}
-                                        </p>
-                                    </div>
-                                </a>
-                            ))}
-                        </div>
-                    ) : (
+                <Deferred
+                    data="news"
+                    fallback={<NewsLoading />}
+                    rescue={
                         <p className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
                             Berita sekolah belum tersedia saat ini.
                         </p>
+                    }
+                >
+                    {({ reloading }) => (
+                        <div className={reloading ? 'opacity-70' : undefined}>
+                            <NewsSection news={news ?? []} />
+                        </div>
                     )}
-                </section>
+                </Deferred>
 
                 {!student && (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -278,21 +369,6 @@ export default function StudentDashboard({ student, rombel, news }: Props) {
                         administrator sekolah untuk menghubungkan akun.
                     </div>
                 )}
-
-                <div className="flex items-center gap-3 rounded-2xl border bg-card p-4">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">
-                        <BookOpen className="size-5" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium">
-                            Satu aplikasi untuk kebutuhan siswa
-                        </p>
-                        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                            Fitur akan aktif bertahap sesuai modul yang tersedia
-                            di sistem sekolah.
-                        </p>
-                    </div>
-                </div>
             </section>
         </>
     );
