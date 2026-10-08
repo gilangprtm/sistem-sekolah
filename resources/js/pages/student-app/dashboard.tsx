@@ -1,6 +1,5 @@
 import { Head } from '@inertiajs/react';
 import {
-    ArrowUpRight,
     Award,
     Bell,
     BookOpen,
@@ -13,17 +12,7 @@ import {
     UserRound,
 } from 'lucide-react';
 
-type NewsItem = {
-    id: number;
-    title: string;
-    excerpt: string;
-    imageUrl: string;
-    publishedAt: string;
-    url: string;
-};
-
 type Props = {
-    news: NewsItem[];
     student: {
         full_name: string;
         nis: string | null;
@@ -43,7 +32,7 @@ const menuItems = [
     { label: 'Ekstrakurikuler', icon: Sparkles },
 ];
 
-export default function StudentDashboard({ student, rombel, news }: Props) {
+export default function StudentDashboard({ student, rombel }: Props) {
     const firstName = student?.full_name?.trim().split(/\s+/)[0] ?? 'Siswa';
 
     return (
@@ -113,67 +102,6 @@ export default function StudentDashboard({ student, rombel, news }: Props) {
                         ))}
                     </div>
                 </div>
-
-                <section aria-labelledby="student-news-heading" className="space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                        <h3 id="student-news-heading" className="font-semibold">Berita Sekolah</h3>
-                        <a
-                            href="https://smpn17denpasar.sch.id/berita"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs font-medium text-violet-600"
-                        >
-                            Lihat semua <ArrowUpRight className="size-3.5" />
-                        </a>
-                    </div>
-                    {news.length > 0 ? (
-                        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
-                            {news.map((item) => (
-                                <a
-                                    key={item.id}
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group w-[76%] max-w-72 shrink-0 snap-start overflow-hidden rounded-2xl border bg-card shadow-xs"
-                                >
-                                    <div className="aspect-[16/9] overflow-hidden bg-muted">
-                                        {item.imageUrl ? (
-                                            <img
-                                                src={item.imageUrl}
-                                                alt=""
-                                                loading="lazy"
-                                                className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                            />
-                                        ) : (
-                                            <div className="flex size-full items-center justify-center text-muted-foreground">
-                                                <BookOpen className="size-8" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="space-y-2 p-3">
-                                        <p className="text-xs text-muted-foreground">
-                                            {new Date(item.publishedAt).toLocaleDateString('id-ID', {
-                                                day: 'numeric',
-                                                month: 'long',
-                                                year: 'numeric',
-                                            })}
-                                        </p>
-                                        <h4 className="line-clamp-2 text-sm font-semibold leading-5">
-                                            {item.title}
-                                        </h4>
-                                        <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">
-                                            {item.excerpt}
-                                        </p>
-                                    </div>
-                                </a>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
-                            Berita sekolah belum tersedia saat ini.
-                        </p>
-                    )}
-                </section>
 
                 {!student && (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
