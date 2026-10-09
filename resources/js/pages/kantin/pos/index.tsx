@@ -151,7 +151,7 @@ export default function KantinPos({ categories, products }: Props) {
                     <p className="text-sm font-semibold text-violet-700">SMPN 17 DENPASAR</p>
                     <h1 className="mt-2 text-3xl font-bold">Kantin Sekolah</h1>
                     <p className="mt-3 text-slate-500">Scan QR Code pada kartu pelajar untuk mulai berbelanja.</p>
-                    {scanning && <video ref={videoRef} muted playsInline autoPlay className="mt-6 aspect-video w-full rounded-2xl bg-black object-cover" />}
+                    <video ref={videoRef} muted playsInline autoPlay className={`mt-6 aspect-video w-full rounded-2xl bg-black object-cover ${scanning ? "" : "hidden"}`} />
                     <button type="button" onClick={scanning ? stopCamera : startCamera} disabled={busy}
                         className="mt-6 min-h-14 w-full rounded-2xl bg-violet-700 font-semibold text-white disabled:opacity-50">
                         {scanning ? 'Batalkan Scan' : 'Scan QR Kartu Pelajar'}
