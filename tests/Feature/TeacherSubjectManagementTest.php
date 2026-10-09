@@ -53,7 +53,7 @@ class TeacherSubjectManagementTest extends TestCase
         TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id, 'code' => 'IPA-01', 'suffix' => '-01']);
 
         $this->actingAs($admin)
-            ->get('/teacher-subjects?search=IPA&per_page=1')
+            ->get('/kurikulum/teacher-subjects?search=IPA&per_page=1')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('teacher-subjects/index')
@@ -70,12 +70,12 @@ class TeacherSubjectManagementTest extends TestCase
         $subject = $this->subject(['code' => 'iPa']);
 
         $this->actingAs($admin)
-            ->post('/teacher-subjects', [
+            ->post('/kurikulum/teacher-subjects', [
                 'teacher_id' => $teacher->id,
                 'subject_id' => $subject->id,
                 'suffix' => '  -a01  ',
             ])
-            ->assertRedirect('/teacher-subjects')
+            ->assertRedirect('/kurikulum/teacher-subjects')
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('m_teacher_subjects', [
@@ -94,7 +94,7 @@ class TeacherSubjectManagementTest extends TestCase
 
         foreach (['   ', 'bad value', str_repeat('A', 21)] as $suffix) {
             $this->actingAs($admin)
-                ->post('/teacher-subjects', [
+                ->post('/kurikulum/teacher-subjects', [
                     'teacher_id' => $teacher->id,
                     'subject_id' => $subject->id,
                     'suffix' => $suffix,
@@ -111,19 +111,19 @@ class TeacherSubjectManagementTest extends TestCase
         $activeSubject = $this->subject();
         $inactiveSubject = $this->subject(['code' => 'BIO', 'name' => 'Biologi', 'status' => 'inactive']);
 
-        $this->actingAs($admin)->post('/teacher-subjects', [
+        $this->actingAs($admin)->post('/kurikulum/teacher-subjects', [
             'teacher_id' => $staff->id,
             'subject_id' => $activeSubject->id,
             'suffix' => '01',
         ])->assertSessionHasErrors('teacher_id');
 
-        $this->actingAs($admin)->post('/teacher-subjects', [
+        $this->actingAs($admin)->post('/kurikulum/teacher-subjects', [
             'teacher_id' => $inactiveTeacher->id,
             'subject_id' => $activeSubject->id,
             'suffix' => '02',
         ])->assertSessionHasErrors('teacher_id');
 
-        $this->actingAs($admin)->post('/teacher-subjects', [
+        $this->actingAs($admin)->post('/kurikulum/teacher-subjects', [
             'teacher_id' => $this->teacher()->id,
             'subject_id' => $inactiveSubject->id,
             'suffix' => '03',
@@ -137,19 +137,19 @@ class TeacherSubjectManagementTest extends TestCase
         $subject = $this->subject();
         $otherTeacher = $this->teacher(['full_name' => 'Guru Dua']);
 
-        $this->actingAs($admin)->post('/teacher-subjects', [
+        $this->actingAs($admin)->post('/kurikulum/teacher-subjects', [
             'teacher_id' => $teacher->id,
             'subject_id' => $subject->id,
             'suffix' => '01',
         ])->assertRedirect();
 
-        $this->actingAs($admin)->post('/teacher-subjects', [
+        $this->actingAs($admin)->post('/kurikulum/teacher-subjects', [
             'teacher_id' => $teacher->id,
             'subject_id' => $subject->id,
             'suffix' => '02',
         ])->assertSessionHasErrors('teacher_id');
 
-        $this->actingAs($admin)->post('/teacher-subjects', [
+        $this->actingAs($admin)->post('/kurikulum/teacher-subjects', [
             'teacher_id' => $otherTeacher->id,
             'subject_id' => $subject->id,
             'suffix' => '01',
@@ -166,7 +166,7 @@ class TeacherSubjectManagementTest extends TestCase
         $subject->update(['status' => 'inactive']);
 
         $this->actingAs($admin)
-            ->get('/teacher-subjects?search=IPA01')
+            ->get('/kurikulum/teacher-subjects?search=IPA01')
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('teacherSubjects.data.0.id', $relation->id));
     }
@@ -179,7 +179,7 @@ class TeacherSubjectManagementTest extends TestCase
         TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id, 'code' => 'IPA01', 'suffix' => '01']);
 
         $this->actingAs($admin)
-            ->patch("/subjects/{$subject->id}", ['code' => 'FIS', 'name' => $subject->name, 'status' => 'active'])
+            ->patch("/kurikulum/subjects/{$subject->id}", ['code' => 'FIS', 'name' => $subject->name, 'status' => 'active'])
             ->assertSessionHasErrors('code');
 
         $this->assertDatabaseHas('m_subjects', ['id' => $subject->id, 'code' => 'IPA']);
@@ -193,14 +193,14 @@ class TeacherSubjectManagementTest extends TestCase
         $relation = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id, 'code' => 'IPA01', 'suffix' => '01']);
 
         $this->actingAs($admin)
-            ->delete("/teacher-subjects/{$relation->id}")
-            ->assertRedirect('/teacher-subjects');
+            ->delete("/kurikulum/teacher-subjects/{$relation->id}")
+            ->assertRedirect('/kurikulum/teacher-subjects');
 
         $this->assertDatabaseMissing('m_teacher_subjects', ['id' => $relation->id]);
         $this->assertDatabaseHas('m_teacher', ['id' => $teacher->id]);
         $this->assertDatabaseHas('m_subjects', ['id' => $subject->id]);
 
-        $this->actingAs($admin)->post('/teacher-subjects', [
+        $this->actingAs($admin)->post('/kurikulum/teacher-subjects', [
             'teacher_id' => $teacher->id,
             'subject_id' => $subject->id,
             'suffix' => '01',
@@ -215,8 +215,8 @@ class TeacherSubjectManagementTest extends TestCase
         $subject = $this->subject();
         $relation = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id, 'code' => 'IPA01', 'suffix' => '01']);
 
-        $this->actingAs($user)->get('/teacher-subjects')->assertForbidden();
-        $this->actingAs($user)->post('/teacher-subjects', ['teacher_id' => $teacher->id, 'subject_id' => $subject->id, 'suffix' => '02'])->assertForbidden();
-        $this->actingAs($user)->delete("/teacher-subjects/{$relation->id}")->assertForbidden();
+        $this->actingAs($user)->get('/kurikulum/teacher-subjects')->assertForbidden();
+        $this->actingAs($user)->post('/kurikulum/teacher-subjects', ['teacher_id' => $teacher->id, 'subject_id' => $subject->id, 'suffix' => '02'])->assertForbidden();
+        $this->actingAs($user)->delete("/kurikulum/teacher-subjects/{$relation->id}")->assertForbidden();
     }
 }

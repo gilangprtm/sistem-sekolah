@@ -85,7 +85,7 @@ type PeriodForm = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Tahun Ajaran & Semester', href: '/academic-years' },
+    { title: 'Tahun Ajaran & Semester', href: '/kurikulum/academic-years' },
 ];
 
 export default function AcademicYearsIndex({
@@ -119,7 +119,7 @@ export default function AcademicYearsIndex({
     };
 
     const navigate = (params: Record<string, string | number>) => {
-        router.get('/academic-years', params, {
+        router.get('/kurikulum/academic-years', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -144,7 +144,7 @@ export default function AcademicYearsIndex({
 
     const submitYear = () =>
         router.post(
-            '/academic-years',
+            '/kurikulum/academic-years',
             { year, status: newYearStatus },
             {
                 onError: setErrors,
@@ -162,7 +162,7 @@ export default function AcademicYearsIndex({
         }
 
         router.patch(
-            `/academic-years/${editingYear.id}`,
+            `/kurikulum/academic-years/${editingYear.id}`,
             {
                 year: editingYear.year,
                 status: editingYear.status,
@@ -190,7 +190,7 @@ export default function AcademicYearsIndex({
         };
 
         if (period.id) {
-            router.patch(`/academic-periods/${period.id}`, payload, {
+            router.patch(`/kurikulum/academic-periods/${period.id}`, payload, {
                 onError: setErrors,
                 onSuccess: () => {
                     setPeriod(null);
@@ -202,14 +202,18 @@ export default function AcademicYearsIndex({
             return;
         }
 
-        router.post(`/academic-years/${period.yearId}/periods`, payload, {
-            onError: setErrors,
-            onSuccess: () => {
-                setPeriod(null);
-                setErrors({});
-                setSemesterDialogOpen(false);
+        router.post(
+            `/kurikulum/academic-years/${period.yearId}/periods`,
+            payload,
+            {
+                onError: setErrors,
+                onSuccess: () => {
+                    setPeriod(null);
+                    setErrors({});
+                    setSemesterDialogOpen(false);
+                },
             },
-        });
+        );
     };
 
     const openYearCreate = () => {

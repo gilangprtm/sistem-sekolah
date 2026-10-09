@@ -31,8 +31,8 @@ import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inventaris', href: '/inventory' },
-    { title: 'Tambah', href: '/inventory/create' },
+    { title: 'Inventaris', href: '/inventaris/inventory' },
+    { title: 'Tambah', href: '/inventaris/inventory/create' },
 ];
 
 type Category = { id: number; name: string };
@@ -104,7 +104,7 @@ export default function InventoryCreate({
     const submit = () => {
         setProcessing(true);
         router.post(
-            '/inventory',
+            '/inventaris/inventory',
             {
                 ...form,
                 harga: cleanHarga(form.harga),
@@ -137,7 +137,7 @@ export default function InventoryCreate({
                 <div className="flex items-start gap-3">
                     <Button asChild variant="outline" size="icon">
                         <Link
-                            href="/inventory"
+                            href="/inventaris/inventory"
                             aria-label="Kembali ke daftar inventaris"
                         >
                             <ArrowLeft />
@@ -688,7 +688,9 @@ export default function InventoryCreate({
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => router.visit('/inventory')}
+                                onClick={() =>
+                                    router.visit('/inventaris/inventory')
+                                }
                             >
                                 Batal
                             </Button>

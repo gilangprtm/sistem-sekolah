@@ -99,6 +99,7 @@ export function AppSidebar({
     const adminItems: NavMainItem[] = [];
     const curriculumItems: NavMainItem[] = [];
     const studentAffairsItems: NavMainItem[] = [];
+    const canteenItems: NavMainItem[] = [];
 
     if (can('student.card.view')) {
         studentAffairsItems.push({
@@ -113,7 +114,7 @@ export function AppSidebar({
         inventoryItems.push({
             id: 'inventory-dashboard',
             title: 'Dashboard Inventaris',
-            url: '/inventory/dashboard',
+            url: '/inventaris/inventory/dashboard',
             icon: LayoutDashboard,
         });
     }
@@ -122,7 +123,7 @@ export function AppSidebar({
         inventoryItems.push({
             id: 'inventory',
             title: 'Inventaris',
-            url: '/inventory',
+            url: '/inventaris/inventory',
             icon: PackageSearch,
         });
     }
@@ -131,8 +132,17 @@ export function AppSidebar({
         inventoryItems.push({
             id: 'inventory-rooms',
             title: 'Inventaris Ruangan',
-            url: '/inventory-rooms',
+            url: '/inventaris/inventory-rooms',
             icon: DoorOpen,
+        });
+    }
+
+    if (can('kantin.barang.view')) {
+        canteenItems.push({
+            id: 'canteen-items',
+            title: 'Master Barang',
+            url: '/kantin/barang',
+            icon: PackageSearch,
         });
     }
 
@@ -158,7 +168,7 @@ export function AppSidebar({
         curriculumItems.push({
             id: 'academic-years',
             title: 'Tahun Ajaran & Semester',
-            url: '/academic-years',
+            url: '/kurikulum/academic-years',
             icon: LayoutDashboard,
         });
     }
@@ -167,7 +177,7 @@ export function AppSidebar({
         curriculumItems.push({
             id: 'subjects',
             title: 'Mata Pelajaran',
-            url: '/subjects',
+            url: '/kurikulum/subjects',
             icon: BookOpen,
         });
     }
@@ -176,7 +186,7 @@ export function AppSidebar({
         curriculumItems.push({
             id: 'rombels',
             title: 'Rombel',
-            url: '/rombels',
+            url: '/kurikulum/rombels',
             icon: School,
         });
     }
@@ -185,13 +195,13 @@ export function AppSidebar({
         curriculumItems.push({
             id: 'schedules',
             title: 'Jadwal Pelajaran',
-            url: '/schedule',
+            url: '/kurikulum/schedule',
             icon: CalendarDays,
         });
         curriculumItems.push({
             id: 'management-class',
             title: 'Manajemen Kelas',
-            url: '/management-class',
+            url: '/kurikulum/management-class',
             icon: Users,
         });
     }
@@ -200,7 +210,7 @@ export function AppSidebar({
         curriculumItems.push({
             id: 'teacher-subjects',
             title: 'Guru Mata Pelajaran',
-            url: '/teacher-subjects',
+            url: '/kurikulum/teacher-subjects',
             icon: GraduationCap,
         });
     }
@@ -234,8 +244,11 @@ export function AppSidebar({
         ...(studentAffairsItems.length > 0
             ? [{ id: 4, label: 'Kesiswaan', items: studentAffairsItems }]
             : []),
+        ...(canteenItems.length > 0
+            ? [{ id: 5, label: 'Kantin', items: canteenItems }]
+            : []),
         ...(adminItems.length > 0
-            ? [{ id: 5, label: 'Administrasi', items: adminItems }]
+            ? [{ id: 6, label: 'Administrasi', items: adminItems }]
             : []),
     ];
 

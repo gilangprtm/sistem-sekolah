@@ -24,14 +24,14 @@ class InventoryCategoryAutoCreateTest extends TestCase
         $admin->assignRole('Super Admin');
 
         $this->actingAs($admin)
-            ->post('/inventory', [
+            ->post('/inventaris/inventory', [
                 'kode_barang' => 'AUTO.01',
                 'nama_jenis_barang' => 'Kursi',
                 'harga' => '100.25',
                 'qty' => 1,
                 'category_name' => '  Perabot Kelas  ',
             ])
-            ->assertRedirect('/inventory');
+            ->assertRedirect('/inventaris/inventory');
 
         $category = Category::where('name', 'Perabot Kelas')->first();
         $this->assertNotNull($category);
@@ -45,7 +45,7 @@ class InventoryCategoryAutoCreateTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $this->actingAs($admin)->post('/inventory', [
+        $this->actingAs($admin)->post('/inventaris/inventory', [
             'kode_barang' => 'AUTO.02',
             'nama_jenis_barang' => 'Meja',
             'harga' => 100,

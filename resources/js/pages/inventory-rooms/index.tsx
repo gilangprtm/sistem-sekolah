@@ -85,7 +85,7 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inventaris Ruangan', href: '/inventory-rooms' },
+    { title: 'Inventaris Ruangan', href: '/inventaris/inventory-rooms' },
 ];
 
 const emptyForm: RoomForm = { name: '', code: '', description: '' };
@@ -131,7 +131,7 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
     };
 
     const navigate = (params: Record<string, string | number>) => {
-        router.get('/inventory-rooms', params, {
+        router.get('/inventaris/inventory-rooms', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -154,7 +154,7 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
 
     const submit = () => {
         setProcessing(true);
-        router.post('/inventory-rooms', form, {
+        router.post('/inventaris/inventory-rooms', form, {
             preserveScroll: true,
             onSuccess: () => {
                 setOpen(false);
@@ -176,7 +176,9 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
             return;
         }
 
-        router.delete(`/inventory-rooms/${room.id}`, { preserveScroll: true });
+        router.delete(`/inventaris/inventory-rooms/${room.id}`, {
+            preserveScroll: true,
+        });
     };
 
     return (
@@ -190,7 +192,7 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
                         description="Kelola ruangan untuk penempatan unit inventaris saat ini"
                     />
                     <Button asChild>
-                        <Link href="/inventory-rooms/create">
+                        <Link href="/inventaris/inventory-rooms/create">
                             <Plus />
                             Tambah Ruangan
                         </Link>
@@ -354,7 +356,7 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
                                                     <DropdownMenuItem
                                                         onClick={() =>
                                                             router.get(
-                                                                `/inventory-rooms/${room.id}/edit`,
+                                                                `/inventaris/inventory-rooms/${room.id}/edit`,
                                                             )
                                                         }
                                                     >

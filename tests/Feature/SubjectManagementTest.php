@@ -34,7 +34,7 @@ class SubjectManagementTest extends TestCase
         Subject::factory()->create(['code' => 'BIO', 'name' => 'Biologi', 'status' => 'inactive']);
 
         $this->actingAs($admin)
-            ->get('/subjects?search=MTK&status=active&per_page=1')
+            ->get('/kurikulum/subjects?search=MTK&status=active&per_page=1')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('subjects/index')
@@ -47,13 +47,13 @@ class SubjectManagementTest extends TestCase
     public function test_subject_create_trims_valid_display_values_and_uses_default_jp_per_class(): void
     {
         $this->actingAs($this->admin())
-            ->post('/subjects', [
+            ->post('/kurikulum/subjects', [
                 'code' => '  IPA_1  ',
                 'name' => '  Ilmu Pengetahuan Alam  ',
                 'status' => 'active',
                 'color' => ' #dcebff ',
             ])
-            ->assertRedirect('/subjects')
+            ->assertRedirect('/kurikulum/subjects')
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('m_subjects', [
@@ -70,28 +70,28 @@ class SubjectManagementTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->post('/subjects', [
+            ->post('/kurikulum/subjects', [
                 'code' => 'IPA',
                 'name' => 'Ilmu Pengetahuan Alam',
                 'status' => 'active',
                 'jp_per_class' => 8,
                 'color' => '#FDE68A',
             ])
-            ->assertRedirect('/subjects')
+            ->assertRedirect('/kurikulum/subjects')
             ->assertSessionHasNoErrors();
 
         $subject = Subject::query()->where('code', 'IPA')->firstOrFail();
         $this->assertSame(8, $subject->jp_per_class);
 
         $this->actingAs($admin)
-            ->patch("/subjects/{$subject->id}", [
+            ->patch("/kurikulum/subjects/{$subject->id}", [
                 'code' => 'IPA',
                 'name' => 'Ilmu Pengetahuan Alam',
                 'status' => 'active',
                 'jp_per_class' => 12,
                 'color' => '#BFDBFE',
             ])
-            ->assertRedirect('/subjects')
+            ->assertRedirect('/kurikulum/subjects')
             ->assertSessionHasNoErrors();
 
         $subject->refresh();
@@ -102,7 +102,7 @@ class SubjectManagementTest extends TestCase
     public function test_subject_rejects_invalid_color(): void
     {
         $this->actingAs($this->admin())
-            ->post('/subjects', [
+            ->post('/kurikulum/subjects', [
                 'code' => 'WARNA',
                 'name' => 'Warna Invalid',
                 'status' => 'active',
@@ -115,7 +115,7 @@ class SubjectManagementTest extends TestCase
     {
         foreach ([0, 16] as $jpPerClass) {
             $this->actingAs($this->admin())
-                ->post('/subjects', [
+                ->post('/kurikulum/subjects', [
                     'code' => "JP{$jpPerClass}",
                     'name' => "Jam {$jpPerClass}",
                     'status' => 'active',
@@ -128,7 +128,7 @@ class SubjectManagementTest extends TestCase
     public function test_subject_rejects_lowercase_code_and_empty_trimmed_name(): void
     {
         $this->actingAs($this->admin())
-            ->post('/subjects', [
+            ->post('/kurikulum/subjects', [
                 'code' => 'math',
                 'name' => 'Matematika',
                 'status' => 'active',
@@ -136,7 +136,7 @@ class SubjectManagementTest extends TestCase
             ->assertSessionHasErrors('code');
 
         $this->actingAs($this->admin())
-            ->post('/subjects', [
+            ->post('/kurikulum/subjects', [
                 'code' => 'MATH',
                 'name' => '   ',
                 'status' => 'active',
@@ -149,7 +149,7 @@ class SubjectManagementTest extends TestCase
         Subject::factory()->create(['code' => 'MTK', 'name' => 'Matematika']);
 
         $this->actingAs($this->admin())
-            ->post('/subjects', [
+            ->post('/kurikulum/subjects', [
                 'code' => 'mtk',
                 'name' => 'MATEMATIKA',
                 'status' => 'active',
@@ -171,7 +171,7 @@ class SubjectManagementTest extends TestCase
         $subject = Subject::factory()->create(['code' => 'MTK', 'name' => 'Matematika']);
 
         $this->actingAs($admin)
-            ->post("/subjects/{$subject->id}/archive")
+            ->post("/kurikulum/subjects/{$subject->id}/archive")
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
@@ -180,12 +180,12 @@ class SubjectManagementTest extends TestCase
         $this->assertModelExists($subject);
 
         $this->actingAs($admin)
-            ->patch("/subjects/{$subject->id}", [
+            ->patch("/kurikulum/subjects/{$subject->id}", [
                 'code' => $subject->code,
                 'name' => $subject->name,
                 'status' => 'active',
             ])
-            ->assertRedirect('/subjects');
+            ->assertRedirect('/kurikulum/subjects');
 
         $this->assertSame('active', $subject->refresh()->status);
     }
@@ -195,7 +195,7 @@ class SubjectManagementTest extends TestCase
         $subject = Subject::factory()->create();
 
         $this->actingAs($this->admin())
-            ->delete("/subjects/{$subject->id}")
+            ->delete("/kurikulum/subjects/{$subject->id}")
             ->assertStatus(405);
 
         $this->assertModelExists($subject);
@@ -207,12 +207,12 @@ class SubjectManagementTest extends TestCase
         $user->assignRole('Guru');
         $subject = Subject::factory()->create();
 
-        $this->actingAs($user)->get('/subjects')->assertForbidden();
-        $this->actingAs($user)->post('/subjects', [
+        $this->actingAs($user)->get('/kurikulum/subjects')->assertForbidden();
+        $this->actingAs($user)->post('/kurikulum/subjects', [
             'code' => 'MTK',
             'name' => 'Matematika',
             'status' => 'active',
         ])->assertForbidden();
-        $this->actingAs($user)->post("/subjects/{$subject->id}/archive")->assertForbidden();
+        $this->actingAs($user)->post("/kurikulum/subjects/{$subject->id}/archive")->assertForbidden();
     }
 }

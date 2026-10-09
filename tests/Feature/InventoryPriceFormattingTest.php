@@ -18,13 +18,13 @@ class InventoryPriceFormattingTest extends TestCase
         $admin->assignRole('Super Admin');
 
         $this->actingAs($admin)
-            ->post('/inventory', [
+            ->post('/inventaris/inventory', [
                 'kode_barang' => 'PRICE.01',
                 'nama_jenis_barang' => 'Peralatan',
                 'harga' => '5000000.50',
                 'qty' => 1,
             ])
-            ->assertRedirect('/inventory')
+            ->assertRedirect('/inventaris/inventory')
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('tr_inventory_items', [

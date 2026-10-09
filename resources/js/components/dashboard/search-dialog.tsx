@@ -36,61 +36,67 @@ const searchItems: SearchItem[] = [
         id: 'inventory',
         group: 'Inventaris',
         label: 'Inventaris',
-        url: '/inventory',
+        url: '/inventaris/inventory',
     },
     {
         id: 'inventory-dashboard',
         group: 'Inventaris',
         label: 'Dashboard Inventaris',
-        url: '/inventory/dashboard',
+        url: '/inventaris/inventory/dashboard',
     },
     {
         id: 'inventory-create',
         group: 'Inventaris',
         label: 'Tambah Inventaris',
-        url: '/inventory/create',
+        url: '/inventaris/inventory/create',
     },
     {
         id: 'inventory-rooms',
         group: 'Inventaris',
         label: 'Inventaris Ruangan',
-        url: '/inventory-rooms',
+        url: '/inventaris/inventory-rooms',
+    },
+    {
+        id: 'canteen-items',
+        group: 'Kantin',
+        label: 'Master Barang',
+        url: '/kantin/barang',
     },
     {
         id: 'academic-years',
         group: 'Kurikulum',
         label: 'Tahun Ajaran & Semester',
-        url: '/academic-years',
+        url: '/kurikulum/academic-years',
     },
     {
         id: 'subjects',
         group: 'Kurikulum',
         label: 'Mata Pelajaran',
-        url: '/subjects',
+        url: '/kurikulum/subjects',
     },
     {
         id: 'rombels',
         group: 'Kurikulum',
         label: 'Rombel',
-        url: '/rombels',
+        url: '/kurikulum/rombels',
     },
     {
         id: 'schedules',
         group: 'Kurikulum',
         label: 'Jadwal Pelajaran',
-        url: '/schedule',
+        url: '/kurikulum/schedule',
     },
     {
         id: 'management-class',
         group: 'Kurikulum',
         label: 'Manajemen Kelas',
-        url: '/management-class',
+        url: '/kurikulum/management-class',
     },
     {
         id: 'teacher-subjects',
         group: 'Kurikulum',
         label: 'Guru Mata Pelajaran',
-        url: '/teacher-subjects',
+        url: '/kurikulum/teacher-subjects',
     },
     {
         id: 'student-cards',
@@ -163,6 +169,10 @@ export function SearchDialog() {
 
         if (item.id === 'inventory-rooms') {
             return can('inventory.room.view');
+        }
+
+        if (item.id === 'canteen-items') {
+            return can('kantin.barang.view');
         }
 
         if (item.id === 'student-cards') {

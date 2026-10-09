@@ -51,7 +51,7 @@ class CategoryRegressionTest extends TestCase
         $item = InventoryItem::factory()->create(['inventory_category_id' => $first->id]);
 
         $this->actingAs($admin)
-            ->patch("/inventory/{$item->id}", ['inventory_category_id' => $second->id])
+            ->patch("/inventaris/inventory/{$item->id}", ['inventory_category_id' => $second->id])
             ->assertRedirect();
         $this->assertSame($second->id, $item->fresh()->inventory_category_id);
 

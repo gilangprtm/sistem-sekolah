@@ -91,7 +91,7 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Jadwal Pelajaran', href: '/schedule' },
+    { title: 'Jadwal Pelajaran', href: '/kurikulum/schedule' },
 ];
 
 function formatTime(start: string, end: string) {
@@ -179,7 +179,7 @@ export default function JadwalPelajaranIndex({
 
         setMoveError(null);
         router.post(
-            '/schedule/move',
+            '/kurikulum/schedule/move',
             {
                 schedule_plan_id: entry.schedule_plan_id,
                 schedule_entry_id: entry.schedule_entry_id,
@@ -196,7 +196,7 @@ export default function JadwalPelajaranIndex({
 
     const selectGrade = (value: string) => {
         router.get(
-            '/schedule',
+            '/kurikulum/schedule',
             {
                 ...(selectedPeriod
                     ? { academic_period_id: selectedPeriod.id }
@@ -209,7 +209,7 @@ export default function JadwalPelajaranIndex({
 
     const selectPeriod = (value: string) => {
         router.get(
-            '/schedule',
+            '/kurikulum/schedule',
             {
                 academic_period_id: Number(value),
                 grade,
@@ -231,7 +231,7 @@ export default function JadwalPelajaranIndex({
     selectedRombelIds.forEach((id) =>
         viewerQuery.append('rombel_ids[]', id.toString()),
     );
-    const generateUrl = `/schedule/generate?${viewerQuery.toString()}`;
+    const generateUrl = `/kurikulum/schedule/generate?${viewerQuery.toString()}`;
     const totalColumns = selectedRombels.length + 3;
 
     return (

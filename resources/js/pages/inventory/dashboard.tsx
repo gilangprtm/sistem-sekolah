@@ -54,8 +54,8 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inventaris', href: '/inventory' },
-    { title: 'Dashboard', href: '/inventory/dashboard' },
+    { title: 'Inventaris', href: '/inventaris/inventory' },
+    { title: 'Dashboard', href: '/inventaris/inventory/dashboard' },
 ];
 
 export default function InventoryDashboard({
@@ -84,7 +84,7 @@ export default function InventoryDashboard({
                         description="Statistik aset sekolah"
                     />
                     <Button asChild variant="outline">
-                        <Link href="/inventory">
+                        <Link href="/inventaris/inventory">
                             <ArrowLeft />
                             Daftar Inventaris
                         </Link>

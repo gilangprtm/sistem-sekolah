@@ -51,8 +51,8 @@ type Props = {
 type Form = { name: string; code: string; description: string };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inventaris Ruangan', href: '/inventory-rooms' },
-    { title: 'Tambah', href: '/inventory-rooms/create' },
+    { title: 'Inventaris Ruangan', href: '/inventaris/inventory-rooms' },
+    { title: 'Tambah', href: '/inventaris/inventory-rooms/create' },
 ];
 const conditionLabels: Record<string, string> = {
     B: 'Baik',
@@ -107,7 +107,7 @@ export default function InventoryRoomsCreate({
 
     const loadLookupPage = (page: number) => {
         router.get(
-            '/inventory-rooms/create',
+            '/inventaris/inventory-rooms/create',
             {
                 lookup_search: lookupSearch || undefined,
                 lookup_page: page,
@@ -161,7 +161,7 @@ export default function InventoryRoomsCreate({
     const submit = () => {
         setProcessing(true);
         router.post(
-            '/inventory-rooms',
+            '/inventaris/inventory-rooms',
             { ...form, unit_ids: selectedUnits },
             {
                 preserveScroll: true,
@@ -217,7 +217,7 @@ export default function InventoryRoomsCreate({
                 <div className="flex items-start gap-3">
                     <Button asChild variant="outline" size="icon">
                         <Link
-                            href="/inventory-rooms"
+                            href="/inventaris/inventory-rooms"
                             aria-label="Kembali ke daftar ruangan inventaris"
                         >
                             <ArrowLeft />
@@ -381,7 +381,9 @@ export default function InventoryRoomsCreate({
                     </section>
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         <Button asChild variant="outline">
-                            <Link href="/inventory-rooms">Batal</Link>
+                            <Link href="/inventaris/inventory-rooms">
+                                Batal
+                            </Link>
                         </Button>
                         <Button onClick={submit} disabled={processing}>
                             {processing ? 'Menyimpan...' : 'Simpan Ruangan'}

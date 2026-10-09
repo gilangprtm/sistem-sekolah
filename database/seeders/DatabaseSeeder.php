@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolePermissionSeeder::class,
             RombelSeeder::class,
+            KantinSeeder::class,
         ]);
 
         // Admin pertama (Super Admin) — idempotent

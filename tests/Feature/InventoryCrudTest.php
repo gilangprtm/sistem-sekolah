@@ -31,13 +31,13 @@ class InventoryCrudTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->post('/inventory', [
+            ->post('/inventaris/inventory', [
                 'kode_barang' => 'A.01.01',
                 'nama_jenis_barang' => 'Laptop',
                 'harga' => 2000000,
                 'qty' => 3,
             ])
-            ->assertRedirect('/inventory');
+            ->assertRedirect('/inventaris/inventory');
 
         $this->assertDatabaseHas('tr_inventory_items', ['kode_barang' => 'A.01.01']);
         $this->assertDatabaseCount('tr_inventory_units', 3);
@@ -48,16 +48,16 @@ class InventoryCrudTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->post('/inventory', [
+            ->post('/inventaris/inventory', [
                 'kode_barang' => 'A.01.01',
                 'nama_jenis_barang' => 'Laptop',
                 'harga' => 2000000,
                 'qty' => 1,
             ])
-            ->assertRedirect('/inventory');
+            ->assertRedirect('/inventaris/inventory');
 
         $this->actingAs($admin)
-            ->post('/inventory', [
+            ->post('/inventaris/inventory', [
                 'kode_barang' => 'A.01.01',
                 'nama_jenis_barang' => 'Laptop 2',
                 'harga' => 1000000,
@@ -72,7 +72,7 @@ class InventoryCrudTest extends TestCase
         $user->assignRole('Guru');
 
         $this->actingAs($user)
-            ->post('/inventory', [
+            ->post('/inventaris/inventory', [
                 'kode_barang' => 'A.01.01',
                 'nama_jenis_barang' => 'Laptop',
                 'harga' => 2000000,

@@ -24,7 +24,7 @@ class AcademicYearPeriodTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $this->actingAs($admin)->get('/academic-years')->assertOk()->assertInertia(fn ($page) => $page->component('academic-years/index'));
+        $this->actingAs($admin)->get('/kurikulum/academic-years')->assertOk()->assertInertia(fn ($page) => $page->component('academic-years/index'));
     }
 
     public function test_non_admin_cannot_manage_academic_years(): void
@@ -32,7 +32,7 @@ class AcademicYearPeriodTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('Guru');
 
-        $this->actingAs($user)->get('/academic-years')->assertForbidden();
+        $this->actingAs($user)->get('/kurikulum/academic-years')->assertForbidden();
     }
 
     public function test_year_activation_sets_dates_and_deactivates_previous_year(): void
@@ -40,12 +40,12 @@ class AcademicYearPeriodTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $this->actingAs($admin)->post('/academic-years', ['year' => '2025/2026', 'status' => 'active'])->assertRedirect();
+        $this->actingAs($admin)->post('/kurikulum/academic-years', ['year' => '2025/2026', 'status' => 'active'])->assertRedirect();
         $first = AcademicYear::query()->firstOrFail();
         $this->assertNotNull($first->start_date);
         $this->assertNull($first->end_date);
 
-        $this->actingAs($admin)->post('/academic-years', ['year' => '2026/2027', 'status' => 'active'])->assertRedirect();
+        $this->actingAs($admin)->post('/kurikulum/academic-years', ['year' => '2026/2027', 'status' => 'active'])->assertRedirect();
         $first->refresh();
         $second = AcademicYear::query()->where('year', '2026/2027')->firstOrFail();
         $this->assertSame('inactive', $first->status);
@@ -59,10 +59,10 @@ class AcademicYearPeriodTest extends TestCase
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        $this->actingAs($admin)->post('/academic-years', ['year' => '2025/2026', 'status' => 'active']);
+        $this->actingAs($admin)->post('/kurikulum/academic-years', ['year' => '2025/2026', 'status' => 'active']);
         $year = AcademicYear::query()->firstOrFail();
 
-        $this->actingAs($admin)->post("/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'active'])->assertRedirect();
+        $this->actingAs($admin)->post("/kurikulum/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'active'])->assertRedirect();
         $period = AcademicPeriod::query()->firstOrFail();
         $this->assertSame($year->id, $period->academic_year_id);
         $this->assertNotNull($period->start_date);
@@ -78,23 +78,23 @@ class AcademicYearPeriodTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $this->actingAs($admin)->post('/academic-years', ['year' => '2025', 'status' => 'active'])->assertSessionHasErrors('year');
-        $this->actingAs($admin)->post('/academic-years', ['year' => '2025/2026', 'status' => 'inactive'])->assertRedirect();
+        $this->actingAs($admin)->post('/kurikulum/academic-years', ['year' => '2025', 'status' => 'active'])->assertSessionHasErrors('year');
+        $this->actingAs($admin)->post('/kurikulum/academic-years', ['year' => '2025/2026', 'status' => 'inactive'])->assertRedirect();
         $year = AcademicYear::query()->firstOrFail();
-        $this->actingAs($admin)->post("/academic-years/{$year->id}/periods", ['code' => 'bad', 'name' => 'Bad', 'status' => 'active'])->assertSessionHasErrors('code');
+        $this->actingAs($admin)->post("/kurikulum/academic-years/{$year->id}/periods", ['code' => 'bad', 'name' => 'Bad', 'status' => 'active'])->assertSessionHasErrors('code');
     }
 
     public function test_duplicate_semester_code_is_rejected_on_create_and_update(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        $this->actingAs($admin)->post('/academic-years', ['year' => '2025/2026', 'status' => 'active']);
+        $this->actingAs($admin)->post('/kurikulum/academic-years', ['year' => '2025/2026', 'status' => 'active']);
         $year = AcademicYear::query()->firstOrFail();
-        $this->actingAs($admin)->post("/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'inactive']);
+        $this->actingAs($admin)->post("/kurikulum/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'inactive']);
         $first = AcademicPeriod::query()->firstOrFail();
 
-        $this->actingAs($admin)->post("/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Duplikat', 'status' => 'inactive'])->assertSessionHasErrors('code');
-        $this->actingAs($admin)->post("/academic-years/{$year->id}/periods", ['code' => 'genap', 'name' => 'Semester Genap', 'status' => 'inactive']);
+        $this->actingAs($admin)->post("/kurikulum/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Duplikat', 'status' => 'inactive'])->assertSessionHasErrors('code');
+        $this->actingAs($admin)->post("/kurikulum/academic-years/{$year->id}/periods", ['code' => 'genap', 'name' => 'Semester Genap', 'status' => 'inactive']);
         $second = AcademicPeriod::query()->where('code', 'genap')->firstOrFail();
         $this->actingAs($admin)->patch("/academic-periods/{$second->id}", ['code' => 'ganjil', 'name' => 'Bentrok', 'status' => 'inactive'])->assertSessionHasErrors('code');
         $this->assertSame('ganjil', $first->refresh()->code);
@@ -104,9 +104,9 @@ class AcademicYearPeriodTest extends TestCase
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        $this->actingAs($admin)->post('/academic-years', ['year' => '2025/2026', 'status' => 'active']);
+        $this->actingAs($admin)->post('/kurikulum/academic-years', ['year' => '2025/2026', 'status' => 'active']);
         $year = AcademicYear::query()->firstOrFail();
-        $this->actingAs($admin)->post("/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'active']);
+        $this->actingAs($admin)->post("/kurikulum/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'active']);
         $period = AcademicPeriod::query()->firstOrFail();
         $startDate = $period->start_date?->toDateString();
 
@@ -116,7 +116,7 @@ class AcademicYearPeriodTest extends TestCase
         $this->assertSame($startDate, $period->start_date?->toDateString());
         $this->assertNotNull($period->end_date);
 
-        $this->actingAs($admin)->patch("/academic-years/{$year->id}", ['year' => '2025/2026', 'status' => 'inactive'])->assertRedirect();
+        $this->actingAs($admin)->patch("/kurikulum/academic-years/{$year->id}", ['year' => '2025/2026', 'status' => 'inactive'])->assertRedirect();
         $year->refresh();
         $this->assertNotNull($year->end_date);
     }
@@ -125,10 +125,10 @@ class AcademicYearPeriodTest extends TestCase
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        $this->actingAs($admin)->post('/academic-years', ['year' => '2025/2026', 'status' => 'inactive']);
+        $this->actingAs($admin)->post('/kurikulum/academic-years', ['year' => '2025/2026', 'status' => 'inactive']);
         $year = AcademicYear::query()->firstOrFail();
 
-        $this->actingAs($admin)->post("/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'active'])->assertSessionHasErrors('status');
+        $this->actingAs($admin)->post("/kurikulum/academic-years/{$year->id}/periods", ['code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'active'])->assertSessionHasErrors('status');
     }
 
     public function test_academic_year_index_filters_by_search_and_status(): void
@@ -139,7 +139,7 @@ class AcademicYearPeriodTest extends TestCase
         AcademicYear::query()->create(['year' => '2025/2026', 'status' => 'active']);
 
         $this->actingAs($admin)
-            ->get('/academic-years?search=2025&status=active')
+            ->get('/kurikulum/academic-years?search=2025&status=active')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('academic-years/index')
@@ -162,7 +162,7 @@ class AcademicYearPeriodTest extends TestCase
         AcademicYear::query()->create(['year' => '2026/2027', 'status' => 'inactive']);
 
         $this->actingAs($admin)
-            ->get('/academic-years?search=Ganjil&per_page=1')
+            ->get('/kurikulum/academic-years?search=Ganjil&per_page=1')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('years.total', 1)
@@ -175,6 +175,6 @@ class AcademicYearPeriodTest extends TestCase
         $operator = User::factory()->create();
         $operator->givePermissionTo('curriculum.view');
 
-        $this->actingAs($operator)->post('/academic-years', ['year' => '2025/2026', 'status' => 'inactive'])->assertForbidden();
+        $this->actingAs($operator)->post('/kurikulum/academic-years', ['year' => '2025/2026', 'status' => 'inactive'])->assertForbidden();
     }
 }

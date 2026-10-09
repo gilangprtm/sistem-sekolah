@@ -41,7 +41,7 @@ class InventoryListTest extends TestCase
         $this->makeItem(['kode_barang' => 'A.01.01', 'nama_jenis_barang' => 'Laptop']);
         $this->makeItem(['kode_barang' => 'B.01.01', 'nama_jenis_barang' => 'Meja']);
 
-        $response = $this->actingAs($admin)->get('/inventory');
+        $response = $this->actingAs($admin)->get('/inventaris/inventory');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -50,9 +50,18 @@ class InventoryListTest extends TestCase
             ->has('items.data', 2));
     }
 
+    public function test_legacy_inventory_url_redirects_to_canonical_url_and_preserves_query(): void
+    {
+        $response = $this->actingAs($this->admin())
+            ->get('/inventory?search=A.01.01&view=assets');
+
+        $response->assertMovedPermanently()
+            ->assertRedirect('/inventaris/inventory?search=A.01.01&view=assets');
+    }
+
     public function test_invalid_view_falls_back_to_assets_view(): void
     {
-        $response = $this->actingAs($this->admin())->get('/inventory?view=unknown');
+        $response = $this->actingAs($this->admin())->get('/inventaris/inventory?view=unknown');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -66,7 +75,7 @@ class InventoryListTest extends TestCase
         $this->makeItem(['kode_barang' => 'A.01.01', 'nama_jenis_barang' => 'Laptop']);
         $this->makeItem(['kode_barang' => 'B.01.01', 'nama_jenis_barang' => 'Meja']);
 
-        $response = $this->actingAs($admin)->get('/inventory?search=A.01.01');
+        $response = $this->actingAs($admin)->get('/inventaris/inventory?search=A.01.01');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -81,7 +90,7 @@ class InventoryListTest extends TestCase
         $this->makeItem(['kode_barang' => 'A.01.01', 'tahun_pembelian' => 2020]);
         $this->makeItem(['kode_barang' => 'B.01.01', 'tahun_pembelian' => 2024]);
 
-        $response = $this->actingAs($admin)->get('/inventory?tahun=2024');
+        $response = $this->actingAs($admin)->get('/inventaris/inventory?tahun=2024');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -97,7 +106,7 @@ class InventoryListTest extends TestCase
         $item->units()->create(['register' => '001', 'condition' => 'B']);
         $item->units()->create(['register' => '002', 'condition' => 'RB']);
 
-        $response = $this->actingAs($admin)->get('/inventory?kondisi=RB');
+        $response = $this->actingAs($admin)->get('/inventaris/inventory?kondisi=RB');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -117,7 +126,7 @@ class InventoryListTest extends TestCase
         $item->units()->create(['register' => '001', 'condition' => 'B']);
         $item->units()->create(['register' => '002', 'condition' => 'RB']);
 
-        $response = $this->actingAs($admin)->get('/inventory?view=registers&search=28.09.2025&kondisi=RB&register_per_page=1');
+        $response = $this->actingAs($admin)->get('/inventaris/inventory?view=registers&search=28.09.2025&kondisi=RB&register_per_page=1');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -141,7 +150,7 @@ class InventoryListTest extends TestCase
         $item->units()->create(['register' => '002', 'condition' => 'B']);
         $item->units()->create(['register' => '003', 'condition' => 'RB']);
 
-        $response = $this->actingAs($admin)->get('/inventory?view=registers&register_page=2&register_per_page=1&kondisi=B');
+        $response = $this->actingAs($admin)->get('/inventaris/inventory?view=registers&register_page=2&register_per_page=1&kondisi=B');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -203,7 +212,7 @@ class InventoryListTest extends TestCase
             'category' => $category->id,
             'inventory_type' => $inventoryType->id,
         ];
-        $response = $this->actingAs($admin)->get('/inventory?'.http_build_query([
+        $response = $this->actingAs($admin)->get('/inventaris/inventory?'.http_build_query([
             'view' => 'registers',
             $filter => $filterValues[$filter],
         ]));
@@ -226,7 +235,7 @@ class InventoryListTest extends TestCase
         $otherItem = $this->makeItem(['kode_barang' => 'B.02.02']);
         $otherItem->units()->create(['register' => '002', 'condition' => 'B']);
 
-        $registerResponse = $this->actingAs($admin)->get('/inventory?view=registers&search=B.02.02');
+        $registerResponse = $this->actingAs($admin)->get('/inventaris/inventory?view=registers&search=B.02.02');
 
         $registerResponse->assertOk();
         $registerResponse->assertInertia(fn ($page) => $page
@@ -237,7 +246,7 @@ class InventoryListTest extends TestCase
             ->has('items.data', 1)
             ->where('items.data.0.kode_barang', 'B.02.02'));
 
-        $assetResponse = $this->actingAs($admin)->get('/inventory?view=assets&search=001');
+        $assetResponse = $this->actingAs($admin)->get('/inventaris/inventory?view=assets&search=001');
 
         $assetResponse->assertInertia(fn ($page) => $page
             ->where('view', 'assets')
@@ -250,11 +259,11 @@ class InventoryListTest extends TestCase
 
     public function test_inventory_requires_authentication_and_inventory_permission(): void
     {
-        $this->get('/inventory')->assertRedirect('/login');
+        $this->get('/inventaris/inventory')->assertRedirect('/login');
 
         $user = User::factory()->create();
         $user->assignRole('Guru');
 
-        $this->actingAs($user)->get('/inventory')->assertForbidden();
+        $this->actingAs($user)->get('/inventaris/inventory')->assertForbidden();
     }
 }

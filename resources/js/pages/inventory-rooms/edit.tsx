@@ -61,7 +61,7 @@ type Props = {
 type Form = { name: string; code: string; description: string };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inventaris Ruangan', href: '/inventory-rooms' },
+    { title: 'Inventaris Ruangan', href: '/inventaris/inventory-rooms' },
     { title: 'Edit', href: '#' },
 ];
 const conditionLabels: Record<string, string> = {
@@ -118,7 +118,7 @@ export default function InventoryRoomsEdit({
 
     const loadLookupPage = (page: number) => {
         router.get(
-            `/inventory-rooms/${room.id}/edit`,
+            `/inventaris/inventory-rooms/${room.id}/edit`,
             {
                 lookup_search: lookupSearch || undefined,
                 lookup_page: page,
@@ -172,7 +172,7 @@ export default function InventoryRoomsEdit({
     const submit = () => {
         setProcessing(true);
         router.patch(
-            `/inventory-rooms/${room.id}`,
+            `/inventaris/inventory-rooms/${room.id}`,
             { ...form, unit_ids: selectedUnits },
             {
                 preserveScroll: true,
@@ -228,7 +228,7 @@ export default function InventoryRoomsEdit({
                 <div className="flex items-start gap-3">
                     <Button asChild variant="outline" size="icon">
                         <Link
-                            href="/inventory-rooms"
+                            href="/inventaris/inventory-rooms"
                             aria-label="Kembali ke daftar ruangan inventaris"
                         >
                             <ArrowLeft />
@@ -392,7 +392,9 @@ export default function InventoryRoomsEdit({
                     </section>
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         <Button asChild variant="outline">
-                            <Link href="/inventory-rooms">Batal</Link>
+                            <Link href="/inventaris/inventory-rooms">
+                                Batal
+                            </Link>
                         </Button>
                         <Button onClick={submit} disabled={processing}>
                             {processing ? 'Menyimpan...' : 'Simpan Perubahan'}

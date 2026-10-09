@@ -54,7 +54,7 @@ type Props = {
     subjects: Option[];
 };
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Guru Mata Pelajaran', href: '/teacher-subjects' },
+    { title: 'Guru Mata Pelajaran', href: '/kurikulum/teacher-subjects' },
 ];
 
 export default function TeacherSubjectsIndex({
@@ -75,19 +75,19 @@ export default function TeacherSubjectsIndex({
     const params = (): Record<string, string> => (search ? { search } : {});
     const navigate = (extra: Record<string, string | number>) =>
         router.get(
-            '/teacher-subjects',
+            '/kurikulum/teacher-subjects',
             { ...params(), ...extra },
             { preserveState: true, preserveScroll: true, replace: true },
         );
     const submit = () =>
-        router.post('/teacher-subjects', form, {
+        router.post('/kurikulum/teacher-subjects', form, {
             preserveScroll: true,
             onSuccess: () => setOpen(false),
             onError: setErrors,
         });
     const remove = (relation: Relation) => {
         if (confirm(`Hapus relasi ${relation.code}?`)) {
-            router.delete(`/teacher-subjects/${relation.id}`, {
+            router.delete(`/kurikulum/teacher-subjects/${relation.id}`, {
                 preserveScroll: true,
             });
         }

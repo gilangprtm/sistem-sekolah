@@ -41,7 +41,7 @@ class InventoryDashboardTest extends TestCase
         $item->units()->create(['register' => '004', 'condition' => 'RB']);
         $item->units()->create(['register' => '005', 'condition' => 'B']);
 
-        $response = $this->actingAs($admin)->get('/inventory/dashboard');
+        $response = $this->actingAs($admin)->get('/inventaris/inventory/dashboard');
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
@@ -61,7 +61,7 @@ class InventoryDashboardTest extends TestCase
         $user->assignRole('Guru');
 
         $this->actingAs($user)
-            ->get('/inventory/dashboard')
+            ->get('/inventaris/inventory/dashboard')
             ->assertForbidden();
     }
 }

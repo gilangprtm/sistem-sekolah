@@ -38,7 +38,7 @@ class InventoryCategoryTest extends TestCase
         $item->units()->create(['register' => '001', 'condition' => 'RB']);
 
         $this->actingAs($this->admin())
-            ->patch("/inventory/{$item->id}", ['inventory_category_id' => $category->id])
+            ->patch("/inventaris/inventory/{$item->id}", ['inventory_category_id' => $category->id])
             ->assertRedirect();
 
         $item->refresh();
@@ -57,7 +57,7 @@ class InventoryCategoryTest extends TestCase
         InventoryItem::factory()->create(['inventory_category_id' => null, 'kode_barang' => 'B.01.01']);
 
         $this->actingAs($this->admin())
-            ->get("/inventory?category={$category->id}")
+            ->get("/inventaris/inventory?category={$category->id}")
             ->assertInertia(fn ($page) => $page
                 ->component('inventory/index')
                 ->has('items.data', 1)
@@ -72,7 +72,7 @@ class InventoryCategoryTest extends TestCase
         $item = InventoryItem::factory()->create();
 
         $this->actingAs($user)
-            ->patch("/inventory/{$item->id}", ['inventory_category_id' => $category->id])
+            ->patch("/inventaris/inventory/{$item->id}", ['inventory_category_id' => $category->id])
             ->assertForbidden();
     }
 }

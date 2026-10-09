@@ -58,7 +58,7 @@ class AssistantClassTest extends TestCase
         $student = Student::factory()->create(['nis' => 'S-001', 'full_name' => 'Siswa Aktif', 'status' => 'active']);
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        $this->actingAs($admin)->post('/management-class/classes', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/classes', [
             'academic_year_id' => $activeYear->id,
             'rombel_id' => $rombel->id,
             'teacher_id' => $teacher->id,

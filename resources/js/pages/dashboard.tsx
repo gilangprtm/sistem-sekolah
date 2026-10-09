@@ -85,7 +85,7 @@ export default function Dashboard({ stats, isSuperAdmin }: DashboardProps) {
                             <CardContent>
                                 <div className="flex gap-2">
                                     <Button asChild variant="outline" size="sm">
-                                        <Link href="/inventory">
+                                        <Link href="/inventaris/inventory">
                                             Daftar Inventaris
                                         </Link>
                                     </Button>
@@ -95,7 +95,7 @@ export default function Dashboard({ stats, isSuperAdmin }: DashboardProps) {
                                             variant="outline"
                                             size="sm"
                                         >
-                                            <Link href="/inventory/dashboard">
+                                            <Link href="/inventaris/inventory/dashboard">
                                                 <LayoutDashboard className="h-4 w-4" />
                                                 Dashboard
                                             </Link>

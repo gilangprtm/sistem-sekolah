@@ -226,8 +226,8 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Jadwal Pelajaran', href: '/schedule' },
-    { title: 'Rancang Jadwal', href: '/schedule/generate' },
+    { title: 'Jadwal Pelajaran', href: '/kurikulum/schedule' },
+    { title: 'Rancang Jadwal', href: '/kurikulum/schedule/generate' },
 ];
 const grades = ['VII', 'VIII', 'IX'];
 function createAssignmentId(): string {
@@ -333,7 +333,7 @@ export default function ScheduleGenerate({
         setProcessing(true);
         setSaveError(null);
         router.post(
-            '/schedule',
+            '/kurikulum/schedule',
             {
                 academic_period_id: selectedPeriod?.id,
                 grade,
@@ -396,7 +396,7 @@ export default function ScheduleGenerate({
 
     const navigate = (nextGrade = grade, nextIds = selectedIds) => {
         router.get(
-            '/schedule/generate',
+            '/kurikulum/schedule/generate',
             {
                 ...(selectedPeriod
                     ? { academic_period_id: selectedPeriod.id }
@@ -410,7 +410,7 @@ export default function ScheduleGenerate({
     };
     const selectPeriod = (value: string) => {
         router.get(
-            '/schedule/generate',
+            '/kurikulum/schedule/generate',
             {
                 academic_period_id: Number(value),
                 grade,
@@ -515,7 +515,7 @@ export default function ScheduleGenerate({
                 <div className="flex items-start gap-3">
                     <Button asChild variant="outline" size="icon">
                         <Link
-                            href="/schedule"
+                            href="/kurikulum/schedule"
                             aria-label="Kembali ke jadwal pelajaran"
                         >
                             <ArrowLeft />
@@ -565,7 +565,7 @@ export default function ScheduleGenerate({
                                 setSelectedIds([]);
                                 setAssignments({});
                                 router.get(
-                                    '/schedule/generate',
+                                    '/kurikulum/schedule/generate',
                                     { grade: 'VII' },
                                     { replace: true },
                                 );
@@ -716,7 +716,7 @@ export default function ScheduleGenerate({
                         <Button
                             variant="destructive"
                             onClick={() =>
-                                router.delete('/schedule', {
+                                router.delete('/kurikulum/schedule', {
                                     data: {
                                         academic_period_id: selectedPeriod?.id,
                                         grade,

@@ -52,7 +52,9 @@ type Props = {
     filters: { search?: string; status?: string; per_page?: number };
     filterOptions: { statuses: { value: string; label: string }[] };
 };
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Rombel', href: '/rombels' }];
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Rombel', href: '/kurikulum/rombels' },
+];
 
 export default function RombelsIndex({
     rombels,
@@ -76,7 +78,7 @@ export default function RombelsIndex({
         ...(status ? { status } : {}),
     });
     const navigate = (values: Record<string, string | number>) =>
-        router.get('/rombels', values, {
+        router.get('/kurikulum/rombels', values, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -111,9 +113,9 @@ export default function RombelsIndex({
         };
 
         if (editing) {
-            router.patch(`/rombels/${editing.id}`, form, options);
+            router.patch(`/kurikulum/rombels/${editing.id}`, form, options);
         } else {
-            router.post('/rombels', form, options);
+            router.post('/kurikulum/rombels', form, options);
         }
     };
 
@@ -300,7 +302,7 @@ export default function RombelsIndex({
                                                                 `Arsipkan rombel "${rombel.name}"?`,
                                                             ) &&
                                                             router.post(
-                                                                `/rombels/${rombel.id}/archive`,
+                                                                `/kurikulum/rombels/${rombel.id}/archive`,
                                                                 {},
                                                                 {
                                                                     preserveScroll: true,

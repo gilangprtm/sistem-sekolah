@@ -115,7 +115,7 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inventaris', href: '/inventory' },
+    { title: 'Inventaris', href: '/inventaris/inventory' },
 ];
 
 type FilterOption = { value: string; label: string };
@@ -223,7 +223,7 @@ export default function InventoryIndex({
 
     const applyFilters = () => {
         router.get(
-            '/inventory',
+            '/inventaris/inventory',
             {
                 ...filterParams(),
                 view,
@@ -246,7 +246,7 @@ export default function InventoryIndex({
         setCategory('');
         setInventoryType('');
         router.get(
-            '/inventory',
+            '/inventaris/inventory',
             {
                 view,
                 page: view === 'assets' ? 1 : items.current_page,
@@ -261,7 +261,7 @@ export default function InventoryIndex({
 
     const goToPage = (page: number) => {
         router.get(
-            '/inventory',
+            '/inventaris/inventory',
             {
                 ...filters,
                 view: 'assets',
@@ -274,7 +274,7 @@ export default function InventoryIndex({
 
     const changeView = (nextView: string) => {
         router.get(
-            '/inventory',
+            '/inventaris/inventory',
             {
                 ...filterParams(),
                 view: nextView,
@@ -289,7 +289,7 @@ export default function InventoryIndex({
 
     const goToRegisterPage = (page: number) => {
         router.get(
-            '/inventory',
+            '/inventaris/inventory',
             {
                 ...filters,
                 view: 'registers',
@@ -331,7 +331,7 @@ export default function InventoryIndex({
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild>
                                     <a
-                                        href={`/inventory/export/excel?${new URLSearchParams(
+                                        href={`/inventaris/inventory/export/excel?${new URLSearchParams(
                                             Object.entries({
                                                 ...filters,
                                                 per_page: undefined,
@@ -351,7 +351,7 @@ export default function InventoryIndex({
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Button asChild>
-                            <Link href="/inventory/create">
+                            <Link href="/inventaris/inventory/create">
                                 <Plus />
                                 Tambah Inventaris
                             </Link>
@@ -617,7 +617,7 @@ export default function InventoryIndex({
                                                                 asChild
                                                             >
                                                                 <Link
-                                                                    href={`/inventory/${item.id}`}
+                                                                    href={`/inventaris/inventory/${item.id}`}
                                                                 >
                                                                     Lihat detail
                                                                 </Link>
@@ -658,7 +658,7 @@ export default function InventoryIndex({
                                             value={`${items.per_page}`}
                                             onValueChange={(value) =>
                                                 router.get(
-                                                    '/inventory',
+                                                    '/inventaris/inventory',
                                                     {
                                                         ...filters,
                                                         view: 'assets',
@@ -935,7 +935,7 @@ export default function InventoryIndex({
                                             value={`${registers.per_page}`}
                                             onValueChange={(value) =>
                                                 router.get(
-                                                    '/inventory',
+                                                    '/inventaris/inventory',
                                                     {
                                                         ...filters,
                                                         view: 'registers',

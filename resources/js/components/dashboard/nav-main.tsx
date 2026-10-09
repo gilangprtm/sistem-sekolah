@@ -83,24 +83,43 @@ function hasSubItems(item: NavMainItem): item is NavMainParentItem {
     return Boolean(item.subItems?.length);
 }
 
+function normalizePath(value: string): string {
+    const rawPath = value.split('?')[0].split('#')[0];
+    const path = rawPath.startsWith('http')
+        ? new URL(rawPath).pathname
+        : rawPath;
+
+    if (path.length > 1) {
+        return path.replace(/\/+$/, '');
+    }
+
+    return path || '/';
+}
+
 export function NavMain({ items }: NavMainProps) {
     const { url } = usePage();
-    const path = url.split('?')[0];
+    const path = normalizePath(url);
+
+    const isPathActive = (candidateUrl: string) => {
+        const candidatePath = normalizePath(candidateUrl);
+
+        return path === candidatePath || path.startsWith(`${candidatePath}/`);
+    };
 
     const isItemActive = (item: NavMainItem) => {
         if (hasSubItems(item)) {
-            return item.subItems.some((sub) => path.startsWith(sub.url));
+            return item.subItems.some((sub) => isPathActive(sub.url));
         }
 
-        return path === item.url;
+        return isPathActive(item.url);
     };
 
     const isSubItemActive = (url: string) => {
-        return path === url;
+        return isPathActive(url);
     };
 
     const isSubmenuOpen = (item: NavMainParentItem) => {
-        return item.subItems.some((sub) => path.startsWith(sub.url));
+        return item.subItems.some((sub) => isPathActive(sub.url));
     };
 
     return (

@@ -53,7 +53,7 @@ type Props = {
     filterOptions: { statuses: { value: string; label: string }[] };
 };
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Mata Pelajaran', href: '/subjects' },
+    { title: 'Mata Pelajaran', href: '/kurikulum/subjects' },
 ];
 
 export default function SubjectsIndex({
@@ -79,7 +79,7 @@ export default function SubjectsIndex({
         ...(status ? { status } : {}),
     });
     const navigate = (params: Record<string, string | number>) =>
-        router.get('/subjects', params, {
+        router.get('/kurikulum/subjects', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -116,16 +116,16 @@ export default function SubjectsIndex({
         };
 
         if (editing) {
-            router.patch(`/subjects/${editing.id}`, form, options);
+            router.patch(`/kurikulum/subjects/${editing.id}`, form, options);
         } else {
-            router.post('/subjects', form, options);
+            router.post('/kurikulum/subjects', form, options);
         }
     };
 
     const archive = (subject: Subject) => {
         if (confirm(`Arsipkan mata pelajaran "${subject.name}"?`)) {
             router.post(
-                `/subjects/${subject.id}/archive`,
+                `/kurikulum/subjects/${subject.id}/archive`,
                 {},
                 { preserveScroll: true },
             );

@@ -54,7 +54,7 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Inventaris', href: '/inventory' },
+    { title: 'Inventaris', href: '/inventaris/inventory' },
 ];
 
 export default function InventoryShow({ item, categories, rooms }: Props) {
@@ -85,7 +85,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
 
     const saveKeterangan = () => {
         router.patch(
-            `/inventory/${item.id}`,
+            `/inventaris/inventory/${item.id}`,
             { keterangan },
             {
                 preserveScroll: true,
@@ -96,7 +96,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
 
     const saveCategory = () => {
         router.patch(
-            `/inventory/${item.id}`,
+            `/inventaris/inventory/${item.id}`,
             { category_id: categoryId || null },
             {
                 preserveScroll: true,
@@ -107,7 +107,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
 
     const addUnits = () => {
         router.post(
-            `/inventory/${item.id}/units`,
+            `/inventaris/inventory/${item.id}/units`,
             { qty: addQty },
             {
                 preserveScroll: true,
@@ -122,7 +122,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
 
     const updateCondition = (unit: Unit, condition: string) => {
         router.patch(
-            `/inventory/${item.id}/units/${unit.id}`,
+            `/inventaris/inventory/${item.id}/units/${unit.id}`,
             { condition },
             {
                 preserveScroll: true,
@@ -132,7 +132,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
 
     const updateRoom = (unit: Unit, inventoryRoomId: string) => {
         router.patch(
-            `/inventory/${item.id}/units/${unit.id}/room`,
+            `/inventaris/inventory/${item.id}/units/${unit.id}/room`,
             { inventory_room_id: inventoryRoomId || null },
             { preserveScroll: true },
         );
@@ -147,7 +147,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
             return;
         }
 
-        router.delete(`/inventory/${item.id}`);
+        router.delete(`/inventaris/inventory/${item.id}`);
     };
 
     const formatRupiah = (value: number) =>
@@ -162,7 +162,10 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
         <AppLayout
             breadcrumbs={[
                 ...breadcrumbs,
-                { title: item.kode_barang, href: `/inventory/${item.id}` },
+                {
+                    title: item.kode_barang,
+                    href: `/inventaris/inventory/${item.id}`,
+                },
             ]}
         >
             <Head title={`${item.kode_barang} — ${item.nama_jenis_barang}`} />
@@ -170,7 +173,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <Button asChild variant="outline" size="icon">
-                            <Link href="/inventory">
+                            <Link href="/inventaris/inventory">
                                 <ArrowLeft />
                             </Link>
                         </Button>

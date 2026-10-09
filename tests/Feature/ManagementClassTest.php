@@ -39,7 +39,7 @@ class ManagementClassTest extends TestCase
 
     private function createClass(User $admin, AcademicYear $year, Rombel $rombel, Teacher $teacher): void
     {
-        $this->actingAs($admin)->post('/management-class/classes', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/classes', [
             'academic_year_id' => $year->id,
             'rombel_id' => $rombel->id,
             'teacher_id' => $teacher->id,
@@ -54,7 +54,7 @@ class ManagementClassTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->get('/management-class')
+            ->get('/kurikulum/management-class')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('management-class/index')
@@ -62,7 +62,7 @@ class ManagementClassTest extends TestCase
                 ->has('classes.data', 0));
 
         $this->actingAs($admin)
-            ->post('/management-class/classes', [
+            ->post('/kurikulum/management-class/classes', [
                 'academic_year_id' => $year->id,
                 'rombel_id' => $rombel->id,
                 'teacher_id' => $teacher->id,
@@ -70,7 +70,7 @@ class ManagementClassTest extends TestCase
             ->assertRedirect();
 
         $this->actingAs($admin)
-            ->get('/management-class?academic_year_id='.$year->id)
+            ->get('/kurikulum/management-class?academic_year_id='.$year->id)
             ->assertInertia(fn ($page) => $page
                 ->has('classes.data', 1)
                 ->where('classes.data.0.rombel_id', $rombel->id));
@@ -84,13 +84,13 @@ class ManagementClassTest extends TestCase
         $admin = $this->admin();
         $payload = ['academic_year_id' => $year->id, 'rombel_id' => $rombel->id, 'teacher_id' => $teacher->id];
 
-        $this->actingAs($admin)->post('/management-class/classes', $payload)->assertRedirect();
+        $this->actingAs($admin)->post('/kurikulum/management-class/classes', $payload)->assertRedirect();
         $this->actingAs($admin)
-            ->post('/management-class/classes', $payload)
+            ->post('/kurikulum/management-class/classes', $payload)
             ->assertSessionHasErrors('rombel_id', 'Rombel tersebut sudah digunakan pada Tahun Ajaran ini.');
 
         $rombel->update(['status' => 'inactive']);
-        $this->actingAs($admin)->post('/management-class/classes', $payload)->assertSessionHasErrors('rombel_id');
+        $this->actingAs($admin)->post('/kurikulum/management-class/classes', $payload)->assertSessionHasErrors('rombel_id');
     }
 
     public function test_management_class_table_is_viewer_only_and_manage_page_exposes_mutations(): void
@@ -98,7 +98,7 @@ class ManagementClassTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->get('/management-class')
+            ->get('/kurikulum/management-class')
             ->assertInertia(fn ($page) => $page
                 ->component('management-class/index')
                 ->missing('availableRombels')
@@ -106,7 +106,7 @@ class ManagementClassTest extends TestCase
                 ->missing('teachers'));
 
         $this->actingAs($admin)
-            ->get('/management-class/manage')
+            ->get('/kurikulum/management-class/manage')
             ->assertOk();
     }
 
@@ -118,7 +118,7 @@ class ManagementClassTest extends TestCase
         $admin = $this->admin();
 
         $response = $this->actingAs($admin)
-            ->get('/management-class/manage?academic_year_id='.$year->id.'&rombel_id='.$rombel->id);
+            ->get('/kurikulum/management-class/manage?academic_year_id='.$year->id.'&rombel_id='.$rombel->id);
 
         $response->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -152,7 +152,7 @@ class ManagementClassTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)
-            ->get('/management-class/manage?academic_year_id='.$year->id.'&lookup_search=TARGET&lookup_per_page=1');
+            ->get('/kurikulum/management-class/manage?academic_year_id='.$year->id.'&lookup_search=TARGET&lookup_per_page=1');
 
         $response->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -167,7 +167,7 @@ class ManagementClassTest extends TestCase
         $this->assertStringContainsString('const confirmStudents = () =>', $source);
         $this->assertStringContainsString('setSelectedStudentIds(lookupSelectedIds)', $source);
         $this->assertStringContainsString(
-            "{ preserveState: true, preserveScroll: true, replace: true }",
+            '{ preserveState: true, preserveScroll: true, replace: true }',
             $source,
         );
         $this->assertStringNotContainsString('useEffect', $source);
@@ -187,14 +187,14 @@ class ManagementClassTest extends TestCase
         }
 
         foreach ($students as $student) {
-            $this->actingAs($admin)->post('/management-class/students', [
+            $this->actingAs($admin)->post('/kurikulum/management-class/students', [
                 'academic_year_id' => $year->id,
                 'rombel_id' => $vii->id,
                 'student_id' => $student->id,
             ])->assertRedirect();
         }
 
-        $this->actingAs($admin)->post('/management-class/classes/promote', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/classes/promote', [
             'academic_year_id' => $year->id,
             'source_rombel_id' => $vii->id,
         ])->assertRedirect();
@@ -206,7 +206,7 @@ class ManagementClassTest extends TestCase
             $this->assertDatabaseHas('tr_curriculum_student_placements', ['academic_year_id' => $year->id, 'student_id' => $student->id, 'rombel_id' => $viii->id, 'status' => 'active']);
         }
 
-        $this->actingAs($admin)->post('/management-class/classes/promote', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/classes/promote', [
             'academic_year_id' => $year->id,
             'source_rombel_id' => $viii->id,
         ])->assertRedirect();
@@ -227,14 +227,14 @@ class ManagementClassTest extends TestCase
         $teachers = Teacher::factory()->count(2)->create(['status' => 'active', 'staff_type' => 'guru']);
         $this->createClass($admin, $year, $vii, $teachers[0]);
         $this->createClass($admin, $year, $viii, $teachers[1]);
-        $this->actingAs($admin)->post('/management-class/students', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/students', [
             'academic_year_id' => $year->id,
             'rombel_id' => $vii->id,
             'student_id' => $student->id,
         ])->assertRedirect();
 
         $this->actingAs($admin)
-            ->post('/management-class/classes/promote', ['academic_year_id' => $year->id, 'source_rombel_id' => $vii->id])
+            ->post('/kurikulum/management-class/classes/promote', ['academic_year_id' => $year->id, 'source_rombel_id' => $vii->id])
             ->assertSessionHasErrors('source_rombel_id');
 
         $this->assertDatabaseHas('tr_curriculum_student_placements', ['student_id' => $student->id, 'rombel_id' => $vii->id, 'status' => 'active']);
@@ -253,7 +253,7 @@ class ManagementClassTest extends TestCase
         $this->createClass($admin, $year, $viii, $teachers[1]);
 
         foreach ([[$vii, $sourceStudent], [$viii, $targetStudent]] as [$rombel, $student]) {
-            $this->actingAs($admin)->post('/management-class/students', [
+            $this->actingAs($admin)->post('/kurikulum/management-class/students', [
                 'academic_year_id' => $year->id,
                 'rombel_id' => $rombel->id,
                 'student_id' => $student->id,
@@ -261,7 +261,7 @@ class ManagementClassTest extends TestCase
         }
 
         $this->actingAs($admin)
-            ->post('/management-class/classes/promote', [
+            ->post('/kurikulum/management-class/classes/promote', [
                 'academic_year_id' => $year->id,
                 'source_rombel_id' => $vii->id,
             ])
@@ -283,9 +283,9 @@ class ManagementClassTest extends TestCase
         }
 
         $assign = ['academic_year_id' => $year->id, 'rombel_id' => $rombels[0]->id, 'teacher_id' => $teachers[0]->id];
-        $this->actingAs($admin)->post('/management-class/homerooms', $assign)->assertRedirect();
-        $this->actingAs($admin)->post('/management-class/homerooms', [...$assign, 'teacher_id' => $teachers[2]->id])->assertRedirect();
-        $this->actingAs($admin)->post('/management-class/homerooms', ['academic_year_id' => $year->id, 'rombel_id' => $rombels[1]->id, 'teacher_id' => $teachers[2]->id])->assertSessionHasErrors('teacher_id');
+        $this->actingAs($admin)->post('/kurikulum/management-class/homerooms', $assign)->assertRedirect();
+        $this->actingAs($admin)->post('/kurikulum/management-class/homerooms', [...$assign, 'teacher_id' => $teachers[2]->id])->assertRedirect();
+        $this->actingAs($admin)->post('/kurikulum/management-class/homerooms', ['academic_year_id' => $year->id, 'rombel_id' => $rombels[1]->id, 'teacher_id' => $teachers[2]->id])->assertSessionHasErrors('teacher_id');
 
         $this->assertDatabaseCount('tr_curriculum_homeroom_assignments', 4);
         $this->assertDatabaseHas('tr_curriculum_homeroom_assignments', ['academic_year_id' => $year->id, 'rombel_id' => $rombels[0]->id, 'teacher_id' => $teachers[2]->id, 'status' => 'active']);
@@ -299,7 +299,7 @@ class ManagementClassTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->post('/management-class/classes', ['academic_year_id' => $year->id, 'rombel_id' => $rombel->id])
+            ->post('/kurikulum/management-class/classes', ['academic_year_id' => $year->id, 'rombel_id' => $rombel->id])
             ->assertSessionHasErrors('teacher_id');
 
         $this->assertDatabaseCount('tr_curriculum_year_classes', 0);
@@ -316,7 +316,7 @@ class ManagementClassTest extends TestCase
 
         foreach ($rombels as $index => $rombel) {
             $this->createClass($admin, $year, $rombel, $teachers[$index]);
-            $this->actingAs($admin)->post('/management-class/students', [
+            $this->actingAs($admin)->post('/kurikulum/management-class/students', [
                 'academic_year_id' => $year->id,
                 'rombel_id' => $rombel->id,
                 'student_id' => $students[$index]->id,
@@ -324,7 +324,7 @@ class ManagementClassTest extends TestCase
         }
 
         $this->actingAs($admin)
-            ->get('/management-class?academic_year_id='.$year->id)
+            ->get('/kurikulum/management-class?academic_year_id='.$year->id)
             ->assertInertia(fn ($page) => $page
                 ->where('classes.data.0.student_placements_count', 1)
                 ->where('classes.data.0.homeroom_assignments.0.teacher.id', $teachers[0]->id)
@@ -347,7 +347,7 @@ class ManagementClassTest extends TestCase
         $this->createClass($admin, $otherYear, $otherYearRombel, $teachers[2]);
 
         $this->actingAs($admin)
-            ->get('/management-class?academic_year_id='.$year->id.'&search=Alpha&per_page=1&page=2')
+            ->get('/kurikulum/management-class?academic_year_id='.$year->id.'&search=Alpha&per_page=1&page=2')
             ->assertInertia(fn ($page) => $page
                 ->where('selectedYear.id', $year->id)
                 ->where('classes.total', 2)
@@ -434,8 +434,8 @@ class ManagementClassTest extends TestCase
         $this->assertStringContainsString('Tambah Siswa', $source);
         $this->assertStringContainsString('Simpan Perubahan', $source);
         $this->assertStringNotContainsString('Promosikan Satu Kelas', $source);
-        $this->assertStringNotContainsString('/management-class/classes/promote', $source);
-        $this->assertStringNotContainsString('/management-class/classes/promote', $table);
+        $this->assertStringNotContainsString('/kurikulum/management-class/classes/promote', $source);
+        $this->assertStringNotContainsString('/kurikulum/management-class/classes/promote', $table);
     }
 
     public function test_manage_page_exposes_only_active_master_rombels_for_the_class_combobox(): void
@@ -445,7 +445,7 @@ class ManagementClassTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->get('/management-class/manage')
+            ->get('/kurikulum/management-class/manage')
             ->assertInertia(fn ($page) => $page
                 ->where('availableRombels.0.id', $activeRombel->id)
                 ->where('availableRombels.0.code', 'VII-A')
@@ -460,7 +460,7 @@ class ManagementClassTest extends TestCase
         $student = Student::factory()->create(['status' => 'active']);
         $admin = $this->admin();
         $this->createClass($admin, $year, $rombel, $teacher);
-        $this->actingAs($admin)->post('/management-class/students', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/students', [
             'academic_year_id' => $year->id,
             'rombel_id' => $rombel->id,
             'student_id' => $student->id,
@@ -473,7 +473,7 @@ class ManagementClassTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get('/management-class/manage?academic_year_id='.$year->id.'&rombel_id='.$rombel->id)
+            ->get('/kurikulum/management-class/manage?academic_year_id='.$year->id.'&rombel_id='.$rombel->id)
             ->assertInertia(fn ($page) => $page
                 ->where('selectedRombelId', $rombel->id)
                 ->where('registeredRombelIds.0', $rombel->id)
@@ -497,13 +497,13 @@ class ManagementClassTest extends TestCase
         $students = Student::factory()->count(2)->create(['status' => 'active']);
         $admin = $this->admin();
         $this->createClass($admin, $year, $rombel, $teachers[0]);
-        $this->actingAs($admin)->post('/management-class/students', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/students', [
             'academic_year_id' => $year->id,
             'rombel_id' => $rombel->id,
             'student_id' => $students[0]->id,
         ])->assertRedirect();
 
-        $this->actingAs($admin)->post('/management-class/classes/update', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/classes/update', [
             'academic_year_id' => $year->id,
             'rombel_id' => $rombel->id,
             'teacher_id' => $teachers[1]->id,
@@ -552,13 +552,13 @@ class ManagementClassTest extends TestCase
         $admin = $this->admin();
         $this->createClass($admin, $year, $rombels[0], $teachers[0]);
         $this->createClass($admin, $year, $rombels[1], $teachers[1]);
-        $this->actingAs($admin)->post('/management-class/students', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/students', [
             'academic_year_id' => $year->id,
             'rombel_id' => $rombels[1]->id,
             'student_id' => $student->id,
         ])->assertRedirect();
 
-        $this->actingAs($admin)->post('/management-class/classes/update', [
+        $this->actingAs($admin)->post('/kurikulum/management-class/classes/update', [
             'academic_year_id' => $year->id,
             'rombel_id' => $rombels[0]->id,
             'teacher_id' => $teachers[0]->id,
@@ -588,13 +588,13 @@ class ManagementClassTest extends TestCase
         $this->createClass($admin, $year, $rombel, $teacher);
 
         $this->actingAs($admin)
-            ->get('/management-class?academic_year_id='.$year->id)
+            ->get('/kurikulum/management-class?academic_year_id='.$year->id)
             ->assertInertia(fn ($page) => $page
                 ->component('management-class/index')
                 ->where('classes.data.0.rombel_id', $rombel->id));
 
         $this->actingAs($admin)
-            ->get('/management-class/manage?academic_year_id='.$year->id.'&rombel_id='.$rombel->id)
+            ->get('/kurikulum/management-class/manage?academic_year_id='.$year->id.'&rombel_id='.$rombel->id)
             ->assertInertia(fn ($page) => $page
                 ->component('management-class/manage')
                 ->where('selectedClass.rombel_id', $rombel->id)
@@ -605,7 +605,7 @@ class ManagementClassTest extends TestCase
         $this->assertStringContainsString('<TableHead className="text-right">', $table);
         $this->assertStringContainsString('Aksi', $table);
         $this->assertStringContainsString('Edit', $table);
-        $this->assertStringContainsString('/management-class/manage?academic_year_id=', $table);
+        $this->assertStringContainsString('/kurikulum/management-class/manage?academic_year_id=', $table);
         $this->assertStringContainsString('rombel_id=${item.rombel_id}', $table);
         $this->assertStringContainsString("import DataTableToolbar from '@/components/data-table/data-table-toolbar';", $table);
         $this->assertStringContainsString("import { Checkbox } from '@/components/ui/checkbox';", $table);
@@ -623,9 +623,9 @@ class ManagementClassTest extends TestCase
         $rombel = Rombel::factory()->create();
         $teacher = Teacher::factory()->create();
 
-        $this->actingAs($user)->get('/management-class')->assertForbidden();
-        $this->actingAs($user)->get('/management-class/manage')->assertForbidden();
-        $this->actingAs($user)->post('/management-class/classes', ['academic_year_id' => $year->id, 'rombel_id' => $rombel->id, 'teacher_id' => $teacher->id])->assertForbidden();
-        $this->actingAs($user)->post('/management-class/classes/promote', ['academic_year_id' => $year->id, 'source_rombel_id' => $rombel->id])->assertForbidden();
+        $this->actingAs($user)->get('/kurikulum/management-class')->assertForbidden();
+        $this->actingAs($user)->get('/kurikulum/management-class/manage')->assertForbidden();
+        $this->actingAs($user)->post('/kurikulum/management-class/classes', ['academic_year_id' => $year->id, 'rombel_id' => $rombel->id, 'teacher_id' => $teacher->id])->assertForbidden();
+        $this->actingAs($user)->post('/kurikulum/management-class/classes/promote', ['academic_year_id' => $year->id, 'source_rombel_id' => $rombel->id])->assertForbidden();
     }
 }

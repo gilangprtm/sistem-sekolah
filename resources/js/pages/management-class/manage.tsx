@@ -74,8 +74,8 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Manajemen Kelas', href: '/management-class' },
-    { title: 'Kelola', href: '/management-class/manage' },
+    { title: 'Manajemen Kelas', href: '/kurikulum/management-class' },
+    { title: 'Kelola', href: '/kurikulum/management-class/manage' },
 ];
 
 export default function ManagementClassManage({
@@ -127,7 +127,7 @@ export default function ManagementClassManage({
     );
     const lookupStudents = (page = 1) => {
         router.get(
-            '/management-class/manage',
+            '/kurikulum/management-class/manage',
             {
                 academic_year_id: selectedYear?.id,
                 rombel_id: rombelId ? Number(rombelId) : undefined,
@@ -188,7 +188,7 @@ export default function ManagementClassManage({
 
         setProcessing(true);
         router.post(
-            '/management-class/classes/update',
+            '/kurikulum/management-class/classes/update',
             {
                 academic_year_id: selectedYear.id,
                 rombel_id: Number(rombelId),
@@ -213,7 +213,7 @@ export default function ManagementClassManage({
                 <div className="flex items-start gap-3">
                     <Button asChild variant="outline" size="icon">
                         <Link
-                            href="/management-class"
+                            href="/kurikulum/management-class"
                             aria-label="Kembali ke daftar manajemen kelas"
                         >
                             <ArrowLeft />
@@ -238,7 +238,7 @@ export default function ManagementClassManage({
                                 }))}
                                 onChange={(value) =>
                                     router.get(
-                                        '/management-class/manage',
+                                        '/kurikulum/management-class/manage',
                                         {
                                             academic_year_id: Number(value),
                                             rombel_id: rombelId
@@ -272,7 +272,7 @@ export default function ManagementClassManage({
                                 onChange={(value) => {
                                     setRombelId(value);
                                     router.get(
-                                        '/management-class/manage',
+                                        '/kurikulum/management-class/manage',
                                         {
                                             academic_year_id: selectedYear?.id,
                                             rombel_id: Number(value),
@@ -396,7 +396,9 @@ export default function ManagementClassManage({
 
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         <Button asChild variant="outline">
-                            <Link href="/management-class">Batal</Link>
+                            <Link href="/kurikulum/management-class">
+                                Batal
+                            </Link>
                         </Button>
                         <Button
                             onClick={submit}

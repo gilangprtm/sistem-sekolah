@@ -36,7 +36,7 @@ class InventoryCategoryAggregationTest extends TestCase
             }
         }
 
-        $response = $this->actingAs($admin)->get('/inventory/dashboard');
+        $response = $this->actingAs($admin)->get('/inventaris/inventory/dashboard');
 
         $response->assertInertia(fn ($page) => $page
             ->where('kpis.total_aset', 5)

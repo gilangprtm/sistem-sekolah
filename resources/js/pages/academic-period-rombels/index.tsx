@@ -56,7 +56,7 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Penggunaan Rombel', href: '/academic-period-rombels' },
+    { title: 'Penggunaan Rombel', href: '/kurikulum/academic-period-rombels' },
 ];
 
 export default function AcademicPeriodRombelsIndex({
@@ -74,7 +74,7 @@ export default function AcademicPeriodRombelsIndex({
 
     const selectPeriod = (value: string) => {
         router.get(
-            '/academic-period-rombels',
+            '/kurikulum/academic-period-rombels',
             { academic_period_id: value },
             {
                 preserveState: true,
@@ -92,7 +92,7 @@ export default function AcademicPeriodRombelsIndex({
 
     const submit = () => {
         router.post(
-            '/academic-period-rombels',
+            '/kurikulum/academic-period-rombels',
             {
                 academic_period_id: selectedPeriodId,
                 rombel_id: Number(rombelId),
@@ -181,7 +181,7 @@ export default function AcademicPeriodRombelsIndex({
                                                             )
                                                         ) {
                                                             router.delete(
-                                                                `/academic-period-rombels/${usage.id}`,
+                                                                `/kurikulum/academic-period-rombels/${usage.id}`,
                                                                 {
                                                                     preserveScroll: true,
                                                                 },

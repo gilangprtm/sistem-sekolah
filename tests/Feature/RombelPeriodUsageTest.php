@@ -50,7 +50,7 @@ class RombelPeriodUsageTest extends TestCase
         $rombel = Rombel::factory()->create();
 
         $this->actingAs($this->admin())
-            ->post('/academic-period-rombels', [
+            ->post('/kurikulum/academic-period-rombels', [
                 'academic_period_id' => $period->id,
                 'rombel_id' => $rombel->id,
             ])
@@ -68,18 +68,18 @@ class RombelPeriodUsageTest extends TestCase
         $rombel = Rombel::factory()->create();
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/academic-period-rombels', [
+        $this->actingAs($admin)->post('/kurikulum/academic-period-rombels', [
             'academic_period_id' => $period->id,
             'rombel_id' => $rombel->id,
         ])->assertRedirect();
 
-        $this->actingAs($admin)->post('/academic-period-rombels', [
+        $this->actingAs($admin)->post('/kurikulum/academic-period-rombels', [
             'academic_period_id' => $period->id,
             'rombel_id' => $rombel->id,
         ])->assertSessionHasErrors('rombel_id');
 
         $rombel->update(['status' => 'inactive']);
-        $this->actingAs($admin)->post('/academic-period-rombels', [
+        $this->actingAs($admin)->post('/kurikulum/academic-period-rombels', [
             'academic_period_id' => $period->id,
             'rombel_id' => $rombel->id,
         ])->assertSessionHasErrors('rombel_id');
@@ -92,7 +92,7 @@ class RombelPeriodUsageTest extends TestCase
         $rombel = Rombel::factory()->create();
 
         $this->actingAs($this->admin())
-            ->post('/academic-period-rombels', ['academic_period_id' => $period->id, 'rombel_id' => $rombel->id])
+            ->post('/kurikulum/academic-period-rombels', ['academic_period_id' => $period->id, 'rombel_id' => $rombel->id])
             ->assertSessionHasErrors('academic_period_id');
     }
 
@@ -106,7 +106,7 @@ class RombelPeriodUsageTest extends TestCase
         ]);
 
         $this->actingAs($this->admin())
-            ->delete("/academic-period-rombels/{$usage->id}")
+            ->delete("/kurikulum/academic-period-rombels/{$usage->id}")
             ->assertRedirect();
 
         $this->assertDatabaseMissing('tr_curriculum_period_rombels', ['id' => $usage->id]);
@@ -118,8 +118,8 @@ class RombelPeriodUsageTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('Guru');
 
-        $this->actingAs($user)->get('/academic-period-rombels')->assertForbidden();
-        $this->actingAs($user)->post('/academic-period-rombels')->assertForbidden();
+        $this->actingAs($user)->get('/kurikulum/academic-period-rombels')->assertForbidden();
+        $this->actingAs($user)->post('/kurikulum/academic-period-rombels')->assertForbidden();
     }
 
     public function test_usage_schema_is_transactional_and_restrictive(): void

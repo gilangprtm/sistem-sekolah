@@ -24,10 +24,10 @@ class InventoryTypeAutoCreateTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $this->actingAs($admin)->post('/inventory', [
+        $this->actingAs($admin)->post('/inventaris/inventory', [
             'kode_barang' => 'TYPE.01', 'nama_jenis_barang' => 'Meja', 'harga' => 100, 'qty' => 1,
             'inventory_type_name' => ' peralatan ',
-        ])->assertRedirect('/inventory');
+        ])->assertRedirect('/inventaris/inventory');
 
         $this->assertSame(1, InventoryType::whereRaw('LOWER(name) = ?', ['peralatan'])->count());
         $this->assertDatabaseHas('tr_inventory_items', ['kode_barang' => 'TYPE.01', 'inventory_type_id' => $existing->id]);

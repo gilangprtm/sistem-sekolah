@@ -24,10 +24,10 @@ class AssetTypeTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $this->actingAs($admin)->post('/inventory', [
+        $this->actingAs($admin)->post('/inventaris/inventory', [
             'kode_barang' => 'ASSET.01', 'nama_jenis_barang' => 'Laptop', 'harga' => 100, 'qty' => 1,
             'asset_kind' => 'tangible', 'tangible_asset_type_name' => ' perangkat ',
-        ])->assertRedirect('/inventory');
+        ])->assertRedirect('/inventaris/inventory');
 
         $this->assertSame(1, TangibleAssetType::whereRaw('LOWER(name) = ?', ['perangkat'])->count());
         $this->assertDatabaseHas('tr_inventory_items', ['kode_barang' => 'ASSET.01', 'tangible_asset_type_id' => $existing->id, 'asset_kind' => 'tangible']);
@@ -38,10 +38,10 @@ class AssetTypeTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $this->actingAs($admin)->post('/inventory', [
+        $this->actingAs($admin)->post('/inventaris/inventory', [
             'kode_barang' => 'ASSET.02', 'nama_jenis_barang' => 'Lisensi', 'harga' => 100, 'qty' => 1,
             'asset_kind' => 'intangible', 'intangible_asset_type_name' => 'Software',
-        ])->assertRedirect('/inventory');
+        ])->assertRedirect('/inventaris/inventory');
 
         $this->assertDatabaseHas('tr_inventory_items', ['kode_barang' => 'ASSET.02', 'asset_kind' => 'intangible', 'tangible_asset_type_id' => null]);
         $this->assertDatabaseHas('m_inventory_intangible_asset_types', ['name' => 'Software']);

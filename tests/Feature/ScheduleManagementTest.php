@@ -58,7 +58,7 @@ class ScheduleManagementTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->get('/schedule')
+            ->get('/kurikulum/schedule')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('schedules/index')
@@ -75,24 +75,24 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->get('/jadwal-pelajaran?grade=VIII')
-            ->assertRedirect('/schedule?grade=VIII');
+            ->assertRedirect('/kurikulum/schedule?grade=VIII');
 
         $this->actingAs($admin)
             ->get('/schedules?grade=VIII')
-            ->assertRedirect('/schedule?grade=VIII');
+            ->assertRedirect('/kurikulum/schedule?grade=VIII');
     }
 
     public function test_legacy_plural_preparation_path_redirects_to_singular_path(): void
     {
         $this->actingAs($this->admin())
             ->get('/schedules/generate?grade=VIII')
-            ->assertRedirect('/schedule/generate?grade=VIII');
+            ->assertRedirect('/kurikulum/schedule/generate?grade=VIII');
     }
 
     public function test_schedule_route_names_use_singular_schedule_prefix(): void
     {
-        $this->assertSame('/schedule', route('schedule.index', absolute: false));
-        $this->assertSame('/schedule/generate', route('schedule.generate', absolute: false));
+        $this->assertSame('/kurikulum/schedule', route('schedule.index', absolute: false));
+        $this->assertSame('/kurikulum/schedule/generate', route('schedule.generate', absolute: false));
     }
 
     public function test_selected_active_rombels_are_schedule_columns(): void
@@ -108,7 +108,7 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get('/schedule?grade=VII&rombel_ids[]='.$viiA->id)
+            ->get('/kurikulum/schedule?grade=VII&rombel_ids[]='.$viiA->id)
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->has('selectedRombels', 1)
@@ -126,14 +126,14 @@ class ScheduleManagementTest extends TestCase
         $selectedRombelIds = $rombels->pluck('id')->all();
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'selected_rombel_ids' => $selectedRombelIds,
             'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => array_slice($selectedRombelIds, 0, 3)]],
         ])->assertRedirect();
 
         $this->actingAs($admin)
-            ->get('/schedule?grade=VII')
+            ->get('/kurikulum/schedule?grade=VII')
             ->assertInertia(fn ($page) => $page
                 ->has('selectedRombels', 8)
                 ->where('selectedRombelIds', $selectedRombelIds)
@@ -151,13 +151,13 @@ class ScheduleManagementTest extends TestCase
         $viiiTeacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teachers[1]->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
             'selected_rombel_ids' => [$viiRombel->id],
             'assignments' => [['teacher_subject_id' => $viiTeacherSubject->id, 'rombel_ids' => [$viiRombel->id]]],
         ])->assertRedirect();
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VIII',
             'selected_rombel_ids' => [$viiiRombel->id],
@@ -179,13 +179,13 @@ class ScheduleManagementTest extends TestCase
         $viiiTeacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teachers[2]->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
             'selected_rombel_ids' => [$viiRombels[0]->id],
             'assignments' => [['teacher_subject_id' => $viiTeacherSubject->id, 'rombel_ids' => [$viiRombels[0]->id]]],
         ])->assertRedirect();
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VIII',
             'selected_rombel_ids' => [$viiiRombel->id],
@@ -193,7 +193,7 @@ class ScheduleManagementTest extends TestCase
         ])->assertRedirect();
         $viiiPlanId = SchedulePlan::query()->where('academic_period_id', $period->id)->where('status', 'published')->latest('id')->value('id');
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
             'selected_rombel_ids' => [$viiRombels[1]->id],
@@ -214,14 +214,14 @@ class ScheduleManagementTest extends TestCase
         $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
             'selected_rombel_ids' => [$viiRombel->id],
             'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$viiRombel->id]]],
         ])->assertRedirect();
 
-        $this->actingAs($admin)->get('/schedule?grade=IX')->assertOk()->assertInertia(fn ($page) => $page
+        $this->actingAs($admin)->get('/kurikulum/schedule?grade=IX')->assertOk()->assertInertia(fn ($page) => $page
             ->has('selectedRombels', 0)
             ->has('entries', 0));
     }
@@ -237,14 +237,14 @@ class ScheduleManagementTest extends TestCase
 
         foreach ([[$viiRombel, $teachers[0]], [$viiiRombel, $teachers[1]]] as [$rombel, $teacher]) {
             $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
-            $this->actingAs($admin)->post('/schedule', [
+            $this->actingAs($admin)->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'grade' => $rombel->grade_level,
                 'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
             ])->assertRedirect();
         }
 
-        $this->actingAs($admin)->post('/schedule/publish', ['schedule_plan_id' => SchedulePlan::query()->firstOrFail()->id])
+        $this->actingAs($admin)->post('/kurikulum/schedule/publish', ['schedule_plan_id' => SchedulePlan::query()->firstOrFail()->id])
             ->assertNotFound();
         $this->assertSame(2, SchedulePlan::query()->where('academic_period_id', $period->id)->where('status', 'published')->count());
     }
@@ -263,7 +263,7 @@ class ScheduleManagementTest extends TestCase
 
         foreach ($rombels as $index => $rombel) {
             $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teachers[$index]->id, 'subject_id' => $subject->id]);
-            $this->actingAs($admin)->post('/schedule', [
+            $this->actingAs($admin)->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'grade' => $rombel->grade_level,
                 'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
@@ -272,7 +272,7 @@ class ScheduleManagementTest extends TestCase
                 ->where('grade_level', $rombel->grade_level)->where('status', 'published')->value('id');
         }
 
-        $this->actingAs($admin)->get('/schedule/generate?academic_period_id='.$period->id.'&grade=VIII')
+        $this->actingAs($admin)->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VIII')
             ->assertInertia(fn ($page) => $page->where('draftPlan.id', $planIds['VIII'])
                 ->where('draftPlan.teaching_assignments.0.rombel_id', $rombels[1]->id));
     }
@@ -291,7 +291,7 @@ class ScheduleManagementTest extends TestCase
 
         foreach ($rombels as $index => $rombel) {
             $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teachers[$index]->id, 'subject_id' => $subject->id]);
-            $this->actingAs($admin)->post('/schedule', [
+            $this->actingAs($admin)->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'grade' => $rombel->grade_level,
                 'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
@@ -300,7 +300,7 @@ class ScheduleManagementTest extends TestCase
                 ->where('grade_level', $rombel->grade_level)->where('status', 'published')->firstOrFail();
         }
 
-        $this->actingAs($admin)->delete('/schedule', [
+        $this->actingAs($admin)->delete('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
         ])->assertRedirect();
@@ -308,7 +308,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseHas('tr_curriculum_schedule_plans', ['id' => $plans['VIII']->id, 'status' => 'published']);
         $this->assertDatabaseMissing('tr_curriculum_schedule_entries', ['schedule_plan_id' => $plans['VII']->id]);
 
-        $this->actingAs($admin)->delete('/schedule', [
+        $this->actingAs($admin)->delete('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
         ])->assertRedirect();
@@ -319,7 +319,7 @@ class ScheduleManagementTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('Guru');
 
-        $this->actingAs($user)->delete('/schedule', [
+        $this->actingAs($user)->delete('/kurikulum/schedule', [
             'academic_period_id' => $this->activePeriod()->id,
             'grade' => 'VII',
         ])->assertForbidden();
@@ -334,7 +334,7 @@ class ScheduleManagementTest extends TestCase
         $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
             'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
@@ -348,7 +348,7 @@ class ScheduleManagementTest extends TestCase
             'status' => 'draft',
         ]);
 
-        $this->actingAs($admin)->delete('/schedule', [
+        $this->actingAs($admin)->delete('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
         ])->assertSessionHasErrors('schedule');
@@ -368,13 +368,13 @@ class ScheduleManagementTest extends TestCase
         $viiiAnchor = TeacherSubject::factory()->create(['teacher_id' => $teachers[1]->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VII',
             'selected_rombel_ids' => [$viiRombel->id],
             'assignments' => [['teacher_subject_id' => $viiAnchor->id, 'rombel_ids' => [$viiRombel->id]]],
         ])->assertRedirect();
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'grade' => 'VIII',
             'selected_rombel_ids' => [$viiiRombel->id],
@@ -382,10 +382,10 @@ class ScheduleManagementTest extends TestCase
         ])->assertRedirect();
 
         $this->assertSame(2, SchedulePlan::query()->where('academic_period_id', $period->id)->where('status', 'published')->count());
-        $this->actingAs($admin)->get('/schedule?grade=VII')->assertInertia(fn ($page) => $page
+        $this->actingAs($admin)->get('/kurikulum/schedule?grade=VII')->assertInertia(fn ($page) => $page
             ->where('selectedRombelIds.0', $viiRombel->id)
             ->where('entries.0.rombel_id', $viiRombel->id));
-        $this->actingAs($admin)->get('/schedule?grade=VIII')->assertInertia(fn ($page) => $page
+        $this->actingAs($admin)->get('/kurikulum/schedule?grade=VIII')->assertInertia(fn ($page) => $page
             ->where('selectedRombelIds.0', $viiiRombel->id)
             ->where('entries.0.rombel_id', $viiiRombel->id));
     }
@@ -399,13 +399,13 @@ class ScheduleManagementTest extends TestCase
         $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
         ])->assertRedirect();
 
         $this->actingAs($admin)
-            ->get('/schedule?grade=VII')
+            ->get('/kurikulum/schedule?grade=VII')
             ->assertInertia(fn ($page) => $page
                 ->where('selectedRombelIds.0', $rombel->id)
                 ->where('selectedRombels.0.id', $rombel->id)
@@ -421,7 +421,7 @@ class ScheduleManagementTest extends TestCase
         $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
         ])->assertRedirect();
@@ -429,7 +429,7 @@ class ScheduleManagementTest extends TestCase
         $entry = ScheduleEntry::query()->where('schedule_plan_id', $plan->id)->firstOrFail();
 
         $this->actingAs($admin)
-            ->post('/schedule/move', [
+            ->post('/kurikulum/schedule/move', [
                 'schedule_plan_id' => $plan->id,
                 'schedule_entry_id' => $entry->id,
                 'day' => 'tuesday',
@@ -457,7 +457,7 @@ class ScheduleManagementTest extends TestCase
         $selectedRombelIds = $rombels->pluck('id')->all();
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'selected_rombel_ids' => $selectedRombelIds,
             'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => array_slice($selectedRombelIds, 0, 3)]],
@@ -465,7 +465,7 @@ class ScheduleManagementTest extends TestCase
         $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
         $entry = ScheduleEntry::query()->where('schedule_plan_id', $plan->id)->firstOrFail();
 
-        $response = $this->actingAs($admin)->post('/schedule/move', [
+        $response = $this->actingAs($admin)->post('/kurikulum/schedule/move', [
             'schedule_plan_id' => $plan->id,
             'schedule_entry_id' => $entry->id,
             'selected_rombel_ids' => $selectedRombelIds,
@@ -495,7 +495,7 @@ class ScheduleManagementTest extends TestCase
         $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => $rombels->pluck('id')->all()]],
         ])->assertRedirect();
@@ -504,7 +504,7 @@ class ScheduleManagementTest extends TestCase
         $original = $entry->only(['day', 'lesson_number']);
 
         $this->actingAs($admin)
-            ->post('/schedule/move', [
+            ->post('/kurikulum/schedule/move', [
                 'schedule_plan_id' => $plan->id,
                 'schedule_entry_id' => $entry->id,
                 'day' => 'monday',
@@ -528,7 +528,7 @@ class ScheduleManagementTest extends TestCase
         $viii = Rombel::factory()->create(['grade_level' => 'VIII']);
 
         $this->actingAs($this->admin())
-            ->get('/schedule?grade=VII&rombel_ids[]='.$viii->id)
+            ->get('/kurikulum/schedule?grade=VII&rombel_ids[]='.$viii->id)
             ->assertSessionHasErrors('rombel_ids.0');
     }
 
@@ -536,7 +536,7 @@ class ScheduleManagementTest extends TestCase
     {
         $this->activePeriod();
         $this->actingAs($this->admin())
-            ->get('/schedule/generate')
+            ->get('/kurikulum/schedule/generate')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('schedules/generate')
@@ -565,7 +565,7 @@ class ScheduleManagementTest extends TestCase
         TeacherSubject::factory()->create(['teacher_id' => $inactiveTeacher->id, 'subject_id' => $subject->id, 'code' => 'MTK02']);
 
         $this->actingAs($this->admin())
-            ->get('/schedule/generate?academic_period_id='.$period->id.'&grade=VII')
+            ->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VII')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->has('availableRombels', 2)
@@ -589,7 +589,7 @@ class ScheduleManagementTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'assignments' => [[
                     'teacher_subject_id' => $teacherSubject->id,
@@ -608,7 +608,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('tr_curriculum_schedule_entries', 5);
 
         $this->actingAs($admin)
-            ->get('/schedule?academic_period_id='.$period->id.'&grade=VII&rombel_ids[]='.$rombel->id)
+            ->get('/kurikulum/schedule?academic_period_id='.$period->id.'&grade=VII&rombel_ids[]='.$rombel->id)
             ->assertInertia(fn ($page) => $page
                 ->has('entries', 5)
                 ->where('entries.0.assignment_code', 'MTK01')
@@ -632,7 +632,7 @@ class ScheduleManagementTest extends TestCase
         $rombelIds = $rombels->pluck('id')->all();
 
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'selected_rombel_ids' => $rombelIds,
                 'assignments' => [[
@@ -664,7 +664,7 @@ class ScheduleManagementTest extends TestCase
         $assignmentRombelIds = array_slice($selectedRombelIds, 0, 3);
 
         $response = $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'selected_rombel_ids' => $selectedRombelIds,
                 'assignments' => [[
@@ -694,13 +694,13 @@ class ScheduleManagementTest extends TestCase
         $second = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $secondSubject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'assignments' => [['teacher_subject_id' => $first->id, 'rombel_ids' => [$rombel->id]]],
         ])->assertRedirect();
         $published = SchedulePlan::query()->where('status', 'published')->firstOrFail();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'source_plan_id' => $published->id,
             'assignments' => [['teacher_subject_id' => $second->id, 'rombel_ids' => [$rombel->id]]],
@@ -724,13 +724,13 @@ class ScheduleManagementTest extends TestCase
         $second = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $secondSubject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'assignments' => [['teacher_subject_id' => $first->id, 'rombel_ids' => [$rombel->id]]],
         ])->assertRedirect();
         $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'source_plan_id' => $plan->id,
             'assignments' => [['teacher_subject_id' => $second->id, 'rombel_ids' => [$rombel->id]]],
@@ -768,7 +768,7 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'assignments' => [[
                     'teacher_subject_id' => $teacherSubject->id,
@@ -805,7 +805,7 @@ class ScheduleManagementTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('Guru');
         $this->actingAs($user)
-            ->post('/schedule', ['academic_period_id' => $period->id, 'assignments' => []])
+            ->post('/kurikulum/schedule', ['academic_period_id' => $period->id, 'assignments' => []])
             ->assertForbidden();
     }
 
@@ -825,17 +825,17 @@ class ScheduleManagementTest extends TestCase
             'assignments' => [['teacher_subject_id' => $first->id, 'rombel_ids' => [$rombel->id]]],
         ];
 
-        $this->actingAs($admin)->post('/schedule', $firstPayload)->assertRedirect();
+        $this->actingAs($admin)->post('/kurikulum/schedule', $firstPayload)->assertRedirect();
         $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'assignments' => [['teacher_subject_id' => $first->id, 'rombel_ids' => [$rombel->id]]],
         ])->assertRedirect();
         $this->assertSame(1, SchedulePlan::query()->where('status', 'published')->count());
         $this->assertSame($plan->id, SchedulePlan::query()->where('status', 'published')->value('id'));
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'source_plan_id' => $plan->id,
             'assignments' => [
@@ -852,7 +852,7 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('tr_curriculum_schedule_plans', 1);
 
         $this->actingAs($this->admin())
-            ->get('/schedule/generate?academic_period_id='.$period->id)
+            ->get('/kurikulum/schedule/generate?academic_period_id='.$period->id)
             ->assertInertia(fn ($page) => $page
                 ->where('subjects.0.color', $firstSubject->color)
                 ->where('draftPlan.id', $regenerated->id)
@@ -878,7 +878,7 @@ class ScheduleManagementTest extends TestCase
         }
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'assignments' => $assignments,
         ])->assertRedirect();
@@ -897,7 +897,7 @@ class ScheduleManagementTest extends TestCase
             'code' => 'CAP3',
         ]);
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'source_plan_id' => $plan->id,
             'assignments' => [...$assignments, ['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
@@ -917,7 +917,7 @@ class ScheduleManagementTest extends TestCase
         $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post('/schedule', [
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
         ])->assertRedirect();
@@ -929,7 +929,7 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->post('/schedule/publish', ['schedule_plan_id' => $plan->id])
+            ->post('/kurikulum/schedule/publish', ['schedule_plan_id' => $plan->id])
             ->assertStatus(422);
         $this->assertDatabaseHas('tr_curriculum_schedule_plans', ['id' => $plan->id, 'status' => 'draft']);
         $this->assertDatabaseMissing('tr_curriculum_schedule_plans', ['id' => $plan->id, 'status' => 'published']);
@@ -947,7 +947,7 @@ class ScheduleManagementTest extends TestCase
         $second = TeacherSubject::factory()->create(['teacher_id' => $secondTeacher->id, 'subject_id' => $subject->id]);
 
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'assignments' => [
                     ['teacher_subject_id' => $first->id, 'rombel_ids' => [$rombel->id]],
@@ -961,7 +961,7 @@ class ScheduleManagementTest extends TestCase
     public function test_save_rejects_empty_assignments(): void
     {
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $this->activePeriod()->id,
                 'assignments' => [],
             ])
@@ -979,7 +979,7 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->actingAs($this->admin())
-            ->post('/schedule/publish', ['schedule_plan_id' => $plan->id])
+            ->post('/kurikulum/schedule/publish', ['schedule_plan_id' => $plan->id])
             ->assertStatus(422);
     }
 
@@ -992,7 +992,7 @@ class ScheduleManagementTest extends TestCase
         $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
 
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
             ])
@@ -1009,8 +1009,8 @@ class ScheduleManagementTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('Guru');
 
-        $this->actingAs($user)->get('/schedule')->assertForbidden();
-        $this->actingAs($user)->get('/schedule/generate')->assertForbidden();
+        $this->actingAs($user)->get('/kurikulum/schedule')->assertForbidden();
+        $this->actingAs($user)->get('/kurikulum/schedule/generate')->assertForbidden();
     }
 
     public function test_allocator_prefers_contiguous_three_then_two_slot_blocks_without_crossing_breaks(): void
@@ -1025,7 +1025,7 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'assignments' => [[
                     'teacher_subject_id' => $teacherSubject->id,
@@ -1058,7 +1058,7 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'custom_slots' => [[
                     'day' => 'monday',
@@ -1099,7 +1099,7 @@ class ScheduleManagementTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 'academic_period_id' => $period->id,
                 'selected_rombel_ids' => $rombelIds,
                 'custom_slots' => [[
@@ -1130,7 +1130,7 @@ class ScheduleManagementTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get('/schedule/generate?academic_period_id='.$period->id.'&grade=VII&rombel_ids[]='.$rombels[0]->id)
+            ->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VII&rombel_ids[]='.$rombels[0]->id)
             ->assertInertia(fn ($page) => $page
                 ->has('draftPlan.entries', 1)
                 ->where('draftPlan.entries.0.day', 'monday')
@@ -1140,7 +1140,7 @@ class ScheduleManagementTest extends TestCase
                 ->where('draftPlan.custom_slots.0.label', 'Upacara Pembukaan'));
 
         $this->actingAs($admin)
-            ->get('/schedule?academic_period_id='.$period->id.'&grade=VII&rombel_ids[]='.$rombels[0]->id.'&rombel_ids[]='.$rombels[1]->id)
+            ->get('/kurikulum/schedule?academic_period_id='.$period->id.'&grade=VII&rombel_ids[]='.$rombels[0]->id.'&rombel_ids[]='.$rombels[1]->id)
             ->assertInertia(fn ($page) => $page
                 ->where('days.0.rows.0.type', 'custom')
                 ->where('days.0.rows.0.number', 1)
@@ -1161,7 +1161,7 @@ class ScheduleManagementTest extends TestCase
         ];
 
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 ...$payload,
                 'custom_slots' => [
                     ['day' => 'monday', 'lesson_number' => 1, 'label' => 'Kegiatan A'],
@@ -1171,7 +1171,7 @@ class ScheduleManagementTest extends TestCase
             ->assertStatus(422);
 
         $this->actingAs($this->admin())
-            ->post('/schedule', [
+            ->post('/kurikulum/schedule', [
                 ...$payload,
                 'custom_slots' => [['day' => 'friday', 'lesson_number' => 8, 'label' => 'Kegiatan Tidak Valid']],
             ])
@@ -1181,7 +1181,7 @@ class ScheduleManagementTest extends TestCase
     public function test_grade_filter_rejects_values_outside_school_levels(): void
     {
         $this->actingAs($this->admin())
-            ->get('/schedule?grade=X')
+            ->get('/kurikulum/schedule?grade=X')
             ->assertSessionHasErrors('grade');
     }
 }

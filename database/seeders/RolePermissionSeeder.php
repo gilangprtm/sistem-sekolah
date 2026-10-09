@@ -81,6 +81,12 @@ class RolePermissionSeeder extends Seeder
         'inventory.room.update',
         'inventory.room.delete',
         'inventory.room.assign',
+        'kantin.barang.view',
+        'kantin.barang.create',
+        'kantin.barang.update',
+        'kantin.barang.delete',
+        'kantin.kategori.view',
+        'kantin.kategori.create',
     ];
 
     /**
@@ -135,6 +141,9 @@ class RolePermissionSeeder extends Seeder
             'inventory.room.delete',
             'inventory.room.assign',
         ]);
+
+        // Permission Kantin tidak diberikan implicit ke Admin Inventaris.
+        // Role mapping Kantin menunggu assignment eksplisit dari pengelola role.
 
         // Role lain tanpa permission khusus (fase selanjutnya)
         Role::findByName('Guru', 'web')->syncPermissions([]);

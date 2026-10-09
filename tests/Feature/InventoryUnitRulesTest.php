@@ -50,7 +50,7 @@ class InventoryUnitRulesTest extends TestCase
         $item = $this->itemWithUnits(5);
 
         $this->actingAs($admin)
-            ->post("/inventory/{$item->id}/units", ['qty' => 3])
+            ->post("/inventaris/inventory/{$item->id}/units", ['qty' => 3])
             ->assertRedirect();
 
         $this->assertDatabaseCount('tr_inventory_units', 8);
@@ -65,7 +65,7 @@ class InventoryUnitRulesTest extends TestCase
         $unit = $item->units()->first();
 
         $this->actingAs($admin)
-            ->patch("/inventory/{$item->id}/units/{$unit->id}", ['condition' => 'RB'])
+            ->patch("/inventaris/inventory/{$item->id}/units/{$unit->id}", ['condition' => 'RB'])
             ->assertRedirect();
 
         $this->assertDatabaseHas('tr_inventory_units', ['id' => $unit->id, 'condition' => 'RB']);
@@ -78,7 +78,7 @@ class InventoryUnitRulesTest extends TestCase
         $unit = $item->units()->first();
 
         $this->actingAs($admin)
-            ->patch("/inventory/{$item->id}/units/{$unit->id}", ['condition' => 'X'])
+            ->patch("/inventaris/inventory/{$item->id}/units/{$unit->id}", ['condition' => 'X'])
             ->assertSessionHasErrors('condition');
     }
 
@@ -89,7 +89,7 @@ class InventoryUnitRulesTest extends TestCase
 
         // Update request hanya menerima keterangan; kode_barang dsb harus diabaikan
         $this->actingAs($admin)
-            ->patch("/inventory/{$item->id}", [
+            ->patch("/inventaris/inventory/{$item->id}", [
                 'keterangan' => 'Catatan baru',
                 'kode_barang' => 'X.99.99',
                 'nama_jenis_barang' => 'Diubah',
@@ -108,8 +108,8 @@ class InventoryUnitRulesTest extends TestCase
         $item = $this->itemWithUnits(3);
 
         $this->actingAs($admin)
-            ->delete("/inventory/{$item->id}")
-            ->assertRedirect('/inventory');
+            ->delete("/inventaris/inventory/{$item->id}")
+            ->assertRedirect('/inventaris/inventory');
 
         $this->assertDatabaseMissing('tr_inventory_items', ['id' => $item->id]);
         $this->assertDatabaseCount('tr_inventory_units', 0);
@@ -123,7 +123,7 @@ class InventoryUnitRulesTest extends TestCase
         // Tidak ada endpoint untuk mengurangi qty — hanya menambah unit.
         // DELETE unit harus gagal (404 route tidak ada / 405 method not allowed).
         $response = $this->actingAs($admin)
-            ->delete("/inventory/{$item->id}/units/1");
+            ->delete("/inventaris/inventory/{$item->id}/units/1");
 
         $this->assertTrue(in_array($response->status(), [404, 405], true));
         $this->assertDatabaseCount('tr_inventory_units', 5);

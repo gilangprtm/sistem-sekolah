@@ -53,7 +53,7 @@ type Props = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Manajemen Kelas', href: '/management-class' },
+    { title: 'Manajemen Kelas', href: '/kurikulum/management-class' },
 ];
 
 export default function ManagementClass({
@@ -85,7 +85,7 @@ export default function ManagementClass({
     };
 
     const navigate = (params: Record<string, string | number>) =>
-        router.get('/management-class', params, {
+        router.get('/kurikulum/management-class', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -115,7 +115,7 @@ export default function ManagementClass({
                     />
                     <Button asChild>
                         <Link
-                            href={`/management-class/manage${selectedYear ? `?academic_year_id=${selectedYear.id}` : ''}`}
+                            href={`/kurikulum/management-class/manage${selectedYear ? `?academic_year_id=${selectedYear.id}` : ''}`}
                         >
                             Kelola Manajemen Kelas
                         </Link>
@@ -264,7 +264,7 @@ export default function ManagementClass({
                                             >
                                                 <DropdownMenuItem asChild>
                                                     <Link
-                                                        href={`/management-class/manage?academic_year_id=${selectedYear?.id ?? ''}&rombel_id=${item.rombel_id}`}
+                                                        href={`/kurikulum/management-class/manage?academic_year_id=${selectedYear?.id ?? ''}&rombel_id=${item.rombel_id}`}
                                                     >
                                                         Edit
                                                     </Link>

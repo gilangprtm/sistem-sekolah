@@ -27,6 +27,15 @@ class InventoryRoomTest extends TestCase
         return $user;
     }
 
+    public function test_legacy_room_url_redirects_to_canonical_url_and_preserves_query(): void
+    {
+        $response = $this->actingAs($this->admin())
+            ->get('/inventory-rooms?search=Kelas&page=2');
+
+        $response->assertMovedPermanently()
+            ->assertRedirect('/inventaris/inventory-rooms?page=2&search=Kelas');
+    }
+
     public function test_admin_can_create_room_and_assign_selected_units(): void
     {
         $admin = $this->admin();
@@ -40,7 +49,7 @@ class InventoryRoomTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->post('/inventory-rooms', [
+            ->post('/inventaris/inventory-rooms', [
                 'name' => 'Ruang Kelas 1A',
                 'code' => 'R-1A',
                 'description' => 'Lantai satu',
@@ -60,7 +69,7 @@ class InventoryRoomTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->patch("/inventory-rooms/{$room->id}", [
+            ->patch("/inventaris/inventory-rooms/{$room->id}", [
                 'name' => 'Ruang Kelas 1B',
                 'code' => 'R-1B',
                 'description' => null,
@@ -74,7 +83,7 @@ class InventoryRoomTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->delete("/inventory-rooms/{$room->id}")
+            ->delete("/inventaris/inventory-rooms/{$room->id}")
             ->assertRedirect();
 
         $this->assertDatabaseMissing('m_inventory_rooms', ['id' => $room->id]);
@@ -102,7 +111,7 @@ class InventoryRoomTest extends TestCase
         $addedUnit = $item->units()->create(['register' => '003', 'condition' => 'B']);
 
         $this->actingAs($admin)
-            ->get("/inventory-rooms/{$room->id}/edit")
+            ->get("/inventaris/inventory-rooms/{$room->id}/edit")
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('inventory-rooms/edit')
@@ -112,7 +121,7 @@ class InventoryRoomTest extends TestCase
                 ->has('lookupUnits.data', 3));
 
         $this->actingAs($admin)
-            ->patch("/inventory-rooms/{$room->id}", [
+            ->patch("/inventaris/inventory-rooms/{$room->id}", [
                 'name' => 'Laboratorium Baru',
                 'code' => 'LAB-BARU',
                 'description' => 'Keterangan baru',
@@ -144,8 +153,8 @@ class InventoryRoomTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('Guru');
 
-        $this->actingAs($user)->get('/inventory-rooms')->assertForbidden();
-        $this->actingAs($user)->post('/inventory-rooms', [
+        $this->actingAs($user)->get('/inventaris/inventory-rooms')->assertForbidden();
+        $this->actingAs($user)->post('/inventaris/inventory-rooms', [
             'name' => 'Ruang Guru',
             'code' => 'RG',
         ])->assertForbidden();
@@ -177,7 +186,7 @@ class InventoryRoomTest extends TestCase
         }
 
         $this->actingAs($this->admin())
-            ->get('/inventory-rooms?per_page=5&page=2')
+            ->get('/inventaris/inventory-rooms?per_page=5&page=2')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('inventory-rooms/index')
@@ -189,14 +198,14 @@ class InventoryRoomTest extends TestCase
                 ->where('filters.placement', ''));
 
         $this->actingAs($this->admin())
-            ->get('/inventory-rooms?search=Gedung%20A')
+            ->get('/inventaris/inventory-rooms?search=Gedung%20A')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->has('rooms.data', 1)
                 ->where('rooms.data.0.code', 'TERISI'));
 
         $this->actingAs($this->admin())
-            ->get('/inventory-rooms?placement=unassigned')
+            ->get('/inventaris/inventory-rooms?placement=unassigned')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('rooms.total', 12));
@@ -214,14 +223,14 @@ class InventoryRoomTest extends TestCase
         ]);
 
         $this->actingAs($this->admin())
-            ->get('/inventory-rooms')
+            ->get('/inventaris/inventory-rooms')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('inventory-rooms/index')
                 ->has('rooms'));
 
         $this->actingAs($this->admin())
-            ->get('/inventory-rooms/create')
+            ->get('/inventaris/inventory-rooms/create')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('inventory-rooms/create')
@@ -245,7 +254,7 @@ class InventoryRoomTest extends TestCase
         $otherUnit = $otherItem->units()->create(['register' => '001', 'condition' => 'KB']);
 
         $this->actingAs($this->admin())
-            ->get('/inventory-rooms/create?lookup_per_page=5&lookup_page=2')
+            ->get('/inventaris/inventory-rooms/create?lookup_per_page=5&lookup_page=2')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('inventory-rooms/create')
@@ -255,7 +264,7 @@ class InventoryRoomTest extends TestCase
                 ->where('lookupUnits.total', 13));
 
         $this->actingAs($this->admin())
-            ->get('/inventory-rooms/create?lookup_search=OTHER.001')
+            ->get('/inventaris/inventory-rooms/create?lookup_search=OTHER.001')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->has('lookupUnits.data', 1)
@@ -272,7 +281,7 @@ class InventoryRoomTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->post('/inventory-rooms', [
+            ->post('/inventaris/inventory-rooms', [
                 'name' => 'Laboratorium',
                 'code' => 'LAB',
             ])
@@ -287,7 +296,7 @@ class InventoryRoomTest extends TestCase
         $unit = $item->units()->create(['register' => '001', 'condition' => 'B']);
 
         $this->actingAs($admin)
-            ->patch("/inventory/{$item->id}/units/{$unit->id}/room", [
+            ->patch("/inventaris/inventory/{$item->id}/units/{$unit->id}/room", [
                 'inventory_room_id' => $room->id,
             ])
             ->assertRedirect();
@@ -298,7 +307,7 @@ class InventoryRoomTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->patch("/inventory/{$item->id}/units/{$unit->id}/room", [
+            ->patch("/inventaris/inventory/{$item->id}/units/{$unit->id}/room", [
                 'inventory_room_id' => null,
             ])
             ->assertRedirect();
@@ -316,7 +325,7 @@ class InventoryRoomTest extends TestCase
         $unit = $item->units()->create(['register' => '001', 'condition' => 'B']);
 
         $this->actingAs($admin)
-            ->patch("/inventory/{$item->id}/units/{$unit->id}/room", [
+            ->patch("/inventaris/inventory/{$item->id}/units/{$unit->id}/room", [
                 'inventory_room_id' => 999999,
             ])
             ->assertSessionHasErrors('inventory_room_id');
@@ -333,7 +342,7 @@ class InventoryRoomTest extends TestCase
             'inventory_room_id' => $room->id,
         ]);
 
-        $this->actingAs($admin)->delete("/inventory-rooms/{$room->id}");
+        $this->actingAs($admin)->delete("/inventaris/inventory-rooms/{$room->id}");
 
         $this->assertDatabaseHas('tr_inventory_units', [
             'id' => $unit->id,
