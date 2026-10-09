@@ -106,20 +106,41 @@ export function NavMain({ items }: NavMainProps) {
         return path === candidatePath || path.startsWith(`${candidatePath}/`);
     };
 
-    const isItemActive = (item: NavMainItem) => {
-        if (hasSubItems(item)) {
-            return item.subItems.some((sub) => isPathActive(sub.url));
+    const leafUrls = items.flatMap((group) =>
+        group.items.flatMap((item) =>
+            hasSubItems(item)
+                ? item.subItems.map((sub) => sub.url)
+                : [item.url],
+        ),
+    );
+
+    const isMostSpecificMatch = (candidateUrl: string) => {
+        if (!isPathActive(candidateUrl)) {
+            return false;
         }
 
-        return isPathActive(item.url);
+        const candidatePath = normalizePath(candidateUrl);
+        const matchingPathLengths = leafUrls
+            .filter((url) => isPathActive(url))
+            .map((url) => normalizePath(url).length);
+
+        return candidatePath.length === Math.max(...matchingPathLengths);
+    };
+
+    const isItemActive = (item: NavMainItem) => {
+        if (hasSubItems(item)) {
+            return item.subItems.some((sub) => isMostSpecificMatch(sub.url));
+        }
+
+        return isMostSpecificMatch(item.url);
     };
 
     const isSubItemActive = (url: string) => {
-        return isPathActive(url);
+        return isMostSpecificMatch(url);
     };
 
     const isSubmenuOpen = (item: NavMainParentItem) => {
-        return item.subItems.some((sub) => isPathActive(sub.url));
+        return item.subItems.some((sub) => isMostSpecificMatch(sub.url));
     };
 
     return (
