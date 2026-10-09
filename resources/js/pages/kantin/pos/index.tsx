@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
-import { Minus, Plus, Search, ShoppingBasket, Trash2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Camera, LogOut, Minus, Plus, Search, ShoppingBasket, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type Category = { id: number; name: string };
@@ -12,6 +13,7 @@ type Product = {
     harga: string;
 };
 type Props = { categories: Category[]; products: Product[] };
+type IdentifiedStudent = { id: number; name: string; nis: string | null; balance: string };
 
 const rupiah = (amount: number) =>
     new Intl.NumberFormat('id-ID', {
@@ -21,6 +23,90 @@ const rupiah = (amount: number) =>
     }).format(amount);
 
 export default function KantinPos({ categories, products }: Props) {
+    const [student, setStudent] = useState<IdentifiedStudent | null>(null);
+    const [qr, setQr] = useState('');
+    const [scanning, setScanning] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+
+    function stopCamera() {
+        streamRef.current?.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        setScanning(false);
+    }
+
+    useEffect(() => () => {
+        streamRef.current?.getTracks().forEach((track) => track.stop());
+    }, []);
+
+    async function identify(value: string) {
+        if (busy) return;
+        setBusy(true);
+        setError('');
+        try {
+            const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+            const response = await fetch('/kantin/pos/identify', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                    'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)?.[1] ?? ''),
+                },
+                body: JSON.stringify({ qr: value.trim() }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message ?? 'Kartu tidak dapat diverifikasi.');
+            stopCamera();
+            setStudent(data.student as IdentifiedStudent);
+            setCart({});
+            setQr('');
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : 'Gagal membaca kartu.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function startCamera() {
+        setError('');
+        if (!navigator.mediaDevices?.getUserMedia) {
+            setError('Kamera tidak tersedia. Gunakan HTTPS atau pemindai QR eksternal.');
+            return;
+        }
+        type Detector = { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> };
+        type DetectorClass = new (options: { formats: string[] }) => Detector;
+        const DetectorAPI = (window as Window & { BarcodeDetector?: DetectorClass }).BarcodeDetector;
+        if (!DetectorAPI) {
+            setError('Browser ini belum mendukung pemindaian QR lewat kamera. Gunakan browser yang mendukung BarcodeDetector atau pemindai QR eksternal.');
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+            streamRef.current = stream;
+            setScanning(true);
+            const video = videoRef.current;
+            if (!video) { stopCamera(); return; }
+            video.srcObject = stream;
+            await video.play();
+            const detector = new DetectorAPI({ formats: ['qr_code'] });
+            while (streamRef.current === stream && stream.active) {
+                const codes = await detector.detect(video);
+                if (codes[0]?.rawValue) {
+                    await identify(codes[0].rawValue);
+                    break;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 200));
+            }
+        } catch {
+            setError('Kamera gagal diakses. Pastikan izin kamera diberikan.');
+            stopCamera();
+        }
+    }
+
     const [category, setCategory] = useState<number | null>(null);
     const [search, setSearch] = useState('');
     const [cart, setCart] = useState<Record<number, number>>({});
@@ -54,11 +140,55 @@ export default function KantinPos({ categories, products }: Props) {
         });
     }
 
+    if (!student) {
+        return (
+            <div className="grid min-h-dvh place-items-center bg-slate-50 p-5 text-slate-900">
+                <Head title="Scan Kartu Pelajar - Kantin" />
+                <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                    <div className="mx-auto mb-5 grid size-20 place-items-center rounded-3xl bg-violet-100">
+                        <Camera className="size-10 text-violet-700" />
+                    </div>
+                    <p className="text-sm font-semibold text-violet-700">SMPN 17 DENPASAR</p>
+                    <h1 className="mt-2 text-3xl font-bold">Kantin Sekolah</h1>
+                    <p className="mt-3 text-slate-500">Scan QR Code pada kartu pelajar untuk mulai berbelanja.</p>
+                    {scanning && <video ref={videoRef} muted playsInline autoPlay className="mt-6 aspect-video w-full rounded-2xl bg-black object-cover" />}
+                    <button type="button" onClick={scanning ? stopCamera : startCamera} disabled={busy}
+                        className="mt-6 min-h-14 w-full rounded-2xl bg-violet-700 font-semibold text-white disabled:opacity-50">
+                        {scanning ? 'Batalkan Scan' : 'Scan QR Kartu Pelajar'}
+                    </button>
+                    <form onSubmit={(event) => { event.preventDefault(); void identify(qr); }} className="mt-6 space-y-3 border-t border-slate-100 pt-5">
+                        <label htmlFor="qr-input" className="block text-left text-sm text-slate-500">Pemindai QR eksternal / input kode kartu</label>
+                        <input id="qr-input" autoComplete="off" type="text" value={qr} onChange={(event) => setQr(event.target.value)}
+                            placeholder="Scan kode di sini" className="min-h-12 w-full rounded-xl border border-slate-200 px-4" />
+                        <button type="submit" disabled={!qr.trim() || busy} className="min-h-12 w-full rounded-xl border border-violet-200 font-semibold text-violet-700 disabled:opacity-40">
+                            {busy ? 'Memeriksa...' : 'Verifikasi Kartu'}
+                        </button>
+                    </form>
+                    {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-dvh bg-slate-50 text-slate-900">
             <Head title="Kantin Sekolah" />
             <div className="mx-auto flex min-h-dvh max-w-7xl flex-col lg:flex-row">
                 <main className="min-w-0 flex-1 p-5 pb-36 sm:p-8 lg:pb-8">
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                        <div>
+                            <p className="text-xs text-violet-700">Siswa aktif</p>
+                            <p className="font-bold">{student.name}</p>
+                            <p className="text-xs text-slate-500">{student.nis ? `NIS ${student.nis}` : 'Kartu terverifikasi'}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs text-violet-700">Saldo tersedia</p>
+                            <p className="text-xl font-bold text-violet-800">{rupiah(Number(student.balance))}</p>
+                            <button type="button" onClick={() => { setStudent(null); setCart({}); }} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-700">
+                                <LogOut className="size-3" /> Selesai / Ganti Siswa
+                            </button>
+                        </div>
+                    </div>
                     <header className="mb-8">
                         <p className="text-sm font-semibold tracking-wide text-violet-700">
                             SMPN 17 DENPASAR
@@ -154,6 +284,7 @@ export default function KantinPos({ categories, products }: Props) {
                         <div className="flex justify-between text-base font-semibold">
                             <span>Total belanja</span><span>{rupiah(total)}</span>
                         </div>
+                        <p className="mt-2 text-sm text-slate-500">Sisa saldo setelah belanja: <strong className={total > Number(student.balance) ? 'text-red-600' : 'text-violet-700'}>{rupiah(Number(student.balance) - total)}</strong></p>
                         <button type="button" disabled className="mt-4 min-h-14 w-full rounded-2xl bg-slate-200 text-base font-bold text-slate-500">
                             Pembayaran belum tersedia
                         </button>
