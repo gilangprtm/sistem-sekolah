@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\KantinBarangController;
 use App\Http\Controllers\KantinSaldoController;
+use App\Http\Controllers\KantinPosController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/kantin/pos', [KantinPosController::class, 'index'])->name('kantin.pos.index');
 
 Route::middleware(['auth', 'verified'])->prefix('kantin')->group(function (): void {
     Route::middleware('can:kantin.barang.view')->group(function (): void {
