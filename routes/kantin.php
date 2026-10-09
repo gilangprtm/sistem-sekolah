@@ -5,7 +5,9 @@ use App\Http\Controllers\KantinSaldoController;
 use App\Http\Controllers\KantinPosController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/kantin/pos/identify', [KantinPosController::class, 'identify'])->middleware('throttle:20,1')->name('kantin.pos.identify');
+Route::post('/kantin/pos/identify', [KantinPosController::class, 'identify'])->middleware('throttle:20,1')->block()->name('kantin.pos.identify');
+Route::post('/kantin/pos/checkout', [KantinPosController::class, 'checkout'])->middleware('throttle:20,1')->block()->name('kantin.pos.checkout');
+Route::post('/kantin/pos/exit', [KantinPosController::class, 'exit'])->block()->name('kantin.pos.exit');
 Route::get('/kantin/pos', [KantinPosController::class, 'index'])->name('kantin.pos.index');
 
 Route::middleware(['auth', 'verified'])->prefix('kantin')->group(function (): void {
