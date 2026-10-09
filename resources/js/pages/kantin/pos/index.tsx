@@ -303,7 +303,7 @@ export default function KantinPos({ categories, products }: Props) {
                     )}
                 </main>
 
-                <aside className="fixed inset-x-0 bottom-0 z-40 flex h-[27dvh] min-h-44 flex-col border-t border-slate-200 bg-white p-3 shadow-[0_-8px_25px_rgba(0,0,0,.08)] lg:sticky lg:top-0 lg:h-dvh lg:w-96 lg:p-6 lg:shadow-none">
+                <aside className="fixed inset-x-0 bottom-0 z-40 flex h-[32dvh] min-h-44 flex-col border-t border-slate-200 bg-white p-3 shadow-[0_-8px_25px_rgba(0,0,0,.08)] lg:sticky lg:top-0 lg:h-dvh lg:w-96 lg:p-6 lg:shadow-none">
                     <div className="mb-2 flex items-center justify-between lg:mb-5">
                         <h2 className="flex items-center gap-2 text-lg font-bold">
                             <ShoppingBasket className="size-5 text-violet-700" />
