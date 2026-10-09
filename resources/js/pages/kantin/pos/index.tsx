@@ -130,6 +130,17 @@ export default function KantinPos({ categories, products }: Props) {
         0,
     );
 
+    function exitPos() {
+        if (count > 0 && !window.confirm('Keluar dari POS? Barang di keranjang akan dihapus.')) return;
+        stopCamera();
+        setCart({});
+        setStudent(null);
+        setQr('');
+        setSearch('');
+        setCategory(null);
+        setError('');
+    }
+
     function changeQuantity(id: number, delta: number) {
         setCart((current) => {
             const next = { ...current };
@@ -184,8 +195,8 @@ export default function KantinPos({ categories, products }: Props) {
                         <div className="text-right">
                             <p className="text-xs text-violet-700">Saldo tersedia</p>
                             <p className="text-xl font-bold text-violet-800">{rupiah(Number(student.balance))}</p>
-                            <button type="button" onClick={() => { setStudent(null); setCart({}); }} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-700">
-                                <LogOut className="size-3" /> Selesai / Ganti Siswa
+                            <button type="button" onClick={exitPos} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-700">
+                                <LogOut className="size-3" /> Keluar
                             </button>
                         </div>
                     </div>
