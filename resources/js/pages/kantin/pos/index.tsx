@@ -27,6 +27,8 @@ export default function KantinPos({ categories, products }: Props) {
     const [qr, setQr] = useState('');
     const [scanning, setScanning] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [paying, setPaying] = useState(false);
+    const [notice, setNotice] = useState('');
     const [error, setError] = useState('');
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -130,8 +132,44 @@ export default function KantinPos({ categories, products }: Props) {
         0,
     );
 
-    function exitPos() {
+    const csrfHeaders = () => ({
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)?.[1] ?? ''),
+    });
+
+    async function checkout() {
+        if (!student || !count || paying || total > Number(student.balance)) return;
+        setPaying(true);
+        setError('');
+        try {
+            const response = await fetch('/kantin/pos/checkout', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: csrfHeaders(),
+                body: JSON.stringify({ items: items.map((item) => ({ product_id: item.id, quantity: cart[item.id] })) }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.errors ? Object.values(data.errors).flat().join(' ') : data.message ?? 'Pembayaran gagal.');
+            setCart({});
+            setStudent(null);
+            setQr('');
+            setSearch('');
+            setCategory(null);
+            setNotice('Pembayaran berhasil! Total ' + rupiah(Number(data.total)) + '. Sisa saldo ' + rupiah(Number(data.balance)) + '.');
+            window.setTimeout(() => setNotice(''), 5000);
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : 'Pembayaran gagal.');
+        } finally {
+            setPaying(false);
+        }
+    }
+
+    async function exitPos() {
         if (count > 0 && !window.confirm('Keluar dari POS? Barang di keranjang akan dihapus.')) return;
+        try {
+            await fetch('/kantin/pos/exit', { method: 'POST', credentials: 'same-origin', headers: csrfHeaders(), body: '{}' });
+        } catch { /* The server session will expire independently. */ }
         stopCamera();
         setCart({});
         setStudent(null);
@@ -175,6 +213,7 @@ export default function KantinPos({ categories, products }: Props) {
                             {busy ? 'Memeriksa...' : 'Verifikasi Kartu'}
                         </button>
                     </form>
+                    {notice && <p role="status" className="mt-4 rounded-xl bg-green-50 p-4 font-semibold text-green-700">{notice}</p>}
                     {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
                 </div>
             </div>
@@ -185,7 +224,7 @@ export default function KantinPos({ categories, products }: Props) {
         <div className="min-h-dvh bg-slate-50 text-slate-900">
             <Head title="Kantin Sekolah" />
             <div className="mx-auto flex min-h-dvh max-w-7xl flex-col lg:flex-row">
-                <main className="min-w-0 flex-1 p-5 pb-36 sm:p-8 lg:pb-8">
+                <main className="min-w-0 flex-1 p-5 pb-[32vh] sm:p-8 lg:pb-8">
                     <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
                         <div>
                             <p className="text-xs text-violet-700">Siswa aktif</p>
@@ -264,8 +303,8 @@ export default function KantinPos({ categories, products }: Props) {
                     )}
                 </main>
 
-                <aside className="border-t border-slate-200 bg-white p-5 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-96 lg:flex-col lg:border-t-0 lg:border-l lg:p-6">
-                    <div className="mb-5 flex items-center justify-between">
+                <aside className="fixed inset-x-0 bottom-0 z-40 flex h-[27dvh] min-h-44 flex-col border-t border-slate-200 bg-white p-3 shadow-[0_-8px_25px_rgba(0,0,0,.08)] lg:sticky lg:top-0 lg:h-dvh lg:w-96 lg:p-6 lg:shadow-none">
+                    <div className="mb-2 flex items-center justify-between lg:mb-5">
                         <h2 className="flex items-center gap-2 text-lg font-bold">
                             <ShoppingBasket className="size-5 text-violet-700" />
                             Keranjang <span className="text-sm font-normal text-slate-500">({count})</span>
@@ -276,7 +315,7 @@ export default function KantinPos({ categories, products }: Props) {
                             </button>
                         )}
                     </div>
-                    <div className="max-h-72 flex-1 space-y-4 overflow-y-auto lg:max-h-none">
+                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto lg:space-y-4">
                         {items.length ? items.map((product) => (
                             <div key={product.id} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
                                 <div className="min-w-0">
@@ -291,17 +330,15 @@ export default function KantinPos({ categories, products }: Props) {
                             </div>
                         )) : <p className="py-10 text-center text-sm text-slate-500">Belum ada barang di keranjang.</p>}
                     </div>
-                    <div className="mt-5 border-t border-slate-200 pt-5">
+                    <div className="mt-2 shrink-0 border-t border-slate-200 pt-2 lg:mt-5 lg:pt-5">
                         <div className="flex justify-between text-base font-semibold">
                             <span>Total belanja</span><span>{rupiah(total)}</span>
                         </div>
                         <p className="mt-2 text-sm text-slate-500">Sisa saldo setelah belanja: <strong className={total > Number(student.balance) ? 'text-red-600' : 'text-violet-700'}>{rupiah(Number(student.balance) - total)}</strong></p>
-                        <button type="button" disabled className="mt-4 min-h-14 w-full rounded-2xl bg-slate-200 text-base font-bold text-slate-500">
-                            Pembayaran belum tersedia
+                        {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
+                        <button type="button" onClick={() => void checkout()} disabled={!count || paying || total > Number(student.balance)} className="mt-2 min-h-12 w-full rounded-2xl bg-violet-700 text-base font-bold text-white disabled:bg-slate-200 disabled:text-slate-500 lg:mt-4 lg:min-h-14">
+                            {paying ? 'Memproses pembayaran...' : total > Number(student.balance) ? 'Saldo tidak mencukupi' : 'Bayar ' + rupiah(total)}
                         </button>
-                        <p className="mt-2 text-center text-xs text-slate-400">
-                            Fitur pembayaran saldo siswa akan ditambahkan berikutnya.
-                        </p>
                     </div>
                 </aside>
             </div>
