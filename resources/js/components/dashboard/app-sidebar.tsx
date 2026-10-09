@@ -13,6 +13,7 @@ import {
     School,
     UserRound,
     Users,
+    WalletCards,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -143,6 +144,15 @@ export function AppSidebar({
             title: 'Master Barang',
             url: '/kantin/barang',
             icon: PackageSearch,
+        });
+    }
+
+    if (can('kantin.saldo.view') && can('kantin.saldo.history.view')) {
+        canteenItems.push({
+            id: 'canteen-balance',
+            title: 'Saldo Kantin',
+            url: '/kantin/saldo',
+            icon: WalletCards,
         });
     }
 

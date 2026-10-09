@@ -47,7 +47,7 @@ class AssistantTeacherSubjectTest extends TestCase
 
         $firstRequest = Http::recorded()[0][0];
         $tools = collect($firstRequest->data()['tools'] ?? []);
-        $this->assertSame(['curriculum_class_query', 'teacher_subjects'], $tools->map(fn (array $tool): string => $tool['function']['name'])->all());
+        $this->assertSame(['curriculum_class_query', 'teacher_subjects', 'kantin_catalog_query'], $tools->map(fn (array $tool): string => $tool['function']['name'])->all());
 
         $result = $this->toolResultFromRecordedRequest();
         $this->assertSame(['Budi Santoso'], $result['data']);
@@ -92,7 +92,7 @@ class AssistantTeacherSubjectTest extends TestCase
         $names = collect(Http::recorded()[0][0]->data()['tools'] ?? [])
             ->map(fn (array $tool): string => $tool['function']['name'])
             ->all();
-        $this->assertSame(['curriculum_class_query', 'inventory_items', 'inventory_registers', 'inventory_rooms', 'inventory_categories', 'teacher_subjects'], $names);
+        $this->assertSame(['curriculum_class_query', 'inventory_items', 'inventory_registers', 'inventory_rooms', 'inventory_categories', 'teacher_subjects', 'kantin_catalog_query'], $names);
     }
 
     public function test_teacher_subjects_all_mode_accepts_omitted_null_and_whitespace_search(): void

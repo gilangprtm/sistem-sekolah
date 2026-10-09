@@ -63,6 +63,12 @@ const searchItems: SearchItem[] = [
         url: '/kantin/barang',
     },
     {
+        id: 'canteen-balance',
+        group: 'Kantin',
+        label: 'Saldo Kantin',
+        url: '/kantin/saldo',
+    },
+    {
         id: 'academic-years',
         group: 'Kurikulum',
         label: 'Tahun Ajaran & Semester',
@@ -173,6 +179,10 @@ export function SearchDialog() {
 
         if (item.id === 'canteen-items') {
             return can('kantin.barang.view');
+        }
+
+        if (item.id === 'canteen-balance') {
+            return can('kantin.saldo.view') && can('kantin.saldo.history.view');
         }
 
         if (item.id === 'student-cards') {

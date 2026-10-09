@@ -4,6 +4,7 @@ namespace App\Services\Assistant;
 
 use App\Models\AcademicYear;
 use App\Models\HomeroomAssignment;
+use App\Models\KantinBarang;
 use App\Models\StudentPlacement;
 use App\Models\TeacherSubject;
 use App\Models\User;
@@ -29,13 +30,14 @@ class AssistantToolExecutor
      */
     public function execute(User $user, string $name, array $arguments): array
     {
-        if (! in_array($name, ['teacher_subjects', 'curriculum_class_query'], true)) {
+        if (! in_array($name, ['teacher_subjects', 'curriculum_class_query', 'kantin_catalog_query'], true)) {
             abort_unless($user->can('inventory.view'), 403);
         }
 
         return match ($name) {
             'curriculum_class_query' => $this->queryClasses($arguments),
             'teacher_subjects' => $this->queryTeacherSubjects($arguments),
+            'kantin_catalog_query' => $this->queryKantinCatalog($arguments),
             'inventory_items' => $this->queryInventoryItemsResource($arguments),
             'inventory_registers' => $this->queryInventoryRegistersResource($arguments),
             'inventory_rooms' => $this->queryInventoryRoomsResource($arguments),
@@ -187,6 +189,69 @@ class AssistantToolExecutor
                 'last_page' => $lastPage,
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function queryKantinCatalog(array $arguments): array
+    {
+        $this->assertAllowedArguments($arguments, ['search', 'category', 'status', 'page', 'per_page']);
+
+        $search = $this->nullableString($arguments, 'search');
+        $category = $this->nullableString($arguments, 'category');
+        $status = $arguments['status'] ?? 'active';
+        if (! is_string($status) || ! in_array($status, ['active', 'inactive'], true)) {
+            throw new \InvalidArgumentException('Invalid Kantin catalog status.');
+        }
+
+        $page = $this->paginationArgument($arguments, 'page', 1, 50);
+        $perPage = $this->paginationArgument($arguments, 'per_page', 25, 50);
+        $query = KantinBarang::query()
+            ->with('category:id,name')
+            ->where('status', $status)
+            ->when($search !== null, function ($query) use ($search): void {
+                $like = '%'.mb_strtolower($search).'%';
+                $query->where(function ($searchQuery) use ($like): void {
+                    $searchQuery->whereRaw('LOWER(name) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(brand) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(satuan) LIKE ?', [$like])
+                        ->orWhereHas('category', fn ($categoryQuery) => $categoryQuery->whereRaw('LOWER(name) LIKE ?', [$like]));
+                });
+            })
+            ->when($category !== null, fn ($query) => $query->whereHas('category', fn ($categoryQuery) => $categoryQuery->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($category).'%'])))
+            ->orderBy('name')
+            ->orderBy('id');
+
+        $result = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'data' => $result->getCollection()->map(fn (KantinBarang $item): array => [
+                'name' => $item->name,
+                'category' => $item->category->name,
+                'brand' => $item->brand,
+                'satuan' => $item->satuan,
+                'harga' => $this->formatKantinHarga($item->harga),
+                'description' => $item->description,
+                'status' => $item->status,
+            ])->values()->all(),
+            'meta' => [
+                'current_page' => $result->currentPage(),
+                'per_page' => $result->perPage(),
+                'total' => $result->total(),
+                'last_page' => $result->lastPage(),
+            ],
+        ];
+    }
+
+    private function formatKantinHarga(string $harga): string
+    {
+        [$integer, $fraction] = array_pad(explode('.', $harga, 2), 2, '00');
+        $integer = ltrim($integer, '0') ?: '0';
+        $fraction = str_pad(substr($fraction, 0, 2), 2, '0');
+
+        return 'Rp '.number_format((int) $integer, 0, ',', '.').','.$fraction;
     }
 
     /**

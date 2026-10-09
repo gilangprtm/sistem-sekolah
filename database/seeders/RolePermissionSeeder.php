@@ -87,6 +87,9 @@ class RolePermissionSeeder extends Seeder
         'kantin.barang.delete',
         'kantin.kategori.view',
         'kantin.kategori.create',
+        'kantin.saldo.view',
+        'kantin.saldo.topup',
+        'kantin.saldo.history.view',
     ];
 
     /**

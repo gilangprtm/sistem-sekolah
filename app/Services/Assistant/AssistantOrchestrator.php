@@ -206,6 +206,7 @@ class AssistantOrchestrator
             'inventory_categories',
             'curriculum_class_query',
             'teacher_subjects',
+            'kantin_catalog_query',
         ], true);
     }
 

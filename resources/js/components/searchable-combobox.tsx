@@ -24,6 +24,7 @@ type Props = {
     searchPlaceholder?: string;
     emptyMessage?: string;
     className?: string;
+    onSearchChange?: (value: string) => void;
 };
 
 export default function SearchableCombobox({
@@ -34,6 +35,7 @@ export default function SearchableCombobox({
     searchPlaceholder = 'Cari...',
     emptyMessage = 'Tidak ditemukan.',
     className = 'w-full',
+    onSearchChange,
 }: Props) {
     const [open, setOpen] = useState(false);
     const selected = options.find((option) => option.value === value);
@@ -59,7 +61,10 @@ export default function SearchableCombobox({
                 className="w-[var(--radix-popover-trigger-width)] min-w-0 p-0"
             >
                 <Command>
-                    <CommandInput placeholder={searchPlaceholder} />
+                    <CommandInput
+                        placeholder={searchPlaceholder}
+                        onValueChange={onSearchChange}
+                    />
                     <CommandList>
                         <CommandEmpty>{emptyMessage}</CommandEmpty>
                         {options.map((option) => (

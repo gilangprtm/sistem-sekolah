@@ -21,7 +21,7 @@ class AssistantContextBuilder
 
     private function systemPrompt(User $user, bool $refresh = false, bool $followUp = false): string
     {
-        $capability = 'Pencarian Guru Mata Pelajaran aktif tersedia secara read-only berdasarkan kode atau nama mata pelajaran; subject_search boleh dikosongkan untuk semua mata pelajaran aktif; hasil hanya memuat nama guru dan meta pagination.';
+        $capability = 'Pencarian Guru Mata Pelajaran aktif tersedia secara read-only berdasarkan kode atau nama mata pelajaran; subject_search boleh dikosongkan untuk semua mata pelajaran aktif; hasil hanya memuat nama guru dan meta pagination. Katalog barang Kantin aktif juga tersedia secara read-only berdasarkan nama, kategori, status, satuan, dan harga; gunakan kantin_catalog_query dan jangan meminta ID internal.';
         if ($user->can('inventory.view')) {
             $capability .= ' Resource data inventaris juga tersedia secara read-only melalui registry, dengan filter dan pagination terbatas sesuai capability yang diizinkan.';
         } else {

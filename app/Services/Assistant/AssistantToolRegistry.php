@@ -10,7 +10,7 @@ class AssistantToolRegistry
     public function forUser(User $user): array
     {
         if (! $user->can('inventory.view')) {
-            return [$this->classQueryTool(), $this->teacherSubjectsTool()];
+            return [$this->classQueryTool(), $this->teacherSubjectsTool(), $this->kantinCatalogTool()];
         }
 
         return [
@@ -46,6 +46,7 @@ class AssistantToolRegistry
                 'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50],
             ]),
             $this->teacherSubjectsTool(),
+            $this->kantinCatalogTool(),
         ];
     }
 
@@ -69,6 +70,18 @@ class AssistantToolRegistry
     {
         return $this->tool('teacher_subjects', 'Cari nama Guru Mata Pelajaran aktif secara read-only berdasarkan kode atau nama mata pelajaran.', [
             'subject_search' => ['type' => ['string', 'null'], 'maxLength' => 100],
+            'page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 1],
+            'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 25],
+        ]);
+    }
+
+    /** @return array{type: string, function: array<string, mixed>} */
+    private function kantinCatalogTool(): array
+    {
+        return $this->tool('kantin_catalog_query', 'Cari katalog barang kantin yang aman secara read-only berdasarkan nama, kategori, status, dan pagination.', [
+            'search' => ['type' => ['string', 'null'], 'maxLength' => 100],
+            'category' => ['type' => ['string', 'null'], 'maxLength' => 100],
+            'status' => ['type' => 'string', 'enum' => ['active', 'inactive'], 'default' => 'active'],
             'page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 1],
             'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 25],
         ]);

@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicYear;
+use App\Models\KantinBarang;
+use App\Models\KantinCategory;
 use App\Models\Rombel;
 use App\Models\Student;
 use App\Models\StudentPlacement;
@@ -41,6 +43,90 @@ class AssistantClassTest extends TestCase
         $this->assertFalse($tool['function']['parameters']['additionalProperties']);
         $this->assertSame(['string', 'null'], $tool['function']['parameters']['properties']['class_search']['type']);
         $this->assertSame(50, $tool['function']['parameters']['properties']['per_page']['maximum']);
+
+        $catalog = collect($tools)->firstWhere('function.name', 'kantin_catalog_query');
+        $this->assertNotNull($catalog);
+        $this->assertFalse($catalog['function']['parameters']['additionalProperties']);
+        $this->assertSame([], $catalog['function']['parameters']['required'] ?? []);
+    }
+
+    public function test_kantin_catalog_is_available_without_inventory_permission_and_returns_safe_filtered_data(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $category = KantinCategory::factory()->create(['name' => 'Minuman']);
+        KantinBarang::factory()->create([
+            'kantin_kategori_id' => $category->id,
+            'name' => 'Teh Botol',
+            'brand' => 'Sosro',
+            'satuan' => 'botol',
+            'harga' => '5000.00',
+            'description' => 'Teh siap minum.',
+            'status' => 'active',
+        ]);
+        KantinBarang::factory()->create(['name' => 'Keripik', 'status' => 'inactive']);
+        KantinBarang::factory()->create([
+            'kantin_kategori_id' => $category->id,
+            'name' => 'Teh Celup',
+            'status' => 'active',
+        ]);
+
+        $result = app(AssistantToolExecutor::class)->execute($user, 'kantin_catalog_query', [
+            'search' => 'teh',
+            'category' => 'minum',
+            'page' => 1,
+            'per_page' => 1,
+        ]);
+
+        $this->assertSame(2, $result['meta']['total']);
+        $this->assertSame(2, $result['meta']['last_page']);
+        $this->assertSame('Teh Botol', $result['data'][0]['name']);
+        $this->assertSame('Minuman', $result['data'][0]['category']);
+        $this->assertSame('Sosro', $result['data'][0]['brand']);
+        $this->assertSame('botol', $result['data'][0]['satuan']);
+        $this->assertSame('Rp 5.000,00', $result['data'][0]['harga']);
+        $this->assertArrayNotHasKey('id', $result['data'][0]);
+        $this->assertArrayNotHasKey('kode_barang', $result['data'][0]);
+
+        $secondPage = app(AssistantToolExecutor::class)->execute($user, 'kantin_catalog_query', [
+            'search' => 'teh',
+            'page' => 2,
+            'per_page' => 1,
+        ]);
+
+        $this->assertSame(2, $secondPage['meta']['total']);
+        $this->assertSame(2, $secondPage['meta']['current_page']);
+        $this->assertSame('Teh Celup', $secondPage['data'][0]['name']);
+    }
+
+    public function test_kantin_catalog_rejects_unknown_arguments_and_bounds_pagination(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $executor = app(AssistantToolExecutor::class);
+
+        try {
+            $executor->execute($user, 'kantin_catalog_query', ['sql' => 'select 1']);
+            $this->fail('Expected unknown argument rejection.');
+        } catch (\InvalidArgumentException $exception) {
+            $this->assertSame('Unsupported assistant resource argument.', $exception->getMessage());
+        }
+
+        $this->expectException(\InvalidArgumentException::class);
+        $executor->execute($user, 'kantin_catalog_query', ['per_page' => 51]);
+    }
+
+    public function test_kantin_catalog_schema_uses_object_properties_and_safe_default_status(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $tools = app(AssistantToolRegistry::class)->forUser($user);
+        $catalog = collect($tools)->firstWhere('function.name', 'kantin_catalog_query');
+
+        $this->assertNotNull($catalog);
+        $parameters = $catalog['function']['parameters'];
+        $this->assertSame('object', $parameters['type']);
+        $this->assertIsArray($parameters['properties']);
+        $this->assertSame('active', $parameters['properties']['status']['default']);
+        $this->assertSame(['active', 'inactive'], $parameters['properties']['status']['enum']);
+        $this->assertFalse($parameters['additionalProperties']);
     }
 
     public function test_class_query_defaults_to_active_year_and_returns_allowlisted_class_data(): void
