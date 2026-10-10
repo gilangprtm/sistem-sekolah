@@ -57,6 +57,12 @@ const searchItems: SearchItem[] = [
         url: '/inventaris/inventory-rooms',
     },
     {
+        id: 'canteen-dashboard',
+        group: 'Kantin',
+        label: 'Dashboard Kantin',
+        url: '/kantin/dashboard',
+    },
+    {
         id: 'canteen-items',
         group: 'Kantin',
         label: 'Master Barang',
@@ -175,6 +181,10 @@ export function SearchDialog() {
 
         if (item.id === 'inventory-rooms') {
             return can('inventory.room.view');
+        }
+
+        if (item.id === 'canteen-dashboard') {
+            return can('kantin.dashboard.view');
         }
 
         if (item.id === 'canteen-items') {

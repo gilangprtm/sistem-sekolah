@@ -138,6 +138,15 @@ export function AppSidebar({
         });
     }
 
+    if (can('kantin.dashboard.view')) {
+        canteenItems.push({
+            id: 'canteen-dashboard',
+            title: 'Dashboard Kantin',
+            url: '/kantin/dashboard',
+            icon: LayoutDashboard,
+        });
+    }
+
     if (can('kantin.barang.view')) {
         canteenItems.push({
             id: 'canteen-items',

@@ -10,7 +10,7 @@ class AssistantToolRegistry
     public function forUser(User $user): array
     {
         if (! $user->can('inventory.view')) {
-            return [$this->classQueryTool(), $this->teacherSubjectsTool(), $this->kantinCatalogTool()];
+            return [$this->classQueryTool(), $this->teacherSubjectsTool(), $this->kantinCatalogTool(), $this->kantinInsightsTool()];
         }
 
         return [
@@ -47,6 +47,7 @@ class AssistantToolRegistry
             ]),
             $this->teacherSubjectsTool(),
             $this->kantinCatalogTool(),
+            $this->kantinInsightsTool(),
         ];
     }
 
@@ -78,10 +79,23 @@ class AssistantToolRegistry
     /** @return array{type: string, function: array<string, mixed>} */
     private function kantinCatalogTool(): array
     {
-        return $this->tool('kantin_catalog_query', 'Cari katalog barang kantin yang aman secara read-only berdasarkan nama, kategori, status, dan pagination.', [
+        return $this->tool('kantin_catalog_query', 'Cari katalog barang kantin yang aman secara read-only berdasarkan nama, kategori, status, satuan, harga, gambar publik, dan pagination.', [
             'search' => ['type' => ['string', 'null'], 'maxLength' => 100],
             'category' => ['type' => ['string', 'null'], 'maxLength' => 100],
             'status' => ['type' => 'string', 'enum' => ['active', 'inactive'], 'default' => 'active'],
+            'page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 1],
+            'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 25],
+        ]);
+    }
+
+    /** @return array{type: string, function: array<string, mixed>} */
+    private function kantinInsightsTool(): array
+    {
+        return $this->tool('kantin_insights_query', 'Baca insight Kantin secara read-only: produk terlaris atau rekomendasi berbasis agregat penjualan dan katalog aktif. Tidak memuat identitas siswa, saldo, ledger, atau transaksi mentah.', [
+            'mode' => ['type' => 'string', 'enum' => ['best_sellers', 'recommendations'], 'default' => 'best_sellers'],
+            'period' => ['type' => 'string', 'enum' => ['today', 'week', 'month', 'year', 'all'], 'default' => 'all'],
+            'search' => ['type' => ['string', 'null'], 'maxLength' => 100],
+            'category' => ['type' => ['string', 'null'], 'maxLength' => 100],
             'page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 1],
             'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 25],
         ]);

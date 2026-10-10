@@ -10,7 +10,9 @@ use Database\Seeders\KantinSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -123,6 +125,128 @@ class KantinBarangTest extends TestCase
             'satuan' => 'botol',
             'harga' => '4000',
         ])->assertForbidden();
+    }
+
+    public function test_master_barang_uploads_replaces_and_removes_product_image(): void
+    {
+        Storage::fake('public');
+        $user = $this->superAdmin();
+        $barang = KantinBarang::factory()->create();
+
+        $this->actingAs($user)->post('/kantin/barang', [
+            'category_id' => $barang->kantin_kategori_id,
+            'name' => 'Produk Bergambar',
+            'satuan' => 'pcs',
+            'harga' => '5000',
+            'image' => UploadedFile::fake()->create('product.png', 100, 'image/png'),
+        ])->assertRedirect('/kantin/barang')->assertSessionHasNoErrors();
+
+        $created = KantinBarang::query()->where('name', 'Produk Bergambar')->firstOrFail();
+        $this->assertNotNull($created->image_path);
+        Storage::disk('public')->assertExists($created->image_path);
+
+        $oldPath = $created->image_path;
+        $this->actingAs($user)->post('/kantin/barang/'.$created->id, [
+            '_method' => 'PATCH',
+            'category_id' => $created->kantin_kategori_id,
+            'name' => $created->name,
+            'satuan' => $created->satuan,
+            'harga' => '5000',
+            'image' => UploadedFile::fake()->create('replacement.webp', 100, 'image/webp'),
+        ])->assertRedirect('/kantin/barang');
+
+        $created->refresh();
+        $this->assertNotSame($oldPath, $created->image_path);
+        Storage::disk('public')->assertMissing($oldPath);
+        Storage::disk('public')->assertExists($created->image_path);
+
+        $replacementPath = $created->image_path;
+        $this->actingAs($user)->post('/kantin/barang/'.$created->id, [
+            '_method' => 'PATCH',
+            'category_id' => $created->kantin_kategori_id,
+            'name' => $created->name,
+            'satuan' => $created->satuan,
+            'harga' => '5000',
+            'remove_image' => '1',
+        ])->assertRedirect('/kantin/barang');
+
+        $created->refresh();
+        $this->assertNull($created->image_path);
+        Storage::disk('public')->assertMissing($replacementPath);
+    }
+
+    public function test_invalid_product_image_is_rejected(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->superAdmin())->post('/kantin/barang', [
+            'category_name' => 'Gambar Invalid',
+            'name' => 'Produk',
+            'satuan' => 'pcs',
+            'harga' => '5000',
+            'image' => UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
+        ])->assertSessionHasErrors('image');
+    }
+
+    public function test_product_image_over_one_megabyte_is_rejected_on_create_and_update(): void
+    {
+        Storage::fake('public');
+        $user = $this->superAdmin();
+        $this->actingAs($user)->post('/kantin/barang', [
+            'category_name' => 'Gambar Besar',
+            'name' => 'Produk Besar',
+            'satuan' => 'pcs',
+            'harga' => '5000',
+            'image' => UploadedFile::fake()->create('large.png', 1025, 'image/png'),
+        ])->assertSessionHasErrors('image');
+
+        $barang = KantinBarang::factory()->create();
+        $this->actingAs($user)->post('/kantin/barang/'.$barang->id, [
+            '_method' => 'PATCH',
+            'category_id' => $barang->kantin_kategori_id,
+            'name' => $barang->name,
+            'satuan' => $barang->satuan,
+            'harga' => $barang->harga,
+            'image' => UploadedFile::fake()->create('large-update.png', 1025, 'image/png'),
+        ])->assertSessionHasErrors('image');
+    }
+
+    public function test_product_image_url_is_safe_and_null_without_image(): void
+    {
+        Storage::fake('public');
+        $user = $this->superAdmin();
+        $withoutImage = KantinBarang::factory()->create(['kode_barang' => 'A-0001', 'image_path' => null]);
+        $withImage = KantinBarang::factory()->create(['kode_barang' => 'Z-0001', 'image_path' => 'kantin/barang/book.png']);
+        Storage::disk('public')->put($withImage->image_path, 'image-content');
+
+        $this->actingAs($user)->get('/kantin/barang')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('barangs.data.0.image_url', null)
+                ->where('barangs.data.1.image_url', $withImage->imageUrl()));
+
+        $posProducts = $this->get('/kantin/pos')->inertiaPage()['props']['products'];
+        $posProduct = collect($posProducts)->firstWhere('id', $withImage->id);
+
+        $this->assertSame($withImage->imageUrl(), $posProduct['image_url']);
+        $this->assertStringNotContainsString('image_path', json_encode($posProducts, JSON_THROW_ON_ERROR));
+
+        $securePosProducts = $this->withHeaders(['X-Forwarded-Proto' => 'https'])
+            ->get('/kantin/pos')
+            ->inertiaPage()['props']['products'];
+        $securePosProduct = collect($securePosProducts)->firstWhere('id', $withImage->id);
+        $this->assertStringStartsWith('https://', $securePosProduct['image_url']);
+
+        $this->get(route('kantin.barang.image', $withImage))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertSee('image-content');
+        $this->get(route('kantin.barang.image', $withoutImage))->assertNotFound();
+
+        $missingFile = KantinBarang::factory()->create([
+            'image_path' => 'kantin/barang/missing.png',
+        ]);
+        $this->get(route('kantin.barang.image', $missingFile))->assertNotFound();
+        $this->assertNotSame($withoutImage->id, $withImage->id);
     }
 
     public function test_master_barang_can_update_and_archive_without_physical_delete(): void

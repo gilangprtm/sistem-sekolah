@@ -81,6 +81,7 @@ class RolePermissionSeeder extends Seeder
         'inventory.room.update',
         'inventory.room.delete',
         'inventory.room.assign',
+        'kantin.dashboard.view',
         'kantin.barang.view',
         'kantin.barang.create',
         'kantin.barang.update',

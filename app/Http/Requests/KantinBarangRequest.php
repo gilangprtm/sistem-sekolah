@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\KantinBarang;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 
 class KantinBarangRequest extends FormRequest
 {
@@ -71,6 +72,8 @@ class KantinBarangRequest extends FormRequest
             'satuan' => ['required', 'string', 'max:50'],
             'harga' => ['required', 'numeric', 'min:0', 'decimal:0,2'],
             'description' => ['nullable', 'string'],
+            'image' => ['nullable', File::image()->max(1024)],
+            'remove_image' => ['sometimes', 'boolean'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
         ];
     }

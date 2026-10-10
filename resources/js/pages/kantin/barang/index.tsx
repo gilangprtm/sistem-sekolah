@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { AlertCircle, Check, ChevronsUpDown, Search } from 'lucide-react';
+import { AlertCircle, Check, ChevronsUpDown, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
@@ -59,6 +59,7 @@ type Barang = {
     satuan: string;
     harga: string;
     description: string | null;
+    image_url: string | null;
     status: string;
     category: Category;
 };
@@ -88,6 +89,8 @@ const initialForm = {
     satuan: '',
     harga: '',
     description: '',
+    image: null as File | null,
+    remove_image: false,
     status: 'active',
 };
 
@@ -149,6 +152,8 @@ export default function KantinBarangIndex({
             satuan: barang.satuan,
             harga: formatRupiah(barang.harga),
             description: barang.description ?? '',
+            image: null,
+            remove_image: false,
             status: barang.status,
         });
         setErrors({});
@@ -239,15 +244,26 @@ export default function KantinBarangIndex({
             },
             onFinish: () => setProcessing(false),
         };
-        const payload = {
+        const payload = new FormData();
+        Object.entries({
             ...form,
             harga: cleanHarga(form.harga),
-            category_id: form.category_id || undefined,
-            category_name: form.category_name || undefined,
-        };
+            category_id: form.category_id || '',
+            category_name: form.category_name || '',
+            remove_image: form.remove_image ? '1' : '0',
+        }).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && key !== 'image') {
+                payload.append(key, String(value));
+            }
+        });
+
+        if (form.image) {
+            payload.append('image', form.image);
+        }
 
         if (editing) {
-            router.patch(`/kantin/barang/${editing.id}`, payload, options);
+            payload.append('_method', 'PATCH');
+            router.post(`/kantin/barang/${editing.id}`, payload, options);
         } else {
             router.post('/kantin/barang', payload, options);
         }
@@ -387,6 +403,7 @@ export default function KantinBarangIndex({
                                             aria-label="Pilih semua barang"
                                         />
                                     </TableHead>
+                                    <TableHead>Gambar</TableHead>
                                     <TableHead>Kode</TableHead>
                                     <TableHead>Nama</TableHead>
                                     <TableHead>Kategori</TableHead>
@@ -423,6 +440,19 @@ export default function KantinBarangIndex({
                                                 }
                                                 aria-label={`Pilih ${barang.name}`}
                                             />
+                                        </TableCell>
+                                        <TableCell>
+                                            {barang.image_url ? (
+                                                <img
+                                                    src={barang.image_url}
+                                                    alt={barang.name}
+                                                    className="size-12 rounded-md object-cover"
+                                                />
+                                            ) : (
+                                                <div className="grid size-12 place-items-center rounded-md bg-muted text-xs text-muted-foreground">
+                                                    —
+                                                </div>
+                                            )}
                                         </TableCell>
                                         <TableCell className="font-medium">
                                             {barang.kode_barang}
@@ -469,7 +499,7 @@ export default function KantinBarangIndex({
                                     </TableRow>
                                 ))}
                                 {barangs.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={9}>
+                                    <DataTableEmptyState colSpan={10}>
                                         Belum ada barang Kantin.
                                     </DataTableEmptyState>
                                 )}
@@ -688,6 +718,57 @@ export default function KantinBarangIndex({
                                 id="kantin-harga-error"
                                 role="alert"
                                 message={errors.harga}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="kantin-image">Gambar Produk</Label>
+                            {editing?.image_url &&
+                                !form.remove_image &&
+                                !form.image && (
+                                    <img
+                                        src={editing.image_url}
+                                        alt={editing.name}
+                                        className="h-32 w-full rounded-lg object-cover"
+                                    />
+                                )}
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    id="kantin-image"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    onChange={(event) =>
+                                        setForm((current) => ({
+                                            ...current,
+                                            image:
+                                                event.target.files?.[0] ?? null,
+                                            remove_image: false,
+                                        }))
+                                    }
+                                />
+                                {editing?.image_url && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        aria-label="Hapus gambar"
+                                        onClick={() =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                image: null,
+                                                remove_image: true,
+                                            }))
+                                        }
+                                    >
+                                        <X className="size-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                JPG, PNG, atau WebP. Maksimal 1 MB (1024 KB).
+                            </p>
+                            <InputError
+                                id="kantin-image-error"
+                                role="alert"
+                                message={errors.image}
                             />
                         </div>
                         <div className="grid gap-2">

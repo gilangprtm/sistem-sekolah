@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\KantinBarang;
 use App\Models\KantinCategory;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -32,6 +34,7 @@ final class KantinBarangService
                     'satuan' => $data['satuan'],
                     'harga' => $data['harga'],
                     'description' => $data['description'] ?? null,
+                    'image_path' => $this->storeImage($data['image'] ?? null),
                     'status' => $data['status'] ?? 'active',
                 ]);
             } catch (UniqueConstraintViolationException) {
@@ -56,6 +59,14 @@ final class KantinBarangService
                 $barang->kode_barang = $this->nextCode($category);
             }
 
+            $oldImagePath = $barang->image_path;
+            $newImagePath = $this->storeImage($data['image'] ?? null);
+            if ($newImagePath !== null) {
+                $barang->image_path = $newImagePath;
+            } elseif ((bool) ($data['remove_image'] ?? false)) {
+                $barang->image_path = null;
+            }
+
             $barang->fill([
                 'name' => $data['name'],
                 'brand' => $data['brand'] ?? null,
@@ -65,6 +76,12 @@ final class KantinBarangService
                 'status' => $data['status'] ?? $barang->status,
             ]);
             $barang->save();
+
+            if ($newImagePath !== null && $oldImagePath !== null) {
+                Storage::disk('public')->delete($oldImagePath);
+            } elseif ((bool) ($data['remove_image'] ?? false) && $oldImagePath !== null) {
+                Storage::disk('public')->delete($oldImagePath);
+            }
 
             return $barang->refresh();
         });
@@ -140,6 +157,11 @@ final class KantinBarangService
             ->max() ?? 0;
 
         return sprintf('%s-%04d', $prefix, $lastNumber + 1);
+    }
+
+    private function storeImage(?UploadedFile $image): ?string
+    {
+        return $image?->store('kantin/barang', 'public');
     }
 
     private function lockCodeAllocation(): void

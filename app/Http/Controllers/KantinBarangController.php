@@ -8,12 +8,27 @@ use App\Models\KantinCategory;
 use App\Services\KantinBarangService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class KantinBarangController extends Controller
 {
     public function __construct(private readonly KantinBarangService $barangService) {}
+
+    public function image(KantinBarang $kantinBarang): HttpResponse
+    {
+        abort_unless($kantinBarang->image_path !== null, 404);
+
+        $disk = Storage::disk('public');
+        abort_unless($disk->exists($kantinBarang->image_path), 404);
+
+        return response($disk->get($kantinBarang->image_path), 200, [
+            'Content-Type' => $disk->mimeType($kantinBarang->image_path) ?: 'application/octet-stream',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
 
     public function index(Request $request): Response
     {
@@ -36,7 +51,16 @@ class KantinBarangController extends Controller
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->orderBy('kode_barang')
             ->paginate($perPage)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(function (KantinBarang $barang): array {
+                $data = $barang->toArray();
+                unset($data['image_path']);
+
+                return [
+                    ...$data,
+                    'image_url' => $barang->imageUrl(),
+                ];
+            });
 
         return Inertia::render('kantin/barang/index', [
             'barangs' => $barangs,

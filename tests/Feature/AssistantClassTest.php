@@ -15,6 +15,7 @@ use App\Services\Assistant\AssistantToolExecutor;
 use App\Services\Assistant\AssistantToolRegistry;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -48,6 +49,10 @@ class AssistantClassTest extends TestCase
         $this->assertNotNull($catalog);
         $this->assertFalse($catalog['function']['parameters']['additionalProperties']);
         $this->assertSame([], $catalog['function']['parameters']['required'] ?? []);
+
+        $insights = collect($tools)->firstWhere('function.name', 'kantin_insights_query');
+        $this->assertNotNull($insights);
+        $this->assertFalse($insights['function']['parameters']['additionalProperties']);
     }
 
     public function test_kantin_catalog_is_available_without_inventory_permission_and_returns_safe_filtered_data(): void
@@ -127,6 +132,75 @@ class AssistantClassTest extends TestCase
         $this->assertSame('active', $parameters['properties']['status']['default']);
         $this->assertSame(['active', 'inactive'], $parameters['properties']['status']['enum']);
         $this->assertFalse($parameters['additionalProperties']);
+    }
+
+    public function test_kantin_insights_returns_period_filtered_safe_best_sellers_and_recommendations(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $category = KantinCategory::factory()->create(['name' => 'Makanan']);
+        $popular = KantinBarang::factory()->create([
+            'kantin_kategori_id' => $category->id,
+            'name' => 'Nasi Goreng',
+            'brand' => 'Kantin',
+            'satuan' => 'porsi',
+            'harga' => '10000.00',
+            'status' => 'active',
+        ]);
+        $old = KantinBarang::factory()->create(['kantin_kategori_id' => $category->id, 'name' => 'Mie Lama', 'status' => 'active']);
+        $student = Student::factory()->create(['full_name' => 'Siswa Rahasia']);
+        $currentSale = now()->startOfYear()->addDay();
+        $previousSale = now()->subYear()->endOfYear();
+        $sale = DB::table('tr_kantin_penjualan')->insertGetId([
+            'student_id' => $student->id, 'total' => '30000.00', 'created_at' => $currentSale, 'updated_at' => $currentSale,
+        ]);
+        DB::table('tr_kantin_penjualan_detail')->insert([
+            'penjualan_id' => $sale, 'kantin_barang_id' => $popular->id, 'quantity' => 3, 'harga' => '10000.00', 'subtotal' => '30000.00', 'created_at' => $currentSale, 'updated_at' => $currentSale,
+        ]);
+        $oldSale = DB::table('tr_kantin_penjualan')->insertGetId([
+            'student_id' => $student->id, 'total' => '9000.00', 'created_at' => $previousSale, 'updated_at' => $previousSale,
+        ]);
+        DB::table('tr_kantin_penjualan_detail')->insert([
+            'penjualan_id' => $oldSale, 'kantin_barang_id' => $old->id, 'quantity' => 9, 'harga' => '1000.00', 'subtotal' => '9000.00', 'created_at' => $previousSale, 'updated_at' => $previousSale,
+        ]);
+
+        $result = app(AssistantToolExecutor::class)->execute($user, 'kantin_insights_query', [
+            'mode' => 'recommendations', 'period' => 'year', 'category' => 'makanan', 'page' => 1, 'per_page' => 25,
+        ]);
+
+        $this->assertSame('recommendations', $result['mode']);
+        $this->assertSame('year', $result['period']);
+        $this->assertSame(1, $result['meta']['total']);
+        $this->assertSame('Nasi Goreng', $result['data'][0]['name']);
+        $this->assertSame(3, $result['data'][0]['quantity']);
+        $this->assertSame('Rp 10.000,00', $result['data'][0]['harga']);
+        $this->assertArrayNotHasKey('student_id', $result['data'][0]);
+        $this->assertArrayNotHasKey('full_name', $result['data'][0]);
+        $this->assertStringNotContainsString('Siswa Rahasia', json_encode($result, JSON_THROW_ON_ERROR));
+        $this->assertStringContainsString('Pilihan populer', $result['data'][0]['recommendation']);
+    }
+
+    public function test_kantin_insights_rejects_unknown_arguments_invalid_filters_and_returns_empty_safely(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $executor = app(AssistantToolExecutor::class);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $executor->execute($user, 'kantin_insights_query', ['student_id' => 1]);
+    }
+
+    public function test_kantin_insights_schema_and_empty_result_are_bounded(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $tool = collect(app(AssistantToolRegistry::class)->forUser($user))->firstWhere('function.name', 'kantin_insights_query');
+        $this->assertNotNull($tool);
+        $parameters = $tool['function']['parameters'];
+        $this->assertSame(['best_sellers', 'recommendations'], $parameters['properties']['mode']['enum']);
+        $this->assertSame(['today', 'week', 'month', 'year', 'all'], $parameters['properties']['period']['enum']);
+        $this->assertFalse($parameters['additionalProperties']);
+
+        $result = app(AssistantToolExecutor::class)->execute($user, 'kantin_insights_query', ['period' => 'month']);
+        $this->assertSame([], $result['data']);
+        $this->assertSame(1, $result['meta']['last_page']);
     }
 
     public function test_class_query_defaults_to_active_year_and_returns_allowlisted_class_data(): void

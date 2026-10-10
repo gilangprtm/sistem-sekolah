@@ -13,6 +13,7 @@ use App\Services\InventoryCategoryService;
 use App\Services\InventoryItemService;
 use App\Services\InventoryRegisterService;
 use App\Services\InventoryRoomService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AssistantToolExecutor
@@ -30,7 +31,7 @@ class AssistantToolExecutor
      */
     public function execute(User $user, string $name, array $arguments): array
     {
-        if (! in_array($name, ['teacher_subjects', 'curriculum_class_query', 'kantin_catalog_query'], true)) {
+        if (! in_array($name, ['teacher_subjects', 'curriculum_class_query', 'kantin_catalog_query', 'kantin_insights_query'], true)) {
             abort_unless($user->can('inventory.view'), 403);
         }
 
@@ -38,6 +39,7 @@ class AssistantToolExecutor
             'curriculum_class_query' => $this->queryClasses($arguments),
             'teacher_subjects' => $this->queryTeacherSubjects($arguments),
             'kantin_catalog_query' => $this->queryKantinCatalog($arguments),
+            'kantin_insights_query' => $this->queryKantinInsights($arguments),
             'inventory_items' => $this->queryInventoryItemsResource($arguments),
             'inventory_registers' => $this->queryInventoryRegistersResource($arguments),
             'inventory_rooms' => $this->queryInventoryRoomsResource($arguments),
@@ -234,8 +236,89 @@ class AssistantToolExecutor
                 'satuan' => $item->satuan,
                 'harga' => $this->formatKantinHarga($item->harga),
                 'description' => $item->description,
+                'image_url' => $item->imageUrl(),
                 'status' => $item->status,
             ])->values()->all(),
+            'meta' => [
+                'current_page' => $result->currentPage(),
+                'per_page' => $result->perPage(),
+                'total' => $result->total(),
+                'last_page' => $result->lastPage(),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function queryKantinInsights(array $arguments): array
+    {
+        $this->assertAllowedArguments($arguments, ['mode', 'period', 'search', 'category', 'page', 'per_page']);
+
+        $mode = $arguments['mode'] ?? 'best_sellers';
+        if (! is_string($mode) || ! in_array($mode, ['best_sellers', 'recommendations'], true)) {
+            throw new \InvalidArgumentException('Invalid Kantin insights mode.');
+        }
+        $period = $arguments['period'] ?? 'all';
+        if (! is_string($period) || ! in_array($period, ['today', 'week', 'month', 'year', 'all'], true)) {
+            throw new \InvalidArgumentException('Invalid Kantin insights period.');
+        }
+
+        $search = $this->nullableString($arguments, 'search');
+        $category = $this->nullableString($arguments, 'category');
+        $page = $this->paginationArgument($arguments, 'page', 1, 50);
+        $perPage = $this->paginationArgument($arguments, 'per_page', 25, 50);
+        $now = now();
+        $periodStart = match ($period) {
+            'today' => $now->copy()->startOfDay(),
+            'week' => $now->copy()->startOfWeek(Carbon::MONDAY),
+            'month' => $now->copy()->startOfMonth(),
+            'year' => $now->copy()->startOfYear(),
+            default => null,
+        };
+
+        $query = DB::table('tr_kantin_penjualan_detail as details')
+            ->join('tr_kantin_penjualan as sales', 'sales.id', '=', 'details.penjualan_id')
+            ->join('m_kantin_barang as products', 'products.id', '=', 'details.kantin_barang_id')
+            ->join('m_kantin_kategori as categories', 'categories.id', '=', 'products.kantin_kategori_id')
+            ->where('products.status', 'active')
+            ->when($periodStart !== null, fn ($query) => $query
+                ->where('sales.created_at', '>=', $periodStart)
+                ->where('sales.created_at', '<=', $now))
+            ->when($search !== null, function ($query) use ($search): void {
+                $like = '%'.mb_strtolower($search).'%';
+                $query->where(function ($searchQuery) use ($like): void {
+                    $searchQuery->whereRaw('LOWER(products.name) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(products.brand) LIKE ?', [$like]);
+                });
+            })
+            ->when($category !== null, fn ($query) => $query->whereRaw('LOWER(categories.name) LIKE ?', ['%'.mb_strtolower($category).'%']))
+            ->select('products.id', 'products.name', 'products.brand', 'products.satuan', 'products.harga', 'categories.name as category')
+            ->selectRaw('SUM(details.quantity) as quantity, SUM(details.subtotal) as total')
+            ->groupBy('products.id', 'products.name', 'products.brand', 'products.satuan', 'products.harga', 'categories.name')
+            ->orderByDesc('quantity')
+            ->orderBy('products.name')
+            ->orderBy('products.id');
+
+        $result = $query->paginate($perPage, ['*'], 'page', $page);
+        $data = $result->getCollection()->map(fn (object $item): array => [
+            'name' => $item->name,
+            'brand' => $item->brand,
+            'category' => $item->category,
+            'satuan' => $item->satuan,
+            'harga' => $this->formatKantinHarga((string) $item->harga),
+            'quantity' => (int) $item->quantity,
+            'total' => (string) $item->total,
+            'recommendation' => $mode === 'recommendations'
+                ? 'Pilihan populer berdasarkan agregat penjualan pada periode yang dipilih.'
+                : null,
+        ])->values()->all();
+
+        return [
+            'mode' => $mode,
+            'period' => $period,
+            'data' => $data,
             'meta' => [
                 'current_page' => $result->currentPage(),
                 'per_page' => $result->perPage(),
