@@ -312,10 +312,10 @@ export default function KantinPos({ categories, products }: Props) {
             <div className="grid min-h-dvh place-items-center bg-slate-50 p-5 text-slate-900">
                 <Head title="Scan Kartu Pelajar - Kantin" />
                 <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-                    <div className="mx-auto mb-5 grid size-20 place-items-center rounded-3xl bg-violet-100">
-                        <Camera className="size-10 text-violet-700" />
+                    <div className="mx-auto mb-5 grid size-20 place-items-center rounded-3xl bg-[#EDEAF5]">
+                        <Camera className="size-10 text-[#160F42]" />
                     </div>
-                    <p className="text-sm font-semibold text-violet-700">
+                    <p className="text-sm font-semibold text-[#160F42]">
                         SMPN 17 DENPASAR
                     </p>
                     <h1 className="mt-2 text-3xl font-bold">Kantin Sekolah</h1>
@@ -333,7 +333,7 @@ export default function KantinPos({ categories, products }: Props) {
                         type="button"
                         onClick={scanning ? stopCamera : startCamera}
                         disabled={busy}
-                        className="mt-6 min-h-14 w-full rounded-2xl bg-violet-700 font-semibold text-white disabled:opacity-50"
+                        className="mt-6 min-h-14 w-full rounded-2xl bg-[#160F42] font-semibold text-white disabled:opacity-50"
                     >
                         {scanning ? 'Batalkan Scan' : 'Scan QR Kartu Pelajar'}
                     </button>
@@ -362,7 +362,7 @@ export default function KantinPos({ categories, products }: Props) {
                         <button
                             type="submit"
                             disabled={!qr.trim() || busy}
-                            className="min-h-12 w-full rounded-xl border border-violet-200 font-semibold text-violet-700 disabled:opacity-40"
+                            className="min-h-12 w-full rounded-xl border border-[#DCD6EE] font-semibold text-[#160F42] disabled:opacity-40"
                         >
                             {busy ? 'Memeriksa...' : 'Verifikasi Kartu'}
                         </button>
@@ -390,9 +390,9 @@ export default function KantinPos({ categories, products }: Props) {
             <Head title="Kantin Sekolah" />
             <div className="mx-auto flex min-h-dvh max-w-7xl flex-col lg:flex-row">
                 <main className="min-w-0 flex-1 p-5 pb-[32vh] sm:p-8 lg:pb-8">
-                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#DCD6EE] bg-[#F4F2FA] p-4">
                         <div>
-                            <p className="text-xs text-violet-700">
+                            <p className="text-xs text-[#160F42]">
                                 Siswa aktif
                             </p>
                             <p className="font-bold">{student.name}</p>
@@ -403,23 +403,23 @@ export default function KantinPos({ categories, products }: Props) {
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs text-violet-700">
+                            <p className="text-xs text-[#160F42]">
                                 Saldo tersedia
                             </p>
-                            <p className="text-xl font-bold text-violet-800">
+                            <p className="text-xl font-bold text-[#160F42]">
                                 {rupiah(Number(student.balance))}
                             </p>
                             <button
                                 type="button"
                                 onClick={exitPos}
-                                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-700"
+                                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#160F42]"
                             >
                                 <LogOut className="size-3" /> Keluar
                             </button>
                         </div>
                     </div>
                     <header className="mb-8">
-                        <p className="text-sm font-semibold tracking-wide text-violet-700">
+                        <p className="text-sm font-semibold tracking-wide text-[#160F42]">
                             SMPN 17 DENPASAR
                         </p>
                         <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -452,7 +452,7 @@ export default function KantinPos({ categories, products }: Props) {
                                     type="button"
                                     onClick={() => setCategory(item.id)}
                                     aria-pressed={category === item.id}
-                                    className={`shrink-0 rounded-full px-5 py-3 text-sm font-semibold transition-colors ${category === item.id ? 'bg-violet-700 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
+                                    className={`shrink-0 rounded-full px-5 py-3 text-sm font-semibold transition-colors ${category === item.id ? 'bg-[#160F42] text-white' : 'border border-slate-200 bg-white text-slate-600'}`}
                                 >
                                     {item.name}
                                 </button>
@@ -467,7 +467,7 @@ export default function KantinPos({ categories, products }: Props) {
                                     key={product.id}
                                     className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                                 >
-                                    <div className="mb-4 grid aspect-[4/3] place-items-center overflow-hidden rounded-xl bg-violet-50">
+                                    <div className="mb-4 grid aspect-[4/3] place-items-center overflow-hidden rounded-xl bg-[#F4F2FA]">
                                         {product.image_url &&
                                         !imageErrors[product.id] ? (
                                             <img
@@ -487,7 +487,7 @@ export default function KantinPos({ categories, products }: Props) {
                                             />
                                         ) : (
                                             <ShoppingBasket
-                                                className="size-10 text-violet-300"
+                                                className="size-10 text-[#8479B5]"
                                                 aria-hidden="true"
                                             />
                                         )}
@@ -498,7 +498,7 @@ export default function KantinPos({ categories, products }: Props) {
                                     <p className="mt-1 truncate text-xs text-slate-500">
                                         {product.brand || product.satuan}
                                     </p>
-                                    <p className="mt-3 text-base font-bold text-violet-800">
+                                    <p className="mt-3 text-base font-bold text-[#160F42]">
                                         {rupiah(Number(product.harga))}
                                     </p>
                                     <button
@@ -506,7 +506,7 @@ export default function KantinPos({ categories, products }: Props) {
                                         onClick={() =>
                                             changeQuantity(product.id, 1)
                                         }
-                                        className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-violet-700 text-sm font-semibold text-white active:bg-violet-800"
+                                        className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#160F42] text-sm font-semibold text-white active:bg-[#100B32]"
                                     >
                                         <Plus
                                             className="size-4"
@@ -527,7 +527,7 @@ export default function KantinPos({ categories, products }: Props) {
                 <aside className="fixed inset-x-0 bottom-0 z-40 flex h-[32dvh] min-h-44 flex-col border-t border-slate-200 bg-white p-3 shadow-[0_-8px_25px_rgba(0,0,0,.08)] lg:sticky lg:top-0 lg:h-dvh lg:w-96 lg:p-6 lg:shadow-none">
                     <div className="mb-2 flex items-center justify-between lg:mb-5">
                         <h2 className="flex items-center gap-2 text-lg font-bold">
-                            <ShoppingBasket className="size-5 text-violet-700" />
+                            <ShoppingBasket className="size-5 text-[#160F42]" />
                             Keranjang{' '}
                             <span className="text-sm font-normal text-slate-500">
                                 ({count})
@@ -581,7 +581,7 @@ export default function KantinPos({ categories, products }: Props) {
                                             onClick={() =>
                                                 changeQuantity(product.id, 1)
                                             }
-                                            className="grid size-10 place-items-center rounded-xl bg-violet-100 text-violet-800"
+                                            className="grid size-10 place-items-center rounded-xl bg-[#EDEAF5] text-[#160F42]"
                                         >
                                             <Plus className="size-4" />
                                         </button>
@@ -605,7 +605,7 @@ export default function KantinPos({ categories, products }: Props) {
                                 className={
                                     total > Number(student.balance)
                                         ? 'text-red-600'
-                                        : 'text-violet-700'
+                                        : 'text-[#160F42]'
                                 }
                             >
                                 {rupiah(Number(student.balance) - total)}
@@ -627,7 +627,7 @@ export default function KantinPos({ categories, products }: Props) {
                                 paying ||
                                 total > Number(student.balance)
                             }
-                            className="mt-2 min-h-12 w-full rounded-2xl bg-violet-700 text-base font-bold text-white disabled:bg-slate-200 disabled:text-slate-500 lg:mt-4 lg:min-h-14"
+                            className="mt-2 min-h-12 w-full rounded-2xl bg-[#160F42] text-base font-bold text-white disabled:bg-slate-200 disabled:text-slate-500 lg:mt-4 lg:min-h-14"
                         >
                             {paying
                                 ? 'Memproses pembayaran...'
