@@ -34,6 +34,14 @@ export const THEME_PRESET_OPTIONS = [
         },
     },
     {
+        label: 'Glassmorphism',
+        value: 'glassmorphism',
+        primary: {
+            light: '#160f42',
+            dark: '#b4a5fa',
+        },
+    },
+    {
         label: 'Tangerine',
         value: 'tangerine',
         primary: {
