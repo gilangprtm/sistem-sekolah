@@ -17,11 +17,9 @@
         <meta name="apple-mobile-web-app-title" content="Portal SMPN 17 Denpasar">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
-        <link rel="icon" type="image/png" sizes="1080x1080" href="/images/logo-sekolah.png?v=school-logo-1">
-        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=school-logo-1">
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=school-logo-1">
-        <link rel="manifest" href="/manifest.webmanifest?v=school-logo-1">
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png?v=school-logo-1">
+        <link rel="icon" href="/favicon.ico?v=school-logo-2" sizes="any">
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png?v=school-logo-2">
+        <link rel="manifest" href="/manifest.webmanifest?v=school-logo-2">
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
