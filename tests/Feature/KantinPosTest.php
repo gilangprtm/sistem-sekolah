@@ -14,6 +14,18 @@ class KantinPosTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_public_pos_scan_state_uses_the_school_hero_background(): void
+    {
+        $this->get('/kantin/pos')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('kantin/pos/index'));
+
+        $source = file_get_contents(resource_path('js/pages/kantin/pos/index.tsx'));
+        $this->assertStringContainsString("backgroundImage: \"url('/images/hero-background.png')\"", $source);
+        $this->assertStringContainsString('if (!student)', $source);
+        $this->assertStringContainsString('<Head title="Scan Kartu Pelajar - Kantin" />', $source);
+    }
+
     public function test_verified_student_can_checkout_when_session_is_not_available_anymore(): void
     {
         $studentUser = User::factory()->create(['email' => 'student-card@example.test']);

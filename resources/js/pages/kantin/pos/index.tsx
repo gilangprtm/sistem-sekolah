@@ -309,9 +309,18 @@ export default function KantinPos({ categories, products }: Props) {
 
     if (!student) {
         return (
-            <div className="grid min-h-dvh place-items-center bg-slate-50 p-5 text-slate-900">
+            <div
+                className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#160F42] bg-cover bg-center p-5 text-slate-900"
+                style={{
+                    backgroundImage: "url('/images/hero-background.png')",
+                }}
+            >
                 <Head title="Scan Kartu Pelajar - Kantin" />
-                <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                <div
+                    className="absolute inset-0 bg-gradient-to-br from-[#160F42]/95 via-[#160F42]/80 to-[#5D1B68]/70"
+                    aria-hidden="true"
+                />
+                <div className="relative w-full max-w-md rounded-3xl border border-white/60 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-sm">
                     <div className="mx-auto mb-5 grid size-20 place-items-center rounded-3xl bg-[#EDEAF5]">
                         <Camera className="size-10 text-[#160F42]" />
                     </div>

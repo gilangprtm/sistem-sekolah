@@ -20,6 +20,27 @@ class AuthenticationTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_login_and_register_use_the_school_hero_background(): void
+    {
+        $loginSource = file_get_contents(resource_path('js/pages/auth/login.tsx'));
+        $registerSource = file_get_contents(resource_path('js/pages/auth/register.tsx'));
+        $layoutSource = file_get_contents(resource_path('js/layouts/auth/auth-simple-layout.tsx'));
+
+        $this->assertIsString($loginSource);
+        $this->assertIsString($registerSource);
+        $this->assertIsString($layoutSource);
+        $this->assertStringContainsString('heroBackground: true', $loginSource);
+        $this->assertStringContainsString('heroBackground: true', $registerSource);
+        $this->assertStringContainsString(
+            "url('/images/hero-background.png')",
+            $layoutSource,
+        );
+        $this->assertStringContainsString('bg-slate-800/75', $layoutSource);
+        $this->assertStringContainsString('bg-slate-950/35', $layoutSource);
+        $this->assertStringContainsString('[&_input]:text-white', $layoutSource);
+        $this->assertStringContainsString('[&_label]:text-white', $layoutSource);
+    }
+
     public function test_users_can_authenticate_using_the_login_screen()
     {
         $user = User::factory()->create();
