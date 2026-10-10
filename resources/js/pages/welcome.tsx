@@ -84,7 +84,7 @@ export default function Welcome() {
                         <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur">
                             <GraduationCap
                                 aria-hidden="true"
-                                className="size-4 text-amber-300"
+                                className="size-4 text-[#A99BEF]"
                             />
                             <span>Portal Digital Sekolah</span>
                         </div>
@@ -100,7 +100,7 @@ export default function Welcome() {
                             {isAuthenticated ? (
                                 <Link
                                     href={dashboard()}
-                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-amber-300 px-6 text-sm font-semibold text-slate-950 shadow-xl transition hover:bg-amber-200 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:outline-none"
+                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#160F42] px-6 text-sm font-semibold text-white shadow-xl ring-1 ring-white/20 transition hover:bg-[#30236D] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:outline-none"
                                 >
                                     Buka Dashboard
                                     <ArrowRight
@@ -111,7 +111,7 @@ export default function Welcome() {
                             ) : (
                                 <Link
                                     href={login()}
-                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-amber-300 px-6 text-sm font-semibold text-slate-950 shadow-xl transition hover:bg-amber-200 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:outline-none"
+                                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#160F42] px-6 text-sm font-semibold text-white shadow-xl ring-1 ring-white/20 transition hover:bg-[#30236D] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:outline-none"
                                 >
                                     Masuk ke Sistem
                                     <ArrowRight
