@@ -1,12 +1,12 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, CalendarDays, Home, UserRound } from 'lucide-react';
+import { ArrowLeft, Bot, CalendarDays, Home, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
 const navigation = [
     { label: 'Beranda', href: '/student', icon: Home },
     { label: 'Jadwal', href: '/student/schedule', icon: CalendarDays },
-    { label: 'Absen', icon: CalendarDays },
+    { label: 'Chatbot', href: '/student/chatbot', icon: Bot },
     { label: 'Profile', href: '/student/profile', icon: UserRound },
 ];
 
@@ -23,6 +23,7 @@ export default function StudentAppLayout({
     const isDashboard = currentPath === '/student';
     const isProfile = currentPath === '/student/profile';
     const isSchedule = currentPath === '/student/schedule';
+    const isChatbot = currentPath === '/student/chatbot';
     const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {
@@ -63,7 +64,7 @@ export default function StudentAppLayout({
                         <div className="h-full w-1/3 animate-[pulse_1.2s_ease-in-out_infinite] bg-violet-700" />
                     </div>
                 )}
-                {!isDashboard && !isProfile && !isSchedule && (
+                {!isDashboard && !isProfile && !isSchedule && !isChatbot && (
                     <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 pt-[max(.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
                         <Link
                             href="/student"

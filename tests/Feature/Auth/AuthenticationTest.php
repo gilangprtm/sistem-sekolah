@@ -91,6 +91,18 @@ class AuthenticationTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('student-app/dashboard'));
     }
 
+    public function test_student_app_chatbot_route_is_available_to_students(): void
+    {
+        Role::create(['name' => 'Siswa']);
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+
+        $this->actingAs($user)
+            ->get(route('student-app.chatbot'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('student-app/chatbot'));
+    }
+
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
     {
         $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());

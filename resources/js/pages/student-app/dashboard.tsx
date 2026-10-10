@@ -1,17 +1,16 @@
 import { Deferred, Head } from '@inertiajs/react';
 import {
     ArrowUpRight,
-    Award,
     Bell,
     BookOpen,
     CalendarDays,
-    ClipboardList,
+    CircleHelp,
     Download,
+    Ellipsis,
     Info,
     Library,
     Megaphone,
-    Sparkles,
-    Trophy,
+    ShoppingBasket,
     X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -42,14 +41,12 @@ type Props = {
 };
 
 const menuItems = [
-    { label: 'Jadwal', icon: CalendarDays },
-    { label: 'Tugas', icon: ClipboardList },
-    { label: 'Nilai', icon: Award },
-    { label: 'Presensi', icon: Bell },
-    { label: 'Perpustakaan', icon: Library },
     { label: 'Pengumuman', icon: Megaphone },
-    { label: 'Prestasi', icon: Trophy },
-    { label: 'Ekstrakurikuler', icon: Sparkles },
+    { label: 'Kantin', icon: ShoppingBasket },
+    { label: 'Kuis', icon: CircleHelp },
+    { label: 'Absensi', icon: Bell },
+    { label: 'Perpustakaan', icon: Library },
+    { label: 'Lainnya', icon: Ellipsis },
 ];
 
 function NewsSection({ news }: { news: NewsItem[] }) {
