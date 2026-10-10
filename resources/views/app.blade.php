@@ -17,8 +17,8 @@
         <meta name="apple-mobile-web-app-title" content="Portal SMPN 17 Denpasar">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
-        <link rel="icon" href="/favicon.ico?v=school-logo-2" sizes="any">
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png?v=school-logo-2">
+        <link rel="icon" type="image/x-icon" sizes="32x32" href="/favicon.ico?v=school-logo-3">
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png?v=school-logo-3">
         <link rel="manifest" href="/manifest.webmanifest?v=school-logo-2">
 
         @viteReactRefresh
