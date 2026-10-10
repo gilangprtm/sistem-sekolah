@@ -1,0 +1,79 @@
+/* Raised, solid surfaces with school identity colors. */
+:root[data-theme-preset='cloud-surface'] {
+ --radius: 0.625rem;
+ --background: #f5f6f9;
+ --foreground: #1c2030;
+ --card: #fff;
+ --card-foreground: #1c2030;
+ --popover: #fff;
+ --popover-foreground: #1c2030;
+ --primary: #160f42;
+ --primary-foreground: #fff;
+ --secondary: #eff0f5;
+ --secondary-foreground: #25233a;
+ --muted: #f0f1f5;
+ --muted-foreground: #626779;
+ --accent: #eceaf4;
+ --accent-foreground: #160f42;
+ --border: #dce0e9;
+ --input: #cfd5e1;
+ --ring: #7464a7;
+ --sidebar: #fff;
+ --sidebar-foreground: #25233a;
+ --sidebar-primary: #160f42;
+ --sidebar-primary-foreground: #fff;
+ --sidebar-accent: #f0eef7;
+ --sidebar-accent-foreground: #160f42;
+ --sidebar-border: #dce0e9;
+ --sidebar-ring: #7464a7;
+}
+.dark:root[data-theme-preset='cloud-surface'] {
+ --background: #151821;
+ --foreground: #eef0f6;
+ --card: #222632;
+ --card-foreground: #eef0f6;
+ --popover: #252a36;
+ --popover-foreground: #eef0f6;
+ --primary: #b9aafa;
+ --primary-foreground: #160f42;
+ --secondary: #303542;
+ --secondary-foreground: #eef0f6;
+ --muted: #303542;
+ --muted-foreground: #b4b9c8;
+ --accent: #353044;
+ --accent-foreground: #eee9ff;
+ --border: #3c4250;
+ --input: #505666;
+ --ring: #b9aafa;
+ --sidebar: #1e222d;
+ --sidebar-foreground: #eef0f6;
+ --sidebar-primary: #b9aafa;
+ --sidebar-primary-foreground: #160f42;
+ --sidebar-accent: #353044;
+ --sidebar-accent-foreground: #eee9ff;
+ --sidebar-border: #3c4250;
+ --sidebar-ring: #b9aafa;
+}
+:root[data-theme-preset='cloud-surface'] [data-slot='card'] {
+ border: 1px solid var(--border);
+ border-radius: 0.625rem;
+ box-shadow: 0 1px 2px rgb(19 24 42 / 6%), 0 4px 12px rgb(19 24 42 / 5%);
+}
+.dark:root[data-theme-preset='cloud-surface'] [data-slot='card'] {
+ box-shadow: 0 1px 2px rgb(0 0 0 / 22%), 0 4px 14px rgb(0 0 0 / 15%);
+}
+:root[data-theme-preset='cloud-surface'] [data-slot='popover-content'],
+:root[data-theme-preset='cloud-surface'] [data-slot='dropdown-menu-content'] {
+ border: 1px solid var(--border);
+ box-shadow: 0 5px 18px rgb(19 24 42 / 10%);
+}
+:root[data-theme-preset='cloud-surface'] [data-slot='sidebar-menu-button'] {
+ min-height: 2.5rem;
+ border-radius: 0.5rem;
+}
+:root[data-theme-preset='cloud-surface'] [data-slot='button'] {
+ box-shadow: 0 1px 2px rgb(19 24 42 / 10%);
+}
+:root[data-theme-preset='cloud-surface'] [data-slot='button']:active {
+ box-shadow: none;
+}
