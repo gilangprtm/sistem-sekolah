@@ -109,7 +109,9 @@ class KantinPosController extends Controller
 
                     return [
                         ...$data,
-                        'image_url' => $product->imageUrl(),
+                        'image_url' => $product->image_path !== null
+                            ? route('kantin.barang.image', ['kantinBarang' => $product->id])
+                            : null,
                     ];
                 }),
         ]);
