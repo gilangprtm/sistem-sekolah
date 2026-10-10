@@ -1,10 +1,9 @@
 export const APP_CONFIG = {
-    name: 'Studio Admin',
+    name: 'Portal SMPN 17 Denpasar',
     version: '1.0.0',
-    copyright: '© 2026, Studio Admin.',
+    copyright: '© 2026, SMPN 17 Denpasar.',
     meta: {
-        title: 'Studio Admin - Laravel Dashboard',
-        description:
-            'Studio Admin is a modern, open-source dashboard built with Laravel, Tailwind CSS v4, and shadcn/ui.',
+        title: 'Portal SMPN 17 Denpasar',
+        description: 'Portal digital SMPN 17 Denpasar.',
     },
 };

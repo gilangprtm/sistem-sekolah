@@ -284,7 +284,7 @@ export function AppSidebar({
                             <Link href={dashboard()} prefetch>
                                 <AppLogo />
                                 <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-                                    SMPN 17 DENPASAR
+                                    Portal SMPN 17 Denpasar
                                 </span>
                             </Link>
                         </SidebarMenuButton>

@@ -1,3 +1,5 @@
+const SERVICE_WORKER_URL = '/sw.js?v=school-logo-2';
+
 export function registerStudentPwa(): void {
     if (
         typeof window === 'undefined' ||
@@ -8,6 +10,9 @@ export function registerStudentPwa(): void {
     }
 
     window.addEventListener('load', () => {
-        void navigator.serviceWorker.register('/sw.js', { scope: '/student' });
+        void navigator.serviceWorker.register(SERVICE_WORKER_URL, {
+            scope: '/student',
+            updateViaCache: 'none',
+        });
     });
 }

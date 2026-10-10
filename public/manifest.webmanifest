@@ -1,7 +1,7 @@
 {
-  "name": "Portal Siswa SMPN 17 Denpasar",
-  "short_name": "Portal Siswa",
-  "description": "Portal siswa SMPN 17 Denpasar",
+  "name": "Portal SMPN 17 Denpasar",
+  "short_name": "Portal SMPN 17",
+  "description": "Portal digital SMPN 17 Denpasar",
   "start_url": "/student",
   "scope": "/student",
   "display": "standalone",
@@ -10,12 +10,12 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icons/icon_192.png",
+      "src": "/icons/icon_192.png?v=school-logo-1",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon_512.png",
+      "src": "/icons/icon_512.png?v=school-logo-1",
       "sizes": "512x512",
       "type": "image/png"
     }

@@ -13,15 +13,20 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="theme-color" content="#ffffff">
+        <meta name="application-name" content="Portal SMPN 17 Denpasar">
+        <meta name="apple-mobile-web-app-title" content="Portal SMPN 17 Denpasar">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
-        <link rel="manifest" href="/manifest.webmanifest">
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png">
+        <link rel="icon" type="image/png" sizes="1080x1080" href="/images/logo-sekolah.png?v=school-logo-1">
+        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=school-logo-1">
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=school-logo-1">
+        <link rel="manifest" href="/manifest.webmanifest?v=school-logo-1">
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png?v=school-logo-1">
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
         <x-inertia::head>
-            <title>{{ config('app.name', 'Laravel') }}</title>
+            <title>{{ config('app.name', 'Sistem Sekolah SMP Negeri 17 Denpasar') }}</title>
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

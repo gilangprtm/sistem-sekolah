@@ -12,7 +12,8 @@ import { registerStudentPwa } from '@/lib/register-student-pwa';
 import { ThemeBootScript } from '@/scripts/theme-boot';
 import { PreferencesStoreProvider } from '@/stores/preferences/preferences-provider';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName =
+    import.meta.env.VITE_APP_NAME || 'Sistem Sekolah SMP Negeri 17 Denpasar';
 
 declare module '@inertiajs/react' {
     interface SharedData {

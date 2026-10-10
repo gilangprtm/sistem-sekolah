@@ -140,6 +140,9 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                         className="flex items-center space-x-2"
                     >
                         <AppLogo />
+                        <span className="hidden text-sm font-semibold tracking-tight sm:inline">
+                            Portal SMPN 17 Denpasar
+                        </span>
                     </Link>
 
                     {/* Desktop Navigation */}

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'student-app-shell-v1';
+const CACHE_NAME = 'student-app-shell-v2';
 const APP_SHELL = ['/student'];
 
 self.addEventListener('install', (event) => {

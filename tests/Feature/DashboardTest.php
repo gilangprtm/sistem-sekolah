@@ -14,6 +14,52 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_app_head_uses_school_logo_for_browser_and_pwa_icons(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('<meta name="application-name" content="Portal SMPN 17 Denpasar">', false)
+            ->assertSee('<meta name="apple-mobile-web-app-title" content="Portal SMPN 17 Denpasar">', false)
+            ->assertSee('<link rel="icon" type="image/png" sizes="1080x1080" href="/images/logo-sekolah.png?v=school-logo-1">', false)
+            ->assertSee('<link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=school-logo-1">', false)
+            ->assertSee('<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=school-logo-1">', false)
+            ->assertSee('<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png?v=school-logo-1">', false)
+            ->assertSee('<link rel="manifest" href="/manifest.webmanifest?v=school-logo-1">', false)
+            ->assertDontSee('Laravel</title>', false);
+
+        $this->assertFileExists(public_path('images/logo-sekolah.png'));
+        $this->assertStringNotContainsString(
+            'Laravel',
+            file_get_contents(resource_path('js/config/app-config.ts')),
+        );
+        $this->assertStringContainsString(
+            'Portal SMPN 17 Denpasar',
+            file_get_contents(resource_path('js/config/app-config.ts')),
+        );
+        $this->assertStringNotContainsString(
+            'MyWebSite',
+            file_get_contents(base_path('assets/favicon/site.webmanifest')),
+        );
+        $this->assertStringContainsString(
+            'Portal SMPN 17 Denpasar',
+            file_get_contents(base_path('assets/favicon/site.webmanifest')),
+        );
+        $manifest = json_decode(file_get_contents(public_path('manifest.webmanifest')), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(['/icons/icon_192.png?v=school-logo-1', '/icons/icon_512.png?v=school-logo-1'], array_column($manifest['icons'], 'src'));
+        $this->assertSame([192, 512], array_map(
+            static fn (array $icon): int => (int) explode('x', $icon['sizes'])[0],
+            $manifest['icons'],
+        ));
+        $this->assertFileExists(public_path('icons/icon_192.png'));
+        $this->assertFileExists(public_path('icons/icon_512.png'));
+        $this->assertFileExists(public_path('icons/apple_touch_icon.png'));
+        $this->assertStringContainsString('student-app-shell-v2', file_get_contents(public_path('sw.js')));
+        $pwaRegistration = file_get_contents(resource_path('js/lib/register-student-pwa.ts'));
+        $this->assertStringContainsString("'/sw.js?v=school-logo-2'", $pwaRegistration);
+        $this->assertStringContainsString("updateViaCache: 'none'", $pwaRegistration);
+    }
+
     public function test_guests_are_redirected_to_the_login_page()
     {
         $response = $this->get(route('dashboard'));
