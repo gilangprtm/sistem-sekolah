@@ -1,0 +1,91 @@
+/* Subtle glass surfaces; applies only when this preset is selected. */
+:root[data-theme-preset='glassmorphism'] {
+    --radius: 0.75rem;
+    --background: #f0eff8;
+    --foreground: #211b3c;
+    --card: rgb(255 255 255 / 72%);
+    --card-foreground: #211b3c;
+    --popover: rgb(255 255 255 / 92%);
+    --popover-foreground: #211b3c;
+    --primary: #160f42;
+    --primary-foreground: #fff;
+    --secondary: #e8e5f3;
+    --secondary-foreground: #211b3c;
+    --muted: #eae8f3;
+    --muted-foreground: #635d77;
+    --accent: #e2dff1;
+    --accent-foreground: #160f42;
+    --border: rgb(75 58 121 / 18%);
+    --input: rgb(75 58 121 / 22%);
+    --ring: #7668b3;
+    --sidebar: rgb(255 255 255 / 76%);
+    --sidebar-foreground: #211b3c;
+    --sidebar-primary: #160f42;
+    --sidebar-primary-foreground: #fff;
+    --sidebar-accent: #e8e5f3;
+    --sidebar-accent-foreground: #160f42;
+    --sidebar-border: rgb(75 58 121 / 16%);
+    --sidebar-ring: #7668b3;
+}
+.dark:root[data-theme-preset='glassmorphism'] {
+    --background: #111022;
+    --foreground: #f3f0ff;
+    --card: rgb(37 33 59 / 76%);
+    --card-foreground: #f3f0ff;
+    --popover: rgb(37 33 59 / 94%);
+    --popover-foreground: #f3f0ff;
+    --primary: #b4a5fa;
+    --primary-foreground: #160f42;
+    --secondary: #302b49;
+    --secondary-foreground: #f3f0ff;
+    --muted: #302b49;
+    --muted-foreground: #c4bdd8;
+    --accent: #393153;
+    --accent-foreground: #f3f0ff;
+    --border: rgb(230 220 255 / 18%);
+    --input: rgb(230 220 255 / 22%);
+    --ring: #b4a5fa;
+    --sidebar: rgb(29 26 48 / 82%);
+    --sidebar-foreground: #f3f0ff;
+    --sidebar-primary: #b4a5fa;
+    --sidebar-primary-foreground: #160f42;
+    --sidebar-accent: #393153;
+    --sidebar-accent-foreground: #f3f0ff;
+    --sidebar-border: rgb(230 220 255 / 16%);
+    --sidebar-ring: #b4a5fa;
+}
+/* Limit blur to structural surfaces, not data tables and form controls. */
+:root[data-theme-preset='glassmorphism'] [data-slot='card'],
+:root[data-theme-preset='glassmorphism'] [data-slot='popover-content'],
+:root[data-theme-preset='glassmorphism'] [data-slot='sidebar'],
+:root[data-theme-preset='glassmorphism'] [data-slot='sidebar-inset'] {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+:root[data-theme-preset='glassmorphism'] [data-slot='card'] {
+    border-radius: 0.75rem;
+    box-shadow: 0 6px 24px rgb(26 18 65 / 7%);
+}
+:root[data-theme-preset='glassmorphism'] [data-slot='sidebar-menu-button'] {
+    min-height: 2.5rem;
+    border-radius: 0.625rem;
+}
+@media (prefers-reduced-transparency: reduce) {
+    :root[data-theme-preset='glassmorphism'] {
+        --card: #fff;
+        --popover: #fff;
+        --sidebar: #fff;
+    }
+    .dark:root[data-theme-preset='glassmorphism'] {
+        --card: #25213b;
+        --popover: #25213b;
+        --sidebar: #1d1a30;
+    }
+    :root[data-theme-preset='glassmorphism'] [data-slot='card'],
+    :root[data-theme-preset='glassmorphism'] [data-slot='popover-content'],
+    :root[data-theme-preset='glassmorphism'] [data-slot='sidebar'],
+    :root[data-theme-preset='glassmorphism'] [data-slot='sidebar-inset'] {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
