@@ -10,7 +10,9 @@ import type { BreadcrumbItem } from '@/types';
 type Student = {
     id: number;
     nis: string | null;
+    nisn: string | null;
     full_name: string;
+    gender: string | null;
     birth_place: string | null;
     birth_date: string | null;
     address: string | null;
@@ -130,6 +132,10 @@ function initialsForStudent(name: string): string {
         .join('')
         .slice(0, 2)
         .toUpperCase();
+}
+
+function formatStudentNumbers(nis: string | null, nisn: string | null): string {
+    return `${nis?.trim() || '-'} / ${nisn?.trim() || '-'}`;
 }
 
 function barcodePattern(value: string): boolean[] {
@@ -306,17 +312,35 @@ async function downloadCardImage(
     const valueX = 546 * coordinateScale;
     const textWidth = width - valueX - 36 * coordinateScale;
     const textColor = '#024059';
-    const barcodeValue = student.nis || String(student.id);
+    const barcodeValue = student.nis || student.nisn || String(student.id);
     const birthDetails = birthDetailsForStudent(student) || '-';
     const codeX = QR_X * coordinateScale;
     const codeY = QR_Y * coordinateScale;
     const codeWidth = QR_SIZE * coordinateScale;
     const codeHeight = QR_SIZE * coordinateScale;
     const fields = [
-        { label: 'Nama Lengkap', value: student.full_name, y: 303 },
-        { label: 'NISN', value: student.nis || '-', y: 340 },
-        { label: 'T.T.L', value: birthDetails, y: 376 },
-        { label: 'Alamat', value: student.address || '-', y: 412 },
+        {
+            label: 'Nama',
+            value: student.full_name,
+            y: 303,
+        },
+        {
+            label: 'NIS/NISN',
+            value: formatStudentNumbers(student.nis, student.nisn),
+            y: 335,
+        },
+        {
+            label: 'Jenis Kelamin',
+            value:
+                student.gender === 'L'
+                    ? 'Laki-laki'
+                    : student.gender === 'P'
+                      ? 'Perempuan'
+                      : '-',
+            y: 367,
+        },
+        { label: 'T.T.L', value: birthDetails, y: 399 },
+        { label: 'Alamat', value: student.address || '-', y: 431 },
     ];
 
     context.fillStyle = textColor;
@@ -423,7 +447,7 @@ export default function StudentCard({ student, qrCode }: Props) {
         { title: 'Kartu Pelajar', href: `/students/cards/${student.id}` },
     ];
     const birthDetails = birthDetailsForStudent(student);
-    const barcodeValue = student.nis || String(student.id);
+    const barcodeValue = student.nis || student.nisn || String(student.id);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -517,19 +541,35 @@ export default function StudentCard({ student, qrCode }: Props) {
                         </div>
                         <div className="absolute top-[44.3%] right-[3.5%] left-[32.54%] text-[clamp(0.5rem,2.47cqw,1.55rem)] leading-[1.45] font-bold text-[#024059]">
                             <div className="flex">
-                                <span className="w-[21.5%] shrink-0">
-                                    Nama Lengkap
-                                </span>
+                                <span className="w-[21.5%] shrink-0">Nama</span>
                                 <span className="w-[1.9%] shrink-0">:</span>
                                 <span className="min-w-0 truncate">
                                     {student.full_name}
                                 </span>
                             </div>
                             <div className="flex">
-                                <span className="w-[21.5%] shrink-0">NISN</span>
+                                <span className="w-[21.5%] shrink-0">
+                                    NIS/NISN
+                                </span>
                                 <span className="w-[1.9%] shrink-0">:</span>
                                 <span className="min-w-0 truncate">
-                                    {student.nis || '-'}
+                                    {formatStudentNumbers(
+                                        student.nis,
+                                        student.nisn,
+                                    )}
+                                </span>
+                            </div>
+                            <div className="flex">
+                                <span className="w-[21.5%] shrink-0">
+                                    Jenis Kelamin
+                                </span>
+                                <span className="w-[1.9%] shrink-0">:</span>
+                                <span className="min-w-0 truncate">
+                                    {student.gender === 'L'
+                                        ? 'Laki-laki'
+                                        : student.gender === 'P'
+                                          ? 'Perempuan'
+                                          : '-'}
                                 </span>
                             </div>
                             <div className="flex">

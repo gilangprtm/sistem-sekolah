@@ -106,7 +106,9 @@ class KantinBarangController extends Controller
         abort_unless($request->user()?->can('kantin.barang.delete'), 403);
         $kantinBarang->update(['status' => 'inactive']);
 
-        return redirect()->route('kantin.barang.index')->with('success', 'Barang Kantin diarsipkan.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Barang Kantin diarsipkan.']);
+
+        return redirect()->route('kantin.barang.index');
     }
 
     private function authorizeCategoryInput(KantinBarangRequest $request): void

@@ -232,12 +232,13 @@ class ScheduleController extends Controller
             return $plan;
         });
 
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal berhasil disimpan.']);
+
         return redirect()->route('schedule.index', [
             'academic_period_id' => $plan->academic_period_id,
             'grade' => $data['grade'] ?? null,
             'rombel_ids' => $selectedRombelIds,
-        ])
-            ->with('success', 'Jadwal berhasil disimpan.');
+        ]);
     }
 
     public function move(ScheduleMoveRequest $request): RedirectResponse
@@ -311,10 +312,12 @@ class ScheduleController extends Controller
             return $period->id;
         });
 
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Posisi jadwal berhasil diperbarui.']);
+
         return redirect()->route('schedule.index', [
             'academic_period_id' => $periodId,
             'rombel_ids' => array_values(array_unique(array_map('intval', $data['selected_rombel_ids'] ?? []))),
-        ])->with('success', 'Posisi jadwal berhasil diperbarui.');
+        ]);
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -345,10 +348,12 @@ class ScheduleController extends Controller
             $plan->delete();
         });
 
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Jadwal jenjang berhasil dihapus.']);
+
         return redirect()->route('schedule.index', [
             'academic_period_id' => $validated['academic_period_id'],
             'grade' => $validated['grade'],
-        ])->with('success', 'Jadwal jenjang berhasil dihapus.');
+        ]);
     }
 
     public function publish(Request $request): RedirectResponse

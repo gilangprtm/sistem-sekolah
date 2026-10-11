@@ -25,6 +25,7 @@ import type { BreadcrumbItem } from '@/types';
 type Student = {
     id: number;
     nis: string | null;
+    nisn: string | null;
     tahun_angkatan: number | null;
     full_name: string;
     gender: string | null;
@@ -171,7 +172,7 @@ export default function StudentCards({
                             </div>
                         </div>
                         <div className="grid gap-2 md:col-span-2">
-                            <Label>Gender</Label>
+                            <Label>Jenis Kelamin</Label>
                             <SearchableCombobox
                                 value={gender}
                                 options={[
@@ -180,8 +181,8 @@ export default function StudentCards({
                                 ]}
                                 onChange={setGender}
                                 placeholder="Semua"
-                                searchPlaceholder="Cari gender..."
-                                emptyMessage="Gender tidak ditemukan."
+                                searchPlaceholder="Cari jenis kelamin..."
+                                emptyMessage="Jenis kelamin tidak ditemukan."
                             />
                         </div>
                         <div className="grid gap-2 md:col-span-2">
@@ -264,10 +265,10 @@ export default function StudentCards({
                                         />
                                     </TableHead>
                                     <TableHead>Nama</TableHead>
-                                    <TableHead>NIS</TableHead>
+                                    <TableHead>NIS/NISN</TableHead>
                                     <TableHead>Angkatan</TableHead>
                                     <TableHead>Akun</TableHead>
-                                    <TableHead>Gender</TableHead>
+                                    <TableHead>Jenis Kelamin</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">
                                         Aksi
@@ -303,7 +304,7 @@ export default function StudentCards({
                                             {student.full_name}
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
-                                            {student.nis || '-'}
+                                            {student.nis || student.nisn || '-'}
                                         </TableCell>
                                         <TableCell>
                                             {student.tahun_angkatan || '-'}

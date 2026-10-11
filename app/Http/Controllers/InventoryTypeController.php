@@ -23,7 +23,9 @@ class InventoryTypeController extends Controller
         $data = $request->validate(['name' => ['required', 'string', 'max:255', Rule::unique('m_inventory_types', 'name')]]);
         InventoryType::create($data);
 
-        return back()->with('success', 'Jenis inventaris berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jenis inventaris berhasil dibuat.']);
+
+        return back();
     }
 
     public function update(Request $request, InventoryType $inventoryType): RedirectResponse
@@ -31,13 +33,17 @@ class InventoryTypeController extends Controller
         $data = $request->validate(['name' => ['required', 'string', 'max:255', Rule::unique('m_inventory_types', 'name')->ignore($inventoryType->id)]]);
         $inventoryType->update($data);
 
-        return back()->with('success', 'Jenis inventaris berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jenis inventaris berhasil diperbarui.']);
+
+        return back();
     }
 
     public function destroy(InventoryType $inventoryType): RedirectResponse
     {
         $inventoryType->delete();
 
-        return back()->with('success', 'Jenis inventaris berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Jenis inventaris berhasil dihapus.']);
+
+        return back();
     }
 }

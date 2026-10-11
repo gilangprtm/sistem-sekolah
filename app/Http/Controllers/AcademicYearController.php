@@ -61,7 +61,9 @@ class AcademicYearController extends Controller
             }
         });
 
-        return back()->with('success', 'Tahun Ajaran berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Tahun Ajaran berhasil dibuat.']);
+
+        return back();
     }
 
     public function update(Request $request, AcademicYear $academicYear): RedirectResponse
@@ -72,7 +74,9 @@ class AcademicYearController extends Controller
             $data['status'] === 'active' ? $academicYear->activate() : $academicYear->deactivate();
         });
 
-        return back()->with('success', 'Tahun Ajaran diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Tahun Ajaran diperbarui.']);
+
+        return back();
     }
 
     public function storePeriod(Request $request, AcademicYear $academicYear): RedirectResponse
@@ -102,7 +106,9 @@ class AcademicYearController extends Controller
             throw ValidationException::withMessages(['code' => 'Semester dengan kode tersebut sudah ada pada Tahun Ajaran ini.']);
         }
 
-        return back()->with('success', 'Semester berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Semester berhasil dibuat.']);
+
+        return back();
     }
 
     public function updatePeriod(Request $request, AcademicPeriod $academicPeriod): RedirectResponse
@@ -132,6 +138,8 @@ class AcademicYearController extends Controller
             throw ValidationException::withMessages(['code' => 'Semester dengan kode tersebut sudah ada pada Tahun Ajaran ini.']);
         }
 
-        return back()->with('success', 'Semester diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Semester diperbarui.']);
+
+        return back();
     }
 }

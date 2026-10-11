@@ -383,9 +383,10 @@ class KantinBarangTest extends TestCase
     {
         $controllerSource = File::get(app_path('Http/Controllers/KantinBarangController.php'));
 
-        $this->assertSame(2, substr_count($controllerSource, "Inertia::flash('toast'"));
+        $this->assertSame(3, substr_count($controllerSource, "Inertia::flash('toast'"));
         $this->assertStringContainsString('Barang Kantin berhasil dibuat.', $controllerSource);
         $this->assertStringContainsString('Barang Kantin berhasil diperbarui.', $controllerSource);
+        $this->assertStringContainsString('Barang Kantin diarsipkan.', $controllerSource);
     }
 
     public function test_sidebar_uses_canonical_curriculum_urls_and_segment_safe_active_matching(): void
@@ -433,10 +434,12 @@ class KantinBarangTest extends TestCase
         $this->assertStringContainsString('setOpen(true)', $pageSource);
         $this->assertStringContainsString('harga: formatRupiah(barang.harga)', $pageSource);
         $this->assertStringContainsString('satuan: barang.satuan', $pageSource);
-        $this->assertStringContainsString("import { useFlashToast } from '@/hooks/use-flash-toast';", $pageSource);
-        $this->assertStringContainsString('useFlashToast();', $pageSource);
-        $this->assertStringContainsString("router.on('httpException'", $pageSource);
-        $this->assertStringContainsString("router.on('networkError'", $pageSource);
+        $flashToastSource = File::get(resource_path('js/hooks/use-flash-toast.ts'));
+        $dashboardLayoutSource = File::get(resource_path('js/layouts/app/dashboard-layout.tsx'));
+        $this->assertStringContainsString("import { useFlashToast } from '@/hooks/use-flash-toast';", $dashboardLayoutSource);
+        $this->assertStringContainsString('useFlashToast();', $dashboardLayoutSource);
+        $this->assertStringContainsString("router.on('httpException'", $flashToastSource);
+        $this->assertStringContainsString("router.on('networkError'", $flashToastSource);
         $this->assertStringContainsString('aria-invalid', $pageSource);
         $this->assertStringContainsString('Gagal menyimpan', $pageSource);
         $this->assertStringContainsString('Gagal mengarsipkan barang.', $pageSource);

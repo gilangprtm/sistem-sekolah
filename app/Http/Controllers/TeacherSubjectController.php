@@ -58,13 +58,17 @@ class TeacherSubjectController extends Controller
             throw ValidationException::withMessages(['suffix' => 'Kode atau pasangan Guru dan Mata Pelajaran sudah digunakan.']);
         }
 
-        return redirect()->route('teacher-subjects.index')->with('success', 'Guru Mata Pelajaran berhasil ditambahkan.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Guru Mata Pelajaran berhasil ditambahkan.']);
+
+        return redirect()->route('teacher-subjects.index');
     }
 
     public function destroy(TeacherSubject $teacherSubject): RedirectResponse
     {
         $teacherSubject->delete();
 
-        return redirect()->route('teacher-subjects.index')->with('success', 'Relasi Guru Mata Pelajaran berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Relasi Guru Mata Pelajaran berhasil dihapus.']);
+
+        return redirect()->route('teacher-subjects.index');
     }
 }

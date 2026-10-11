@@ -39,7 +39,9 @@ class CategoryController extends Controller
 
         Category::create($data);
 
-        return back()->with('success', 'Kategori berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Kategori berhasil dibuat.']);
+
+        return back();
     }
 
     public function update(Request $request, Category $category): RedirectResponse
@@ -51,13 +53,17 @@ class CategoryController extends Controller
 
         $category->update($data);
 
-        return back()->with('success', 'Kategori berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Kategori berhasil diperbarui.']);
+
+        return back();
     }
 
     public function destroy(Category $category): RedirectResponse
     {
         $category->delete();
 
-        return back()->with('success', 'Kategori berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Kategori berhasil dihapus.']);
+
+        return back();
     }
 }

@@ -247,6 +247,7 @@ export default function TeacherForm({
                         <PopoverContent className="w-auto p-0">
                             <Calendar
                                 mode="single"
+                                captionLayout="dropdown"
                                 selected={date}
                                 defaultMonth={date}
                                 disabled={{ after: new Date() }}

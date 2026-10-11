@@ -160,7 +160,9 @@ class InventoryRoomController extends Controller
             }
         });
 
-        return redirect()->route('inventory-rooms.index')->with('success', 'Ruangan berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Ruangan berhasil dibuat.']);
+
+        return redirect()->route('inventory-rooms.index');
     }
 
     public function update(Request $request, InventoryRoom $inventoryRoom): RedirectResponse
@@ -191,14 +193,18 @@ class InventoryRoomController extends Controller
             }
         });
 
-        return redirect()->route('inventory-rooms.index')->with('success', 'Ruangan berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Ruangan berhasil diperbarui.']);
+
+        return redirect()->route('inventory-rooms.index');
     }
 
     public function destroy(InventoryRoom $inventoryRoom): RedirectResponse
     {
         $inventoryRoom->delete();
 
-        return back()->with('success', 'Ruangan berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Ruangan berhasil dihapus.']);
+
+        return back();
     }
 
     /**

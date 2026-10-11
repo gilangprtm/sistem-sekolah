@@ -15,4 +15,7 @@ Route::middleware(['auth', 'verified', 'role:Siswa'])
         Route::get('/chatbot', fn () => Inertia::render('student-app/chatbot'))->name('chatbot');
         Route::get('/profile', ProfileController::class)->name('profile');
         Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo');
+        Route::put('/profile/password', [ProfileController::class, 'updatePassword'])
+            ->middleware('throttle:6,1')
+            ->name('profile.password');
     });

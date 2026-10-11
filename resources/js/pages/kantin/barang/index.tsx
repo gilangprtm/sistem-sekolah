@@ -1,6 +1,13 @@
 import { Head, router } from '@inertiajs/react';
-import { AlertCircle, Check, ChevronsUpDown, Search, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {
+    AlertCircle,
+    Check,
+    ChevronsUpDown,
+    Plus,
+    Search,
+    X,
+} from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
@@ -45,7 +52,6 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { useFlashToast } from '@/hooks/use-flash-toast';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
@@ -100,22 +106,6 @@ export default function KantinBarangIndex({
     filters,
     filterOptions,
 }: Props) {
-    useFlashToast();
-
-    useEffect(() => {
-        const removeHttpExceptionListener = router.on('httpException', () => {
-            toast.error('Terjadi kesalahan server. Silakan coba lagi.');
-        });
-        const removeNetworkErrorListener = router.on('networkError', () => {
-            toast.error('Koneksi bermasalah. Periksa jaringan dan coba lagi.');
-        });
-
-        return () => {
-            removeHttpExceptionListener();
-            removeNetworkErrorListener();
-        };
-    }, []);
-
     const [selected, setSelected] = useState<number[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
@@ -308,7 +298,10 @@ export default function KantinBarangIndex({
                         title="Master Barang"
                         description="Kelola katalog barang yang dijual Kantin"
                     />
-                    <Button onClick={openCreate}>Tambah Barang</Button>
+                    <Button onClick={openCreate}>
+                        <Plus />
+                        Tambah Barang
+                    </Button>
                 </div>
                 <div className="grid gap-4 rounded-xl border p-4">
                     <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">

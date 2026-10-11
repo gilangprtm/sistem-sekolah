@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     AlertCircle,
     ArrowLeft,
+    Plus,
     Search,
     Trash2,
     UsersRound,
@@ -31,7 +32,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useFlashToast } from '@/hooks/use-flash-toast';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -91,8 +91,6 @@ export default function ManagementClassManage({
     lookupFilters,
     teachers,
 }: Props) {
-    useFlashToast();
-
     const currentTeacher = selectedTeacher;
     const [rombelId, setRombelId] = useState(
         selectedRombelId?.toString() ??
@@ -334,6 +332,7 @@ export default function ManagementClassManage({
                                 onClick={openLookup}
                                 disabled={!rombelId}
                             >
+                                <Plus />
                                 Tambah Siswa
                             </Button>
                         </div>

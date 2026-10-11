@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ImportStudentsCsvRequest;
 use App\Http\Requests\StudentRequest;
 use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentPlacement;
 use App\Models\User;
+use App\Services\StudentCsvImporter;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -19,6 +21,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentController extends Controller
 {
@@ -64,6 +67,40 @@ class StudentController extends Controller
         return Inertia::render('students/card', $this->cardPayload($student));
     }
 
+    public function downloadTemplate(): StreamedResponse
+    {
+        $template = app(StudentCsvImporter::class)->templateXlsx();
+
+        return response()->streamDownload(static function () use ($template): void {
+            echo $template;
+        }, 'template-master-siswa.xlsx', [
+            'Content-Disposition' => 'attachment; filename="template-master-siswa.xlsx"',
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function downloadCsvTemplate(): StreamedResponse
+    {
+        return response()->streamDownload(static function (): void {
+            echo implode(',', StudentCsvImporter::HEADERS)."\r\n";
+        }, 'template-master-siswa.csv', [
+            'Content-Disposition' => 'attachment; filename="template-master-siswa.csv"',
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function import(ImportStudentsCsvRequest $request, StudentCsvImporter $importer): RedirectResponse
+    {
+        $result = $importer->import($request->file('file'));
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $result['count'].' data Siswa berhasil diimpor ('.$result['created'].' dibuat, '.$result['updated'].' diperbarui).',
+        ]);
+
+        return redirect()->route('students.index');
+    }
+
     public function create(): Response
     {
         return Inertia::render('students/create', [
@@ -81,12 +118,19 @@ class StudentController extends Controller
                     'id',
                     'user_id',
                     'nis',
+                    'nisn',
                     'tahun_angkatan',
                     'full_name',
                     'gender',
                     'birth_place',
                     'birth_date',
                     'address',
+                    'phone',
+                    'mother_name',
+                    'father_name',
+                    'mother_occupation',
+                    'father_occupation',
+                    'parent_phone',
                     'status',
                 ]),
                 ['photo_url' => $this->photoUrl($student)],
@@ -107,7 +151,12 @@ class StudentController extends Controller
             $student->update(['photo_path' => $photo->store("students/{$student->id}", 'public')]);
         }
 
-        return redirect()->route('students.index')->with('success', 'Data Siswa berhasil dibuat.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Data Siswa berhasil dibuat.',
+        ]);
+
+        return redirect()->route('students.index');
     }
 
     public function update(StudentRequest $request, Student $student): RedirectResponse
@@ -133,7 +182,12 @@ class StudentController extends Controller
             Storage::disk('public')->delete($oldPhotoPath);
         }
 
-        return redirect()->route('students.index')->with('success', 'Data Siswa berhasil diperbarui.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Data Siswa berhasil diperbarui.',
+        ]);
+
+        return redirect()->route('students.index');
     }
 
     public function destroy(Student $student): RedirectResponse
@@ -144,11 +198,13 @@ class StudentController extends Controller
 
         $student->delete();
 
-        return back()->with('success', 'Data Siswa berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Data Siswa berhasil dihapus.']);
+
+        return back();
     }
 
     /**
-     * @param array<int, int>|null $angkatanOptions
+     * @param  array<int, int>|null  $angkatanOptions
      * @return LengthAwarePaginator<int, Student>
      */
     private function paginatedStudents(Request $request, ?array $angkatanOptions = null): LengthAwarePaginator
@@ -161,7 +217,7 @@ class StudentController extends Controller
     }
 
     /**
-     * @param array<int, int>|null $angkatanOptions
+     * @param  array<int, int>|null  $angkatanOptions
      * @return Builder<Student>
      */
     private function studentQuery(Request $request, ?array $angkatanOptions = null): Builder
@@ -179,6 +235,7 @@ class StudentController extends Controller
                 $query->where(function ($query) use ($search): void {
                     $query->where('full_name', 'like', "%{$search}%")
                         ->orWhere('nis', 'like', "%{$search}%")
+                        ->orWhere('nisn', 'like', "%{$search}%")
                         ->orWhereHas('user', fn ($user) => $user->where('email', 'like', "%{$search}%"));
                 });
             })
@@ -204,8 +261,7 @@ class StudentController extends Controller
     }
 
     /**
-     * @param mixed $value
-     * @param array<int, int> $angkatanOptions
+     * @param  array<int, int>  $angkatanOptions
      */
     private function validatedAngkatan(mixed $value, array $angkatanOptions): ?int
     {
@@ -236,7 +292,7 @@ class StudentController extends Controller
     }
 
     /**
-     * @return array{student: array{id: int, nis: string|null, tahun_angkatan: int|null, full_name: string, birth_place: string|null, birth_date: string|null, address: string|null, photo_url: string|null}, placement: array{academic_year: string, rombel: string|null}|null, qrPayload: string|null, qrCode: string|null}
+     * @return array{student: array{id: int, nis: string|null, nisn: string|null, tahun_angkatan: int|null, full_name: string, gender: string|null, birth_place: string|null, birth_date: string|null, address: string|null, photo_url: string|null}, placement: array{academic_year: string, rombel: string|null}|null, qrPayload: string|null, qrCode: string|null}
      */
     private function cardPayload(Student $student): array
     {
@@ -259,7 +315,17 @@ class StudentController extends Controller
 
         return [
             'student' => array_merge(
-                $student->only(['id', 'nis', 'tahun_angkatan', 'full_name', 'birth_place', 'birth_date', 'address']),
+                $student->only([
+                    'id',
+                    'nis',
+                    'nisn',
+                    'tahun_angkatan',
+                    'full_name',
+                    'gender',
+                    'birth_place',
+                    'birth_date',
+                    'address',
+                ]),
                 ['photo_url' => $this->photoUrl($student)],
             ),
             'placement' => $placement === null ? null : [

@@ -56,7 +56,9 @@ class SubjectController extends Controller
             ]);
         }
 
-        return redirect()->route('subjects.index')->with('success', 'Mata Pelajaran berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Mata Pelajaran berhasil dibuat.']);
+
+        return redirect()->route('subjects.index');
     }
 
     public function update(SubjectRequest $request, Subject $subject): RedirectResponse
@@ -69,13 +71,17 @@ class SubjectController extends Controller
             ]);
         }
 
-        return redirect()->route('subjects.index')->with('success', 'Mata Pelajaran berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Mata Pelajaran berhasil diperbarui.']);
+
+        return redirect()->route('subjects.index');
     }
 
     public function archive(Subject $subject): RedirectResponse
     {
         $subject->update(['status' => 'inactive']);
 
-        return redirect()->route('subjects.index')->with('success', 'Mata Pelajaran diarsipkan.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Mata Pelajaran diarsipkan.']);
+
+        return redirect()->route('subjects.index');
     }
 }

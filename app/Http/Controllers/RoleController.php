@@ -70,7 +70,9 @@ class RoleController extends Controller
             $role->syncPermissions($data['permissions']);
         }
 
-        return back()->with('success', 'Role berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Role berhasil dibuat.']);
+
+        return back();
     }
 
     /**
@@ -80,7 +82,9 @@ class RoleController extends Controller
     {
         // Super Admin tidak boleh diubah namanya (dijaga sistem)
         if ($role->name === 'Super Admin') {
-            return back()->with('error', 'Role Super Admin tidak dapat diubah.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Role Super Admin tidak dapat diubah.']);
+
+            return back();
         }
 
         $data = $request->validate([
@@ -95,7 +99,9 @@ class RoleController extends Controller
             $role->syncPermissions($data['permissions'] ?? []);
         }
 
-        return back()->with('success', 'Role berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Role berhasil diperbarui.']);
+
+        return back();
     }
 
     /**
@@ -104,15 +110,21 @@ class RoleController extends Controller
     public function destroy(Role $role): RedirectResponse
     {
         if ($role->name === 'Super Admin') {
-            return back()->with('error', 'Role Super Admin tidak dapat dihapus.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Role Super Admin tidak dapat dihapus.']);
+
+            return back();
         }
 
         if ($role->users()->count() > 0) {
-            return back()->with('error', 'Role masih dipakai user; tidak dapat dihapus.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Role masih dipakai user; tidak dapat dihapus.']);
+
+            return back();
         }
 
         $role->delete();
 
-        return back()->with('success', 'Role berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Role berhasil dihapus.']);
+
+        return back();
     }
 }

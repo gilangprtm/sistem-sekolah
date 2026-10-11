@@ -3,15 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\GenerateStudentAccountsRequest;
+use App\Http\Requests\ImportStudentAccountsRequest;
 use App\Models\User;
 use App\Services\StudentAccountGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserController extends Controller
 {
@@ -78,12 +81,86 @@ class UserController extends Controller
             $user->syncRoles($data['roles']);
         }
 
-        return back()->with('success', 'User berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'User berhasil dibuat.']);
+
+        return back();
     }
 
     public function generateStudentAccounts(GenerateStudentAccountsRequest $request, StudentAccountGenerator $generator): RedirectResponse
     {
         $result = $generator->generate($request->integer('year'), $request->integer('count'));
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $result['count'].' akun Siswa berhasil dibuat.',
+        ]);
+
+        return back()->with('generated_accounts', $result);
+    }
+
+    public function downloadStudentAccountsTemplate(): StreamedResponse
+    {
+        return response()->streamDownload(static function (): void {
+            echo "Akun\r\n";
+        }, 'template-akun-siswa.csv', [
+            'Content-Disposition' => 'attachment; filename="template-akun-siswa.csv"',
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function importStudentAccounts(ImportStudentAccountsRequest $request, StudentAccountGenerator $generator): RedirectResponse
+    {
+        $file = $request->file('file');
+        $handle = $file?->openFile('r');
+
+        if ($handle === null) {
+            throw ValidationException::withMessages(['file' => 'CSV tidak dapat dibaca.']);
+        }
+
+        $header = $handle->fgetcsv();
+        $header = is_array($header) ? array_map(static fn ($value): string => trim((string) $value, "\xEF\xBB\xBF \t"), $header) : null;
+
+        if ($header !== ['Akun']) {
+            throw ValidationException::withMessages(['file' => 'Header CSV wajib tepat satu kolom: Akun.']);
+        }
+
+        $nisns = [];
+        while (($row = $handle->fgetcsv()) !== false) {
+            if ($row === [null]) {
+                if ($handle->fgetcsv() === false) {
+                    break;
+                }
+
+                throw ValidationException::withMessages(['file' => 'CSV memiliki baris kosong.']);
+            }
+
+            if (count($row) !== 1) {
+                throw ValidationException::withMessages(['file' => 'CSV memiliki format kolom yang tidak valid.']);
+            }
+
+            $nisn = trim((string) ($row[0] ?? ''));
+
+            if ($nisn === '') {
+                throw ValidationException::withMessages(['file' => 'CSV memiliki baris kosong.']);
+            }
+
+            if (preg_match('/^\d{10}$/', $nisn) !== 1) {
+                throw ValidationException::withMessages(['file' => 'Format NISN tidak valid pada CSV.']);
+            }
+
+            if (in_array($nisn, $nisns, true)) {
+                throw ValidationException::withMessages(['file' => 'NISN duplikat ditemukan pada CSV.']);
+            }
+
+            $nisns[] = $nisn;
+
+            if (count($nisns) > 300) {
+                throw ValidationException::withMessages(['file' => 'CSV maksimal berisi 300 NISN.']);
+            }
+        }
+
+        $result = $generator->generateFromNisns($nisns);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $result['count'].' akun Siswa berhasil dibuat.']);
 
         return back()->with('generated_accounts', $result);
     }
@@ -114,7 +191,9 @@ class UserController extends Controller
             $user->syncRoles($data['roles'] ?? []);
         }
 
-        return back()->with('success', 'User berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'User berhasil diperbarui.']);
+
+        return back();
     }
 
     /**
@@ -123,11 +202,15 @@ class UserController extends Controller
     public function destroy(User $user): RedirectResponse
     {
         if ($user->id === auth()->id()) {
-            return back()->with('error', 'Tidak dapat menghapus akun sendiri.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Tidak dapat menghapus akun sendiri.']);
+
+            return back();
         }
 
         $user->delete();
 
-        return back()->with('success', 'User berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'User berhasil dihapus.']);
+
+        return back();
     }
 }

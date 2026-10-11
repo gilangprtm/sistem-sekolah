@@ -5,7 +5,7 @@ import type { FlashToast } from '@/types/ui';
 
 export function useFlashToast(): void {
     useEffect(() => {
-        return router.on('flash', (event) => {
+        const removeFlashListener = router.on('flash', (event) => {
             const flash = (event as CustomEvent).detail?.flash;
             const data = flash?.toast as FlashToast | undefined;
 
@@ -15,5 +15,17 @@ export function useFlashToast(): void {
 
             toast[data.type](data.message);
         });
+        const removeHttpExceptionListener = router.on('httpException', () => {
+            toast.error('Terjadi kesalahan server. Silakan coba lagi.');
+        });
+        const removeNetworkErrorListener = router.on('networkError', () => {
+            toast.error('Koneksi bermasalah. Periksa jaringan dan coba lagi.');
+        });
+
+        return () => {
+            removeFlashListener();
+            removeHttpExceptionListener();
+            removeNetworkErrorListener();
+        };
     }, []);
 }

@@ -73,21 +73,27 @@ class TeacherController extends Controller
     {
         Teacher::query()->create($request->validated());
 
-        return redirect()->route('teachers.index')->with('success', 'Data Guru & Staff berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Data Guru & Staff berhasil dibuat.']);
+
+        return redirect()->route('teachers.index');
     }
 
     public function update(TeacherRequest $request, Teacher $teacher): RedirectResponse
     {
         $teacher->update($request->validated());
 
-        return redirect()->route('teachers.index')->with('success', 'Data Guru & Staff berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Data Guru & Staff berhasil diperbarui.']);
+
+        return redirect()->route('teachers.index');
     }
 
     public function destroy(Teacher $teacher): RedirectResponse
     {
         $teacher->delete();
 
-        return back()->with('success', 'Data Guru & Staff berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Data Guru & Staff berhasil dihapus.']);
+
+        return back();
     }
 
     /** @return array{guru: array<int, array{id: int, email: string}>, staff: array<int, array{id: int, email: string}>} */

@@ -2,16 +2,27 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     ChevronsLeft,
     ChevronsRight,
+    Download,
     MoreHorizontal,
     Plus,
     Search,
     UserRound,
 } from 'lucide-react';
-import { useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { useRef, useState } from 'react';
+import AlertError from '@/components/alert-error';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -36,6 +47,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Table,
     TableBody,
@@ -50,6 +62,7 @@ import type { BreadcrumbItem } from '@/types';
 type Student = {
     id: number;
     nis: string | null;
+    nisn: string | null;
     tahun_angkatan: number | null;
     full_name: string;
     gender: string | null;
@@ -103,6 +116,11 @@ export default function StudentsIndex({
     const [search, setSearch] = useState(filters.search ?? '');
     const [gender, setGender] = useState(filters.gender ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
+    const [importErrors, setImportErrors] = useState<string[]>([]);
+    const [importDialogOpen, setImportDialogOpen] = useState(false);
+    const [importProcessing, setImportProcessing] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const fileInput = useRef<HTMLInputElement>(null);
     const pageNumbers = getPageNumbers(
         students.current_page,
         students.last_page,
@@ -149,6 +167,46 @@ export default function StudentsIndex({
         navigate({ ...filterParams(), page, per_page: students.per_page });
     };
 
+    const handleImport = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+
+        if (!file) {
+            return;
+        }
+
+        setImportFile(file);
+
+        setImportErrors([]);
+    };
+
+    const submitImport = () => {
+        if (!importFile) {
+            setImportErrors(['File Excel wajib dipilih.']);
+
+            return;
+        }
+
+        setImportErrors([]);
+
+        setImportProcessing(true);
+        router.post(
+            '/students/import',
+            { file: importFile },
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    setImportDialogOpen(false);
+                    setImportFile(null);
+                },
+                onError: (errors) => {
+                    setImportErrors(Object.values(errors));
+                },
+                onFinish: () => setImportProcessing(false),
+            },
+        );
+    };
+
     const remove = (student: Student) => {
         if (!confirm(`Hapus data Siswa "${student.full_name}"?`)) {
             return;
@@ -160,21 +218,32 @@ export default function StudentsIndex({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Siswa" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-4">
-                    <Heading
-                        variant="small"
-                        title="Master Siswa"
-                        description="Kelola data profil Siswa dan akun yang terhubung"
-                    />
-                    <Button asChild>
-                        <Link href="/students/create">
-                            <Plus />
-                            Tambah Siswa
-                        </Link>
-                    </Button>
+            <div className="flex max-w-full min-w-0 flex-1 flex-col gap-4 rounded-xl p-4 pb-24 sm:pb-6">
+                <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+                    <div className="min-w-0 break-words">
+                        <Heading
+                            variant="small"
+                            title="Master Siswa"
+                            description="Kelola data profil Siswa dan akun yang terhubung"
+                        />
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setImportDialogOpen(true)}
+                            className="w-full sm:w-auto"
+                        >
+                            Import Excel
+                        </Button>
+                        <Button asChild className="w-full sm:w-auto">
+                            <Link href="/students/create">
+                                <Plus />
+                                Tambah Siswa
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
-
                 <div className="grid gap-4 rounded-xl border p-4">
                     <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
                         <div className="grid gap-2 md:col-span-5">
@@ -192,7 +261,7 @@ export default function StudentsIndex({
                                             applyFilters();
                                         }
                                     }}
-                                    placeholder="Nama / NIS / email akun..."
+                                    placeholder="Nama / NIS / NISN / email akun..."
                                     className="pl-8"
                                 />
                             </div>
@@ -250,7 +319,7 @@ export default function StudentsIndex({
                         </Button>
                     </div>
                     <div className="overflow-x-auto">
-                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
+                        <Table className="min-w-[760px] **:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead className="w-12">
@@ -274,7 +343,7 @@ export default function StudentsIndex({
                                         />
                                     </TableHead>
                                     <TableHead>Nama</TableHead>
-                                    <TableHead>NIS</TableHead>
+                                    <TableHead>NIS/NISN</TableHead>
                                     <TableHead>Tahun Angkatan</TableHead>
                                     <TableHead>Akun</TableHead>
                                     <TableHead>Gender</TableHead>
@@ -313,7 +382,7 @@ export default function StudentsIndex({
                                             {student.full_name}
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
-                                            {student.nis || '-'}
+                                            {`${student.nis?.trim() || '-'} / ${student.nisn?.trim() || '-'}`}
                                         </TableCell>
                                         <TableCell>
                                             {student.tahun_angkatan || '-'}
@@ -571,6 +640,89 @@ export default function StudentsIndex({
                         </div>
                     </div>
                 </div>
+                <Dialog
+                    open={importDialogOpen}
+                    onOpenChange={(open) => {
+                        if (!importProcessing) {
+                            setImportDialogOpen(open);
+                        }
+                    }}
+                >
+                    <DialogContent
+                        showCloseButton={!importProcessing}
+                        onEscapeKeyDown={(event) => {
+                            if (importProcessing) {
+                                event.preventDefault();
+                            }
+                        }}
+                        onPointerDownOutside={(event) => {
+                            if (importProcessing) {
+                                event.preventDefault();
+                            }
+                        }}
+                    >
+                        <DialogHeader>
+                            <DialogTitle>Import Data Siswa</DialogTitle>
+                            <DialogDescription>
+                                Gunakan template Excel. Data baru dimulai dari
+                                baris 4.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-3">
+                            <Button
+                                asChild
+                                variant="outline"
+                                disabled={importProcessing}
+                            >
+                                <a href="/students/import/template" download>
+                                    <Download />
+                                    Download Template Excel
+                                </a>
+                            </Button>
+                            <input
+                                ref={fileInput}
+                                type="file"
+                                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                className="block w-full rounded-md border p-2 text-sm"
+                                onChange={handleImport}
+                                disabled={importProcessing}
+                            />
+                            {importFile && (
+                                <p className="text-sm text-muted-foreground">
+                                    File dipilih: {importFile.name}
+                                </p>
+                            )}
+                            {importErrors.length > 0 && (
+                                <AlertError
+                                    title="Import Excel gagal"
+                                    errors={importErrors}
+                                />
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setImportDialogOpen(false)}
+                                disabled={importProcessing}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={submitImport}
+                                disabled={importProcessing || !importFile}
+                            >
+                                {importProcessing && (
+                                    <Spinner className="mr-2" />
+                                )}
+                                {importProcessing
+                                    ? 'Mengimpor...'
+                                    : 'Import Excel'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );

@@ -512,7 +512,7 @@ class ManagementClassTest extends TestCase
             ->assertSessionHas('inertia.flash_data.toast.type', 'success')
             ->assertSessionHas('inertia.flash_data.toast.message', 'Manajemen kelas berhasil diperbarui.');
 
-        $source = file_get_contents(resource_path('js/pages/management-class/manage.tsx'));
+        $source = file_get_contents(resource_path('js/layouts/app/dashboard-layout.tsx'));
         $this->assertIsString($source);
         $this->assertStringContainsString("import { useFlashToast } from '@/hooks/use-flash-toast';", $source);
         $this->assertStringContainsString('useFlashToast();', $source);

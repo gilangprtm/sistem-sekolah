@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Bot, CalendarDays, Home, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useFlashToast } from '@/hooks/use-flash-toast';
 
 const navigation = [
     { label: 'Beranda', href: '/student', icon: Home },
@@ -13,6 +14,8 @@ const navigation = [
 export default function StudentAppLayout({
     children,
 }: Readonly<{ children: ReactNode }>) {
+    useFlashToast();
+
     const { url } = usePage();
     const currentPath = new URL(
         url,

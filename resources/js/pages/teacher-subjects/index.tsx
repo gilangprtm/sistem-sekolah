@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
@@ -114,6 +114,7 @@ export default function TeacherSubjectsIndex({
                             setOpen(true);
                         }}
                     >
+                        <Plus />
                         Tambah Relasi
                     </Button>
                 </div>

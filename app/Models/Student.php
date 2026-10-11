@@ -30,6 +30,12 @@ class Student extends Model
         'birth_place',
         'birth_date',
         'address',
+        'phone',
+        'mother_name',
+        'father_name',
+        'mother_occupation',
+        'father_occupation',
+        'parent_phone',
         'status',
     ];
 

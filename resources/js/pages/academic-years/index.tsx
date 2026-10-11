@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
@@ -282,6 +282,7 @@ export default function AcademicYearsIndex({
                         description="Kelola periode akademik dan status aktifnya."
                     />
                     <Button onClick={openYearCreate}>
+                        <Plus />
                         Tambah Tahun Ajaran
                     </Button>
                 </div>
@@ -471,6 +472,7 @@ export default function AcademicYearsIndex({
                                                                 )
                                                             }
                                                         >
+                                                            <Plus />
                                                             Tambah Ganjil
                                                         </Button>
                                                     )}
@@ -489,6 +491,7 @@ export default function AcademicYearsIndex({
                                                                 )
                                                             }
                                                         >
+                                                            <Plus />
                                                             Tambah Genap
                                                         </Button>
                                                     )}

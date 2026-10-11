@@ -104,7 +104,8 @@ class RoleManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->delete("/roles/{$role->id}")
-            ->assertSessionHas('error');
+            ->assertSessionHas('inertia.flash_data.toast.type', 'error')
+            ->assertSessionHas('inertia.flash_data.toast.message', 'Role Super Admin tidak dapat dihapus.');
 
         $this->assertDatabaseHas('roles', ['name' => 'Super Admin']);
     }

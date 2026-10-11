@@ -7,6 +7,7 @@ use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -29,6 +30,7 @@ class StudentAppProfileTest extends TestCase
             'user_id' => $user->id,
             'full_name' => 'Siswa Terhubung',
             'nis' => 'NIS-001',
+            'nisn' => 'NISN-001',
             'tahun_angkatan' => 2025,
             'birth_place' => 'Denpasar',
             'birth_date' => '2012-05-10',
@@ -46,8 +48,74 @@ class StudentAppProfileTest extends TestCase
                 ->where('user.email', $user->email)
                 ->where('student.full_name', 'Siswa Terhubung')
                 ->where('student.nis', 'NIS-001')
+                ->where('student.nisn', 'NISN-001')
                 ->where('student.photo_url', null)
                 ->where('student.birth_date', '2012-05-10T00:00:00.000000Z'));
+    }
+
+    public function test_student_can_update_own_password_with_current_password_confirmation(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('password123')]);
+        $user->assignRole('Siswa');
+
+        $this->actingAs($user)
+            ->from(route('student-app.profile'))
+            ->put(route('student-app.profile.password'), [
+                'current_password' => 'password123',
+                'password' => 'new-password-123',
+                'password_confirmation' => 'new-password-123',
+            ])
+            ->assertRedirect(route('student-app.profile'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('inertia.flash_data.toast.message', 'Password berhasil diperbarui.');
+
+        $this->assertTrue(Hash::check('new-password-123', $user->refresh()->password));
+    }
+
+    public function test_student_password_update_rejects_wrong_current_password_and_mismatch(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('password123')]);
+        $user->assignRole('Siswa');
+
+        $this->actingAs($user)
+            ->put(route('student-app.profile.password'), [
+                'current_password' => 'wrong-password',
+                'password' => 'new-password-123',
+                'password_confirmation' => 'different-password',
+            ])
+            ->assertSessionHasErrors(['current_password', 'password']);
+
+        $this->assertTrue(Hash::check('password123', $user->refresh()->password));
+    }
+
+    public function test_student_password_update_is_role_protected(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->put(route('student-app.profile.password'), [
+                'current_password' => 'password',
+                'password' => 'new-password-123',
+                'password_confirmation' => 'new-password-123',
+            ])
+            ->assertForbidden();
+
+        $this->put(route('student-app.profile.password'), [
+            'current_password' => 'password',
+            'password' => 'new-password-123',
+            'password_confirmation' => 'new-password-123',
+        ])->assertForbidden();
+    }
+
+    public function test_student_profile_contains_password_change_form_contract(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/student-app/profile.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString('Ganti password', $source);
+        $this->assertStringContainsString('DialogContent', $source);
+        $this->assertStringContainsString('action="/student/profile/password"', $source);
+        $this->assertStringContainsString('name="current_password"', $source);
+        $this->assertStringContainsString('name="password_confirmation"', $source);
     }
 
     public function test_student_can_update_own_photo_and_old_photo_is_removed(): void
@@ -68,7 +136,8 @@ class StudentAppProfileTest extends TestCase
         $student->refresh();
 
         $response->assertRedirect()
-            ->assertSessionHas('success', 'Foto profil berhasil diperbarui.');
+            ->assertSessionHas('inertia.flash_data.toast.type', 'success')
+            ->assertSessionHas('inertia.flash_data.toast.message', 'Foto profil berhasil diperbarui.');
         $this->assertNotSame('students/1/old.jpg', $student->photo_path);
         $this->assertTrue(Storage::disk('public')->exists($student->photo_path));
         $this->assertFalse(Storage::disk('public')->exists('students/1/old.jpg'));
@@ -107,6 +176,38 @@ class StudentAppProfileTest extends TestCase
             ->assertSessionHasErrors('photo');
 
         $this->assertNull($student->fresh()->photo_path);
+    }
+
+    public function test_student_profile_uses_independent_nis_and_nisn_fallback_format(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+        $student = Student::factory()->create(['user_id' => $user->id]);
+
+        foreach (
+            [
+                [null, null],
+                ['NIS-001', null],
+                [null, 'NISN-001'],
+                ['NIS-001', 'NISN-001'],
+            ] as [$nis, $nisn]
+        ) {
+            $student->update(['nis' => $nis, 'nisn' => $nisn]);
+
+            $this->actingAs($user)
+                ->get(route('student-app.profile'))
+                ->assertInertia(fn ($page) => $page
+                    ->where('student.nis', $nis)
+                    ->where('student.nisn', $nisn))
+                ->assertOk();
+        }
+
+        $source = file_get_contents(resource_path('js/pages/student-app/profile.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString('aspect-[2/3]', $source);
+        $this->assertStringContainsString('object-cover', $source);
+        $this->assertStringContainsString('return `${nis?.trim() || \'-\'} / ${nisn?.trim() || \'-\'}`;', $source);
+        $this->assertStringContainsString("formatStudentNumbers(\n                                        student.nis,\n                                        student.nisn,\n                                    )", $source);
     }
 
     public function test_student_profile_is_role_protected(): void

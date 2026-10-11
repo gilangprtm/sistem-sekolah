@@ -52,6 +52,7 @@ class StudentRequest extends FormRequest
                 Rule::unique('m_students', 'user_id')->ignore($studentId),
             ],
             'nis' => ['nullable', 'string', 'max:255', Rule::unique('m_students', 'nis')->ignore($studentId)],
+            'nisn' => ['nullable', 'string', 'max:20', Rule::unique('m_students', 'nisn')->ignore($studentId)],
             'tahun_angkatan' => ['nullable', 'integer', 'min:1900', 'max:'.now()->year],
             'photo' => ['nullable', 'image', 'max:1024'],
             'remove_photo' => ['nullable', 'boolean'],
@@ -60,6 +61,12 @@ class StudentRequest extends FormRequest
             'birth_place' => ['nullable', 'string', 'max:255'],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'address' => ['nullable', 'string'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'mother_name' => ['nullable', 'string', 'max:255'],
+            'father_name' => ['nullable', 'string', 'max:255'],
+            'mother_occupation' => ['nullable', 'string', 'max:255'],
+            'father_occupation' => ['nullable', 'string', 'max:255'],
+            'parent_phone' => ['nullable', 'string', 'max:30'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ];
     }

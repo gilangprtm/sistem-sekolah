@@ -316,7 +316,9 @@ class InventoryController extends Controller
         unset($data['category_name'], $data['inventory_type_name'], $data['tangible_asset_type_name'], $data['intangible_asset_type_name']);
         $this->registerGenerator->createItemWithUnits($data);
 
-        return redirect()->route('inventory.index')->with('success', 'Inventaris berhasil ditambahkan.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Inventaris berhasil ditambahkan.']);
+
+        return redirect()->route('inventory.index');
     }
 
     /**
@@ -353,7 +355,9 @@ class InventoryController extends Controller
         // Hanya mutable field dan assignment kategori yang diupdate.
         $item->update(array_intersect_key($data, array_flip(['keterangan', 'inventory_category_id'])));
 
-        return back()->with('success', 'Keterangan berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Keterangan berhasil diperbarui.']);
+
+        return back();
     }
 
     /**
@@ -367,7 +371,9 @@ class InventoryController extends Controller
 
         $this->registerGenerator->addUnits($item, $data['qty']);
 
-        return back()->with('success', 'Unit berhasil ditambahkan.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit berhasil ditambahkan.']);
+
+        return back();
     }
 
     /**
@@ -385,7 +391,9 @@ class InventoryController extends Controller
 
         $unit->update(['condition' => $data['condition']]);
 
-        return back()->with('success', 'Kondisi unit berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Kondisi unit berhasil diperbarui.']);
+
+        return back();
     }
 
     /**
@@ -403,7 +411,9 @@ class InventoryController extends Controller
 
         $unit->update(['inventory_room_id' => $data['inventory_room_id'] ?? null]);
 
-        return back()->with('success', 'Ruangan unit berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Ruangan unit berhasil diperbarui.']);
+
+        return back();
     }
 
     /**
@@ -413,6 +423,8 @@ class InventoryController extends Controller
     {
         $item->delete();
 
-        return redirect()->route('inventory.index')->with('success', 'Inventaris berhasil dihapus.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Inventaris berhasil dihapus.']);
+
+        return redirect()->route('inventory.index');
     }
 }

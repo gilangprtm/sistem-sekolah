@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { WalletCards } from 'lucide-react';
+import { Plus, WalletCards } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
 import DataTableShell from '@/components/data-table/data-table-shell';
@@ -26,7 +26,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useFlashToast } from '@/hooks/use-flash-toast';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -123,8 +122,6 @@ export default function KantinSaldoIndex({
     filters,
     summary,
 }: PageProps) {
-    useFlashToast();
-
     const [search, setSearch] = useState(filters.search ?? '');
     const [period, setPeriod] = useState<Period>(filters.period ?? 'all');
     const [studentsForTopUp, setStudentsForTopUp] = useState<Student[]>([]);
@@ -228,6 +225,7 @@ export default function KantinSaldoIndex({
                             type="button"
                             onClick={() => setDialogOpen(true)}
                         >
+                            <Plus />
                             Top Up Saldo
                         </Button>
                     )}

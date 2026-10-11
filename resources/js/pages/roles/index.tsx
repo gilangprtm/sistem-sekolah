@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
@@ -232,7 +232,10 @@ export default function RolesIndex({
                         title="Role & Permission"
                         description="Kelola role dan permission sistem"
                     />
-                    <Button onClick={openCreate}>Tambah Role</Button>
+                    <Button onClick={openCreate}>
+                        <Plus />
+                        Tambah Role
+                    </Button>
                 </div>
 
                 <div className="grid gap-4 rounded-xl border p-4">

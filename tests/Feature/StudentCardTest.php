@@ -33,6 +33,9 @@ class StudentCardTest extends TestCase
         $student = Student::factory()->create([
             'user_id' => $studentUser->id,
             'full_name' => 'Siswa Terhubung',
+            'nis' => 'NIS-001',
+            'nisn' => 'NISN-001',
+            'gender' => 'L',
             'birth_place' => 'Denpasar',
             'birth_date' => '2012-05-10',
             'address' => 'Jl. Pendidikan 17',
@@ -53,6 +56,9 @@ class StudentCardTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('students/card')
                 ->where('student.full_name', 'Siswa Terhubung')
+                ->where('student.nis', 'NIS-001')
+                ->where('student.nisn', 'NISN-001')
+                ->where('student.gender', 'L')
                 ->where('student.birth_place', 'Denpasar')
                 ->where('placement.academic_year', '2026/2027')
                 ->where('placement.rombel', 'VII-A')
@@ -151,11 +157,18 @@ class StudentCardTest extends TestCase
         $this->assertStringContainsString('drawBarcode(', $cardSource);
         $this->assertStringContainsString('drawQrCode(', $cardSource);
         $this->assertStringContainsString('const qr = qrCode === null ? null : await loadImage(qrCode);', $cardSource);
+        $this->assertStringContainsString("label: 'Nama'", $cardSource);
+        $this->assertStringContainsString("label: 'NIS/NISN'", $cardSource);
+        $this->assertStringContainsString("label: 'Jenis Kelamin'", $cardSource);
+        $this->assertStringContainsString('formatStudentNumbers(student.nis, student.nisn)', $cardSource);
+        $this->assertStringContainsString('return `${nis?.trim() || \'-\'} / ${nisn?.trim() || \'-\'}`;', $cardSource);
+        $this->assertStringNotContainsString('Nama Lengkap', $cardSource);
+        $this->assertStringNotContainsString("label: 'NISN'", $cardSource);
         $this->assertStringContainsString('qrCode={qrCode}', $cardSource);
         $this->assertStringContainsString('QR_X = 820', $cardSource);
         $this->assertStringContainsString('QR_Y = 445', $cardSource);
         $this->assertStringContainsString('QR_SIZE = 130', $cardSource);
-        $this->assertStringContainsString("canvas.toBlob((blob) =>", $cardSource);
+        $this->assertStringContainsString('canvas.toBlob((blob) =>', $cardSource);
         $this->assertStringNotContainsString('foreignObject', $cardSource);
         $this->assertStringNotContainsString('image.remove()', $cardSource);
         $this->assertStringNotContainsString('window.print()', $cardSource);
@@ -255,8 +268,17 @@ class StudentCardTest extends TestCase
                 ->where('filters.tahun_angkatan', '2025'));
 
         $source = file_get_contents(resource_path('js/pages/students/cards-print.tsx'));
+        $cardsSource = file_get_contents(resource_path('js/pages/students/cards.tsx'));
         $this->assertIsString($source);
-        $this->assertStringContainsString("application/zip", $source);
+        $this->assertIsString($cardsSource);
+        $this->assertStringContainsString("label: 'Nama'", $source);
+        $this->assertStringContainsString("label: 'NIS/NISN'", $source);
+        $this->assertStringContainsString("label: 'Jenis Kelamin'", $source);
+        $this->assertStringContainsString('TableHead>Jenis Kelamin</TableHead>', $cardsSource);
+        $this->assertStringNotContainsString('<TableHead>Gender</TableHead>', $cardsSource);
+        $this->assertStringContainsString('formatStudentNumbers(card.student.nis, card.student.nisn)', $source);
+        $this->assertStringContainsString('return `${nis?.trim() || \'-\'} / ${nisn?.trim() || \'-\'}`;', $source);
+        $this->assertStringContainsString('application/zip', $source);
         $this->assertStringContainsString('downloadCards', $source);
         $this->assertStringContainsString('CARD_BACKGROUND', $source);
         $this->assertStringContainsString('aria-live="polite"', $source);

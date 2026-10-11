@@ -206,7 +206,9 @@ class ManagementClassController extends Controller
             throw $exception;
         }
 
-        return back()->with('success', 'Kelas berhasil ditambahkan.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Kelas berhasil ditambahkan.']);
+
+        return back();
     }
 
     public function updateClass(Request $request): RedirectResponse
@@ -351,7 +353,9 @@ class ManagementClassController extends Controller
             throw $exception;
         }
 
-        return back()->with('success', 'Siswa berhasil ditempatkan.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Siswa berhasil ditempatkan.']);
+
+        return back();
     }
 
     public function promoteClass(Request $request): RedirectResponse
@@ -433,7 +437,9 @@ class ManagementClassController extends Controller
             ])->all());
         });
 
-        return back()->with('success', 'Seluruh siswa berhasil dipromosikan ke kelas berikutnya.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Seluruh siswa berhasil dipromosikan ke kelas berikutnya.']);
+
+        return back();
     }
 
     public function storeHomeroom(Request $request): RedirectResponse
@@ -470,6 +476,8 @@ class ManagementClassController extends Controller
             throw $exception;
         }
 
-        return back()->with('success', 'Wali kelas berhasil ditetapkan.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Wali kelas berhasil ditetapkan.']);
+
+        return back();
     }
 }

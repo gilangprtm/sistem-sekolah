@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\StudentApp;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Settings\PasswordUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -22,6 +23,7 @@ class ProfileController extends Controller
             'student' => $student === null ? null : array_merge(
                 $student->only([
                     'nis',
+                    'nisn',
                     'tahun_angkatan',
                     'full_name',
                     'gender',
@@ -33,6 +35,17 @@ class ProfileController extends Controller
                 ['photo_url' => $this->photoUrl($student->photo_path)],
             ),
         ]);
+    }
+
+    public function updatePassword(PasswordUpdateRequest $request): RedirectResponse
+    {
+        $request->user()->update([
+            'password' => $request->password,
+        ]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Password berhasil diperbarui.']);
+
+        return back();
     }
 
     public function updatePhoto(Request $request): RedirectResponse
@@ -72,7 +85,9 @@ class ProfileController extends Controller
             Storage::disk('public')->delete($oldPhotoPath);
         }
 
-        return back()->with('success', 'Foto profil berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Foto profil berhasil diperbarui.']);
+
+        return back();
     }
 
     private function photoUrl(?string $photoPath): ?string

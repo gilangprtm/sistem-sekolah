@@ -17,6 +17,7 @@ import {
     SidebarProvider,
     SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { useFlashToast } from '@/hooks/use-flash-toast';
 import { getClientCookie } from '@/lib/cookie.client';
 import { cn } from '@/lib/utils';
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
@@ -24,6 +25,8 @@ import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 export default function DashboardLayout({
     children,
 }: Readonly<{ children: ReactNode }>) {
+    useFlashToast();
+
     const sidebarStateCookie = getClientCookie('sidebar_state');
     const defaultOpen = sidebarStateCookie !== 'false';
 

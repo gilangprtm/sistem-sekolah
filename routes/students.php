@@ -17,6 +17,9 @@ Route::middleware(['auth', 'verified', 'can:student.card.view'])->group(function
 
 Route::middleware(['auth', 'verified', 'can:student.view'])->group(function (): void {
     Route::get('/students', [StudentController::class, 'index'])->name('students.index');
+    Route::get('/students/import/template', [StudentController::class, 'downloadTemplate'])->name('students.import.template');
+    Route::get('/students/import/csv-template', [StudentController::class, 'downloadCsvTemplate'])->name('students.import.csv-template');
+    Route::post('/students/import', [StudentController::class, 'import'])->middleware(['can:student.create', 'can:student.update'])->name('students.import');
     Route::get('/students/create', [StudentController::class, 'create'])->middleware('can:student.create')->name('students.create');
     Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->middleware('can:student.update')->name('students.edit');
     Route::post('/students', [StudentController::class, 'store'])->middleware('can:student.create')->name('students.store');

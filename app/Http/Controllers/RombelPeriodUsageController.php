@@ -60,9 +60,10 @@ class RombelPeriodUsageController extends Controller
             ]);
         }
 
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Rombel berhasil digunakan pada semester tersebut.']);
+
         return redirect()
-            ->route('academic-period-rombels.index', ['academic_period_id' => $request->validated('academic_period_id')])
-            ->with('success', 'Rombel berhasil digunakan pada semester tersebut.');
+            ->route('academic-period-rombels.index', ['academic_period_id' => $request->validated('academic_period_id')]);
     }
 
     public function destroy(RombelPeriodUsage $rombelPeriodUsage): RedirectResponse
@@ -70,8 +71,9 @@ class RombelPeriodUsageController extends Controller
         $periodId = $rombelPeriodUsage->academic_period_id;
         $rombelPeriodUsage->delete();
 
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Penggunaan Rombel berhasil dilepas.']);
+
         return redirect()
-            ->route('academic-period-rombels.index', ['academic_period_id' => $periodId])
-            ->with('success', 'Penggunaan Rombel berhasil dilepas.');
+            ->route('academic-period-rombels.index', ['academic_period_id' => $periodId]);
     }
 }

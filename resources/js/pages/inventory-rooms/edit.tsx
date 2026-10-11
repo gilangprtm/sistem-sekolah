@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, PackageSearch, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, PackageSearch, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -299,6 +299,7 @@ export default function InventoryRoomsEdit({
                                 </p>
                             </div>
                             <Button type="button" onClick={openLookup}>
+                                <Plus />
                                 Tambah Register
                             </Button>
                         </div>

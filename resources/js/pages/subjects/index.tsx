@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
@@ -142,7 +142,10 @@ export default function SubjectsIndex({
                         title="Mata Pelajaran"
                         description="Kelola master mata pelajaran sekolah"
                     />
-                    <Button onClick={openCreate}>Tambah Mata Pelajaran</Button>
+                    <Button onClick={openCreate}>
+                        <Plus />
+                        Tambah Mata Pelajaran
+                    </Button>
                 </div>
                 <div className="grid gap-4 rounded-xl border p-4">
                     <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">

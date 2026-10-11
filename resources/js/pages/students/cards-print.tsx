@@ -11,8 +11,10 @@ type StudentCard = {
     student: {
         id: number;
         nis: string | null;
+        nisn: string | null;
         tahun_angkatan: number | null;
         full_name: string;
+        gender: string | null;
         birth_place: string | null;
         birth_date: string | null;
         address: string | null;
@@ -143,6 +145,10 @@ function initialsForStudent(name: string): string {
         .join('')
         .slice(0, 2)
         .toUpperCase();
+}
+
+function formatStudentNumbers(nis: string | null, nisn: string | null): string {
+    return `${nis?.trim() || '-'} / ${nisn?.trim() || '-'}`;
 }
 
 function barcodePattern(value: string): boolean[] {
@@ -280,10 +286,24 @@ async function renderCard(card: StudentCard): Promise<Blob> {
         .filter(Boolean)
         .join(', ');
     const fields = [
-        { label: 'Nama Lengkap', value: card.student.full_name, y: 303 },
-        { label: 'NISN', value: card.student.nis || '-', y: 340 },
-        { label: 'T.T.L', value: birthDetails || '-', y: 376 },
-        { label: 'Alamat', value: card.student.address || '-', y: 412 },
+        { label: 'Nama', value: card.student.full_name, y: 303 },
+        {
+            label: 'NIS/NISN',
+            value: formatStudentNumbers(card.student.nis, card.student.nisn),
+            y: 335,
+        },
+        {
+            label: 'Jenis Kelamin',
+            value:
+                card.student.gender === 'L'
+                    ? 'Laki-laki'
+                    : card.student.gender === 'P'
+                      ? 'Perempuan'
+                      : '-',
+            y: 367,
+        },
+        { label: 'T.T.L', value: birthDetails || '-', y: 399 },
+        { label: 'Alamat', value: card.student.address || '-', y: 431 },
     ];
 
     context.fillStyle = textColor;
@@ -299,7 +319,7 @@ async function renderCard(card: StudentCard): Promise<Blob> {
     if (qr === null) {
         drawBarcode(
             context,
-            card.student.nis || String(card.student.id),
+            card.student.nis || card.student.nisn || String(card.student.id),
             QR_X,
             QR_Y,
             QR_SIZE,

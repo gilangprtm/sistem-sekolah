@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Download, Plus, Search, Upload } from 'lucide-react';
 import { useState } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTablePagination from '@/components/data-table/data-table-pagination';
@@ -22,6 +22,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Table,
     TableBody,
@@ -47,14 +48,6 @@ type UserItem = {
     roles: { id: number; name: string }[];
 };
 
-type GeneratedAccounts = {
-    count: number;
-    first_sequence: number;
-    last_sequence: number;
-    emails: string[];
-    security_warning: string;
-};
-
 type UsersPageProps = {
     auth: Auth;
     users: {
@@ -74,7 +67,6 @@ type UsersPageProps = {
     filterOptions: {
         statuses: { value: string; label: string }[];
     };
-    generated_accounts?: GeneratedAccounts;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Users', href: '/users' }];
@@ -84,7 +76,6 @@ export default function UsersIndex({
     roles,
     filters,
     filterOptions,
-    generated_accounts,
 }: UsersPageProps) {
     const { auth } = usePage<UsersPageProps>().props;
     const [selected, setSelected] = useState<number[]>([]);
@@ -101,11 +92,8 @@ export default function UsersIndex({
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
-    const [generatorOpen, setGeneratorOpen] = useState(false);
-    const [generatorYear, setGeneratorYear] = useState(
-        new Date().getFullYear().toString(),
-    );
-    const [generatorCount, setGeneratorCount] = useState('1');
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importOpen, setImportOpen] = useState(false);
 
     const openCreate = () => {
         setEditing(null);
@@ -171,29 +159,32 @@ export default function UsersIndex({
         }
     };
 
-    const openGenerator = () => {
+    const openImport = () => {
         setErrors({});
-        setGeneratorOpen(true);
+        setImportFile(null);
+        setImportOpen(true);
     };
 
-    const generateStudentAccounts = () => {
+    const importStudentAccounts = () => {
+        if (importFile === null) {
+            setErrors({ file: 'File CSV wajib dipilih.' });
+
+            return;
+        }
+
         setProcessing(true);
         router.post(
-            '/users/generate-student-accounts',
+            '/users/import-student-accounts',
+            { file: importFile },
             {
-                year: Number(generatorYear),
-                count: Number(generatorCount),
-            },
-            {
+                forceFormData: true,
                 preserveScroll: true,
                 onSuccess: () => {
-                    setGeneratorOpen(false);
-                    setProcessing(false);
+                    setImportFile(null);
+                    setImportOpen(false);
                 },
-                onError: (errs) => {
-                    setErrors(errs);
-                    setProcessing(false);
-                },
+                onError: (errs) => setErrors(errs),
+                onFinish: () => setProcessing(false),
             },
         );
     };
@@ -253,18 +244,31 @@ export default function UsersIndex({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Users" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-4">
-                    <Heading
-                        variant="small"
-                        title="Manajemen User"
-                        description="Kelola akun pengguna dan role"
-                    />
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={openGenerator}>
-                            Generate Akun Siswa
+            <div className="flex max-w-full min-w-0 flex-1 flex-col gap-4 rounded-xl p-4 pb-24 sm:pb-6">
+                <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+                    <div className="min-w-0 break-words">
+                        <Heading
+                            variant="small"
+                            title="Manajemen User"
+                            description="Kelola akun pengguna dan role"
+                        />
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <Button
+                            variant="outline"
+                            onClick={openImport}
+                            className="w-full sm:w-auto"
+                        >
+                            <Upload />
+                            Import CSV
                         </Button>
-                        <Button onClick={openCreate}>Tambah User</Button>
+                        <Button
+                            onClick={openCreate}
+                            className="w-full sm:w-auto"
+                        >
+                            <Plus />
+                            Tambah User
+                        </Button>
                     </div>
                 </div>
 
@@ -345,7 +349,7 @@ export default function UsersIndex({
                         </Button>
                     </DataTableToolbar>
                     <div className="overflow-x-auto">
-                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
+                        <Table className="min-w-[640px] **:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead className="w-12">
@@ -464,69 +468,80 @@ export default function UsersIndex({
                     />
                 </DataTableShell>
 
-                {generated_accounts && (
-                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-700 dark:bg-amber-950/30">
-                        <p className="font-medium">
-                            {generated_accounts.count} akun Siswa berhasil
-                            dibuat.
-                        </p>
-                        <p>{generated_accounts.emails.join(', ')}</p>
-                        <p className="mt-2 text-amber-800 dark:text-amber-200">
-                            {generated_accounts.security_warning}
-                        </p>
-                    </div>
-                )}
-
-                <Dialog open={generatorOpen} onOpenChange={setGeneratorOpen}>
-                    <DialogContent>
+                <Dialog
+                    open={importOpen}
+                    onOpenChange={(open) => {
+                        if (!processing) {
+                            setImportOpen(open);
+                        }
+                    }}
+                >
+                    <DialogContent
+                        showCloseButton={!processing}
+                        onEscapeKeyDown={(event) => {
+                            if (processing) {
+                                event.preventDefault();
+                            }
+                        }}
+                        onPointerDownOutside={(event) => {
+                            if (processing) {
+                                event.preventDefault();
+                            }
+                        }}
+                    >
                         <DialogHeader>
-                            <DialogTitle>Generate Akun Siswa</DialogTitle>
+                            <DialogTitle>Import CSV Akun Siswa</DialogTitle>
                             <DialogDescription>
-                                Akun dibuat dengan nama default Siswa dan
-                                password awal bersama. Wajib ganti password
-                                melalui alur reset.
+                                Gunakan template dengan satu NISN per baris,
+                                maksimal 300 baris.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="student-year">Tahun</Label>
-                                <Input
-                                    id="student-year"
-                                    value={generatorYear}
-                                    onChange={(event) =>
-                                        setGeneratorYear(event.target.value)
-                                    }
-                                    inputMode="numeric"
-                                />
-                                <InputError message={errors.year} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="student-count">
-                                    Jumlah (1–100)
-                                </Label>
-                                <Input
-                                    id="student-count"
-                                    value={generatorCount}
-                                    onChange={(event) =>
-                                        setGeneratorCount(event.target.value)
-                                    }
-                                    inputMode="numeric"
-                                />
-                                <InputError message={errors.count} />
-                            </div>
+                        <div className="grid gap-3">
+                            <Button
+                                asChild
+                                variant="outline"
+                                disabled={processing}
+                            >
+                                <a
+                                    href="/users/student-accounts/template"
+                                    download
+                                >
+                                    <Download />
+                                    Download Template
+                                </a>
+                            </Button>
+                            <Input
+                                id="student-accounts-csv"
+                                type="file"
+                                accept=".csv,text/csv"
+                                onChange={(event) =>
+                                    setImportFile(
+                                        event.target.files?.[0] ?? null,
+                                    )
+                                }
+                                disabled={processing}
+                            />
+                            {importFile && (
+                                <p className="text-sm text-muted-foreground">
+                                    File dipilih: {importFile.name}
+                                </p>
+                            )}
+                            <InputError message={errors.file} />
                         </div>
                         <DialogFooter>
                             <Button
                                 variant="outline"
-                                onClick={() => setGeneratorOpen(false)}
+                                onClick={() => setImportOpen(false)}
+                                disabled={processing}
                             >
                                 Batal
                             </Button>
                             <Button
-                                onClick={generateStudentAccounts}
-                                disabled={processing}
+                                onClick={importStudentAccounts}
+                                disabled={processing || importFile === null}
                             >
-                                {processing ? 'Membuat...' : 'Generate'}
+                                {processing && <Spinner className="mr-2" />}
+                                {processing ? 'Mengimpor...' : 'Import CSV'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>

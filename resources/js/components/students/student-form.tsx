@@ -34,6 +34,7 @@ export type StudentAccount = {
 export type StudentFormValue = {
     user_id: string;
     nis: string;
+    nisn: string;
     tahun_angkatan: string;
     photo: File | null;
     remove_photo: boolean;
@@ -42,6 +43,12 @@ export type StudentFormValue = {
     birth_place: string;
     birth_date: string;
     address: string;
+    phone: string;
+    mother_name: string;
+    father_name: string;
+    mother_occupation: string;
+    father_occupation: string;
+    parent_phone: string;
     status: string;
 };
 
@@ -49,6 +56,7 @@ export type StudentFormStudent = {
     id: number;
     user_id: number | null;
     nis: string | null;
+    nisn: string | null;
     tahun_angkatan: number | null;
     photo_url: string | null;
     full_name: string;
@@ -56,6 +64,12 @@ export type StudentFormStudent = {
     birth_place: string | null;
     birth_date: string | null;
     address: string | null;
+    phone: string | null;
+    mother_name: string | null;
+    father_name: string | null;
+    mother_occupation: string | null;
+    father_occupation: string | null;
+    parent_phone: string | null;
     status: string;
 };
 
@@ -68,6 +82,7 @@ type Props = {
 const emptyForm: StudentFormValue = {
     user_id: '',
     nis: '',
+    nisn: '',
     tahun_angkatan: '',
     photo: null,
     remove_photo: false,
@@ -76,6 +91,12 @@ const emptyForm: StudentFormValue = {
     birth_place: '',
     birth_date: '',
     address: '',
+    phone: '',
+    mother_name: '',
+    father_name: '',
+    mother_occupation: '',
+    father_occupation: '',
+    parent_phone: '',
     status: 'active',
 };
 
@@ -87,6 +108,7 @@ function toFormValue(student?: StudentFormStudent): StudentFormValue {
     return {
         user_id: student.user_id?.toString() ?? '',
         nis: student.nis ?? '',
+        nisn: student.nisn ?? '',
         tahun_angkatan: student.tahun_angkatan?.toString() ?? '',
         photo: null,
         remove_photo: false,
@@ -95,6 +117,12 @@ function toFormValue(student?: StudentFormStudent): StudentFormValue {
         birth_place: student.birth_place ?? '',
         birth_date: student.birth_date ?? '',
         address: student.address ?? '',
+        phone: student.phone ?? '',
+        mother_name: student.mother_name ?? '',
+        father_name: student.father_name ?? '',
+        mother_occupation: student.mother_occupation ?? '',
+        father_occupation: student.father_occupation ?? '',
+        parent_phone: student.parent_phone ?? '',
         status: student.status,
     };
 }
@@ -296,6 +324,17 @@ export default function StudentForm({
                             <InputError message={errors.nis} />
                         </div>
                         <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="student-nisn">NISN</Label>
+                            <Input
+                                id="student-nisn"
+                                value={form.nisn}
+                                onChange={(event) =>
+                                    update('nisn', event.target.value)
+                                }
+                            />
+                            <InputError message={errors.nisn} />
+                        </div>
+                        <div className="grid min-w-0 gap-2">
                             <Label htmlFor="student-gender">
                                 Jenis Kelamin
                             </Label>
@@ -381,6 +420,7 @@ export default function StudentForm({
                                 >
                                     <Calendar
                                         mode="single"
+                                        captionLayout="dropdown"
                                         selected={selectedBirthDate}
                                         defaultMonth={selectedBirthDate}
                                         onSelect={(date) => {
@@ -397,6 +437,120 @@ export default function StudentForm({
                                 </PopoverContent>
                             </Popover>
                             <InputError message={errors.birth_date} />
+                        </div>
+                    </div>
+                </section>
+                <section className="grid min-w-0 gap-4 border-b pb-6">
+                    <div>
+                        <h2 className="text-base font-semibold">
+                            Kontak Siswa
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            Simpan nomor telepon siswa untuk kebutuhan
+                            administrasi sekolah.
+                        </p>
+                    </div>
+                    <div className="grid min-w-0 gap-4 md:grid-cols-2">
+                        <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="student-phone">
+                                Nomor Telepon Siswa
+                            </Label>
+                            <Input
+                                id="student-phone"
+                                type="tel"
+                                inputMode="tel"
+                                value={form.phone}
+                                onChange={(event) =>
+                                    update('phone', event.target.value)
+                                }
+                            />
+                            <InputError message={errors.phone} />
+                        </div>
+                    </div>
+                </section>
+                <section className="grid min-w-0 gap-4 border-b pb-6">
+                    <div>
+                        <h2 className="text-base font-semibold">
+                            Data Orangtua
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            Data orangtua hanya digunakan untuk administrasi
+                            sekolah.
+                        </p>
+                    </div>
+                    <div className="grid min-w-0 gap-4 md:grid-cols-2">
+                        <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="student-mother-name">
+                                Nama Ibu
+                            </Label>
+                            <Input
+                                id="student-mother-name"
+                                value={form.mother_name}
+                                onChange={(event) =>
+                                    update('mother_name', event.target.value)
+                                }
+                            />
+                            <InputError message={errors.mother_name} />
+                        </div>
+                        <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="student-father-name">
+                                Nama Bapak
+                            </Label>
+                            <Input
+                                id="student-father-name"
+                                value={form.father_name}
+                                onChange={(event) =>
+                                    update('father_name', event.target.value)
+                                }
+                            />
+                            <InputError message={errors.father_name} />
+                        </div>
+                        <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="student-mother-occupation">
+                                Pekerjaan Ibu
+                            </Label>
+                            <Input
+                                id="student-mother-occupation"
+                                value={form.mother_occupation}
+                                onChange={(event) =>
+                                    update(
+                                        'mother_occupation',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            <InputError message={errors.mother_occupation} />
+                        </div>
+                        <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="student-father-occupation">
+                                Pekerjaan Bapak
+                            </Label>
+                            <Input
+                                id="student-father-occupation"
+                                value={form.father_occupation}
+                                onChange={(event) =>
+                                    update(
+                                        'father_occupation',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            <InputError message={errors.father_occupation} />
+                        </div>
+                        <div className="grid min-w-0 gap-2 md:col-span-2">
+                            <Label htmlFor="student-parent-phone">
+                                Nomor Telepon Orang Tua
+                            </Label>
+                            <Input
+                                id="student-parent-phone"
+                                type="tel"
+                                inputMode="tel"
+                                value={form.parent_phone}
+                                onChange={(event) =>
+                                    update('parent_phone', event.target.value)
+                                }
+                            />
+                            <InputError message={errors.parent_phone} />
                         </div>
                     </div>
                 </section>

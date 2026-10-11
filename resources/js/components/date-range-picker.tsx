@@ -55,6 +55,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
             <PopoverContent className="w-auto overflow-hidden p-0" align="end">
                 <Calendar
                     mode="range"
+                    captionLayout="dropdown"
                     defaultMonth={dateRange?.from}
                     selected={dateRange}
                     onSelect={handleDateChange}

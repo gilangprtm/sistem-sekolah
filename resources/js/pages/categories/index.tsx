@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -107,7 +108,10 @@ export default function CategoriesIndex({ categories }: Props) {
                         title="Kategori Inventaris"
                         description="Kelola kategori inventaris sekolah"
                     />
-                    <Button onClick={openCreate}>Tambah Kategori</Button>
+                    <Button onClick={openCreate}>
+                        <Plus />
+                        Tambah Kategori
+                    </Button>
                 </div>
                 <div className="rounded-xl border">
                     <Table>

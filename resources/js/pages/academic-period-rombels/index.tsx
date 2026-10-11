@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTableRowActions from '@/components/data-table/data-table-row-actions';
@@ -121,6 +122,7 @@ export default function AcademicPeriodRombelsIndex({
                         }
                         onClick={openCreate}
                     >
+                        <Plus />
                         Tambah Rombel
                     </Button>
                 </div>

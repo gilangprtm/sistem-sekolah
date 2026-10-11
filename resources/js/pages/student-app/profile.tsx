@@ -1,13 +1,25 @@
-import { Head, router } from '@inertiajs/react';
-import { CalendarDays, Camera, Mail, UserRound } from 'lucide-react';
+import { Form, Head, router } from '@inertiajs/react';
+import { CalendarDays, Camera, KeyRound, Mail, UserRound } from 'lucide-react';
 import type { ChangeEvent, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
+import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Student = {
     nis: string | null;
+    nisn: string | null;
     tahun_angkatan: number | null;
     full_name: string;
     gender: string | null;
@@ -64,6 +76,10 @@ function displayGender(value: string | null): string {
     return value === 'L' ? 'Laki-laki' : value === 'P' ? 'Perempuan' : '-';
 }
 
+function formatStudentNumbers(nis: string | null, nisn: string | null): string {
+    return `${nis?.trim() || '-'} / ${nisn?.trim() || '-'}`;
+}
+
 function displayStatus(value: string | null): string {
     return value === 'active'
         ? 'Aktif'
@@ -92,6 +108,10 @@ export default function StudentProfile({ user, student }: Props) {
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [photoError, setPhotoError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const resetPasswordForm = useRef<(() => void) | null>(null);
+    const currentPasswordInput = useRef<HTMLInputElement>(null);
+    const passwordInput = useRef<HTMLInputElement>(null);
 
     const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0] ?? null;
@@ -108,7 +128,9 @@ export default function StudentProfile({ user, student }: Props) {
 
                 return null;
             });
-            setPhotoError('Foto harus berupa gambar dengan ukuran maksimal 1 MB.');
+            setPhotoError(
+                'Foto harus berupa gambar dengan ukuran maksimal 1 MB.',
+            );
             event.target.value = '';
 
             return;
@@ -149,7 +171,9 @@ export default function StudentProfile({ user, student }: Props) {
                     setProcessing(false);
                 },
                 onError: (errors) => {
-                    setPhotoError(errors.photo ?? 'Foto tidak dapat diperbarui.');
+                    setPhotoError(
+                        errors.photo ?? 'Foto tidak dapat diperbarui.',
+                    );
                     setProcessing(false);
                 },
             },
@@ -187,7 +211,7 @@ export default function StudentProfile({ user, student }: Props) {
                 </div>
 
                 <div className="flex flex-col items-center rounded-2xl border bg-card p-5 text-center">
-                    <div className="relative size-36 overflow-hidden rounded-full bg-violet-100 text-violet-700 shadow-sm">
+                    <div className="relative aspect-[2/3] w-32 overflow-hidden rounded-xl bg-violet-100 text-violet-700 shadow-sm sm:w-36">
                         {displayedPhoto ? (
                             <img
                                 src={displayedPhoto}
@@ -196,11 +220,14 @@ export default function StudentProfile({ user, student }: Props) {
                             />
                         ) : (
                             <div className="grid size-full place-items-center">
-                                <UserRound className="size-10" aria-hidden="true" />
+                                <UserRound
+                                    className="size-10"
+                                    aria-hidden="true"
+                                />
                             </div>
                         )}
                     </div>
-                    <div className="mt-4 min-w-0 max-w-full">
+                    <div className="mt-4 max-w-full min-w-0">
                         <p className="truncate font-semibold">
                             {student?.full_name ?? user.name}
                         </p>
@@ -208,6 +235,16 @@ export default function StudentProfile({ user, student }: Props) {
                             <Mail className="size-3.5" aria-hidden="true" />
                             {user.email}
                         </p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-3"
+                            onClick={() => setPasswordDialogOpen(true)}
+                        >
+                            <KeyRound className="size-4" aria-hidden="true" />
+                            Ganti password
+                        </Button>
                     </div>
                 </div>
 
@@ -222,7 +259,10 @@ export default function StudentProfile({ user, student }: Props) {
                                     htmlFor="student-profile-photo"
                                     className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium hover:bg-muted"
                                 >
-                                    <Camera className="size-4" aria-hidden="true" />
+                                    <Camera
+                                        className="size-4"
+                                        aria-hidden="true"
+                                    />
                                     Pilih foto
                                 </label>
                                 <Input
@@ -239,14 +279,19 @@ export default function StudentProfile({ user, student }: Props) {
                                         onClick={submitPhoto}
                                         disabled={processing}
                                     >
-                                        {processing ? 'Menyimpan...' : 'Simpan foto'}
+                                        {processing
+                                            ? 'Menyimpan...'
+                                            : 'Simpan foto'}
                                     </Button>
                                 )}
                             </div>
                             <p className="mt-2 text-xs text-muted-foreground">
                                 Gunakan gambar maksimal 1 MB.
                             </p>
-                            <InputError message={photoError ?? undefined} className="mt-2" />
+                            <InputError
+                                message={photoError ?? undefined}
+                                className="mt-2"
+                            />
                         </div>
 
                         <div className="rounded-2xl border bg-card px-4">
@@ -254,10 +299,19 @@ export default function StudentProfile({ user, student }: Props) {
                                 Data siswa
                             </h3>
                             <dl>
-                                <InfoRow label="NIS" value={student.nis ?? '-'} />
+                                <InfoRow
+                                    label="NIS / NISN"
+                                    value={formatStudentNumbers(
+                                        student.nis,
+                                        student.nisn,
+                                    )}
+                                />
                                 <InfoRow
                                     label="Tahun angkatan"
-                                    value={student.tahun_angkatan?.toString() ?? '-'}
+                                    value={
+                                        student.tahun_angkatan?.toString() ??
+                                        '-'
+                                    }
                                 />
                                 <InfoRow
                                     label="Jenis kelamin"
@@ -274,7 +328,10 @@ export default function StudentProfile({ user, student }: Props) {
                                             .join(', ') || '-'
                                     }
                                 />
-                                <InfoRow label="Alamat" value={student.address ?? '-'} />
+                                <InfoRow
+                                    label="Alamat"
+                                    value={student.address ?? '-'}
+                                />
                                 <InfoRow
                                     label="Status"
                                     value={displayStatus(student.status)}
@@ -289,14 +346,137 @@ export default function StudentProfile({ user, student }: Props) {
                     </div>
                 )}
 
+                <Dialog
+                    open={passwordDialogOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            resetPasswordForm.current?.();
+                        }
+
+                        setPasswordDialogOpen(open);
+                    }}
+                >
+                    <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Ganti password</DialogTitle>
+                            <DialogDescription>
+                                Gunakan password baru yang kuat dan jangan
+                                bagikan kepada orang lain.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Form
+                            action="/student/profile/password"
+                            method="put"
+                            options={{ preserveScroll: true }}
+                            resetOnError={['password', 'password_confirmation']}
+                            resetOnSuccess
+                            onSuccess={() => {
+                                setPasswordDialogOpen(false);
+                                resetPasswordForm.current?.();
+                            }}
+                            onError={(errors) => {
+                                if (errors.current_password) {
+                                    currentPasswordInput.current?.focus();
+                                } else if (errors.password) {
+                                    passwordInput.current?.focus();
+                                }
+                            }}
+                            className="grid gap-4"
+                        >
+                            {({
+                                errors,
+                                processing: passwordProcessing,
+                                resetAndClearErrors,
+                            }) => {
+                                resetPasswordForm.current = resetAndClearErrors;
+
+                                return (
+                                    <>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="student-current-password">
+                                                Password saat ini
+                                            </Label>
+                                            <PasswordInput
+                                                id="student-current-password"
+                                                ref={currentPasswordInput}
+                                                name="current_password"
+                                                autoComplete="current-password"
+                                                placeholder="Masukkan password saat ini"
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors.current_password
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="student-password">
+                                                Password baru
+                                            </Label>
+                                            <PasswordInput
+                                                id="student-password"
+                                                ref={passwordInput}
+                                                name="password"
+                                                autoComplete="new-password"
+                                                placeholder="Masukkan password baru"
+                                            />
+                                            <InputError
+                                                message={errors.password}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="student-password-confirmation">
+                                                Konfirmasi password baru
+                                            </Label>
+                                            <PasswordInput
+                                                id="student-password-confirmation"
+                                                name="password_confirmation"
+                                                autoComplete="new-password"
+                                                placeholder="Ulangi password baru"
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors.password_confirmation
+                                                }
+                                            />
+                                        </div>
+                                        <DialogFooter>
+                                            <DialogClose asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        resetAndClearErrors()
+                                                    }
+                                                >
+                                                    Batal
+                                                </Button>
+                                            </DialogClose>
+                                            <Button
+                                                type="submit"
+                                                disabled={passwordProcessing}
+                                            >
+                                                {passwordProcessing
+                                                    ? 'Menyimpan...'
+                                                    : 'Simpan password'}
+                                            </Button>
+                                        </DialogFooter>
+                                    </>
+                                );
+                            }}
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+
                 <div className="flex items-start gap-3 rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
                     <CalendarDays
                         className="mt-0.5 size-5 shrink-0 text-violet-700"
                         aria-hidden="true"
                     />
                     <p>
-                        Data profil selain foto dikelola oleh administrator sekolah.
-                        Hubungi administrator jika ada informasi yang perlu diperbarui.
+                        Data profil selain foto dikelola oleh administrator
+                        sekolah. Hubungi administrator jika ada informasi yang
+                        perlu diperbarui.
                     </p>
                 </div>
             </section>

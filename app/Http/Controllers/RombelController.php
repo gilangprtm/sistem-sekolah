@@ -39,7 +39,9 @@ class RombelController extends Controller
             throw ValidationException::withMessages(['parallel_code' => 'Kode Rombel sudah digunakan.']);
         }
 
-        return redirect()->route('rombels.index')->with('success', 'Rombel berhasil dibuat.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Rombel berhasil dibuat.']);
+
+        return redirect()->route('rombels.index');
     }
 
     public function update(RombelRequest $request, Rombel $rombel): RedirectResponse
@@ -50,13 +52,17 @@ class RombelController extends Controller
             throw ValidationException::withMessages(['parallel_code' => 'Kode Rombel sudah digunakan.']);
         }
 
-        return redirect()->route('rombels.index')->with('success', 'Rombel berhasil diperbarui.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Rombel berhasil diperbarui.']);
+
+        return redirect()->route('rombels.index');
     }
 
     public function archive(Rombel $rombel): RedirectResponse
     {
         $rombel->update(['status' => 'inactive']);
 
-        return redirect()->route('rombels.index')->with('success', 'Rombel diarsipkan.');
+        Inertia::flash('toast', ['type' => 'error', 'message' => 'Rombel diarsipkan.']);
+
+        return redirect()->route('rombels.index');
     }
 }
