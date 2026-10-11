@@ -27,6 +27,7 @@ export default function StudentAppLayout({
     const isProfile = currentPath === '/student/profile';
     const isSchedule = currentPath === '/student/schedule';
     const isChatbot = currentPath === '/student/chatbot';
+    const isKantin = currentPath === '/student/kantin';
     const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {
@@ -67,25 +68,32 @@ export default function StudentAppLayout({
                         <div className="h-full w-1/3 animate-[pulse_1.2s_ease-in-out_infinite] bg-violet-700" />
                     </div>
                 )}
-                {!isDashboard && !isProfile && !isSchedule && !isChatbot && (
-                    <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 pt-[max(.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
-                        <Link
-                            href="/student"
-                            aria-label="Kembali ke beranda siswa"
-                            className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700"
-                        >
-                            <ArrowLeft className="size-5" aria-hidden="true" />
-                        </Link>
-                        <div>
-                            <p className="text-xs text-muted-foreground">
-                                Portal Siswa
-                            </p>
-                            <h1 className="text-sm font-semibold">
-                                Kembali ke beranda
-                            </h1>
-                        </div>
-                    </header>
-                )}
+                {!isDashboard &&
+                    !isProfile &&
+                    !isSchedule &&
+                    !isChatbot &&
+                    !isKantin && (
+                        <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 pt-[max(.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
+                            <Link
+                                href="/student"
+                                aria-label="Kembali ke beranda siswa"
+                                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700"
+                            >
+                                <ArrowLeft
+                                    className="size-5"
+                                    aria-hidden="true"
+                                />
+                            </Link>
+                            <div>
+                                <p className="text-xs text-muted-foreground">
+                                    Portal Siswa
+                                </p>
+                                <h1 className="text-sm font-semibold">
+                                    Kembali ke beranda
+                                </h1>
+                            </div>
+                        </header>
+                    )}
 
                 <main className="flex-1 px-4 py-5 pb-28">{children}</main>
 

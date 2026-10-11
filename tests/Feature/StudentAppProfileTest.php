@@ -22,6 +22,118 @@ class StudentAppProfileTest extends TestCase
         $this->seed(RolePermissionSeeder::class);
     }
 
+    public function test_student_can_create_kantin_pin_without_exposing_hash(): void
+    {
+        $user = User::factory()->create(['password' => 'password']);
+        $user->assignRole('Siswa');
+        $student = Student::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->put(route('student-app.profile.kantin-pin'), [
+                'current_password' => 'password',
+                'pin' => '123456',
+                'pin_confirmation' => '123456',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('inertia.flash_data.toast.message', 'PIN Kantin berhasil dibuat.');
+
+        $student->refresh();
+        $this->assertNotSame('123456', $student->kantin_pin_hash);
+        $this->assertNotNull($student->kantin_pin_hash);
+        $this->assertStringNotContainsString('123456', json_encode($this->actingAs($user)->get(route('student-app.profile'))->inertiaPage()['props']));
+    }
+
+    public function test_student_can_change_kantin_pin_with_current_password(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('password')]);
+        $user->assignRole('Siswa');
+        $student = Student::factory()->create([
+            'user_id' => $user->id,
+            'kantin_pin_hash' => Hash::make('123456'),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('student-app.profile.kantin-pin'), [
+                'current_password' => 'password',
+                'pin' => '654321',
+                'pin_confirmation' => '654321',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('inertia.flash_data.toast.message', 'PIN Kantin berhasil diganti.');
+
+        $this->assertTrue(Hash::check('654321', $student->refresh()->kantin_pin_hash));
+    }
+
+    public function test_student_can_reset_kantin_pin_with_current_password_and_confirmation(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('password')]);
+        $user->assignRole('Siswa');
+        $student = Student::factory()->create([
+            'user_id' => $user->id,
+            'kantin_pin_hash' => Hash::make('123456'),
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('student-app.profile.kantin-pin.reset'), [
+                'current_password' => 'password',
+                'confirmation' => true,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('inertia.flash_data.toast.message', 'PIN Kantin berhasil direset.');
+
+        $this->assertNull($student->refresh()->kantin_pin_hash);
+    }
+
+    public function test_student_kantin_pin_mutations_reject_wrong_password_and_missing_reset_confirmation(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('password')]);
+        $user->assignRole('Siswa');
+        $student = Student::factory()->create([
+            'user_id' => $user->id,
+            'kantin_pin_hash' => Hash::make('123456'),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('student-app.profile.kantin-pin'), [
+                'current_password' => 'wrong',
+                'pin' => '654321',
+                'pin_confirmation' => '654321',
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        $this->actingAs($user)
+            ->delete(route('student-app.profile.kantin-pin.reset'), [
+                'current_password' => 'password',
+            ])
+            ->assertSessionHasErrors('confirmation');
+
+        $this->assertTrue(Hash::check('123456', $student->refresh()->kantin_pin_hash));
+    }
+
+    public function test_student_kantin_page_is_available_and_reports_pin_state_without_hash(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+        Student::factory()->create([
+            'user_id' => $user->id,
+            'kantin_pin_hash' => Hash::make('123456'),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('student-app.kantin'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('student-app/kantin')
+                ->where('has_kantin_pin', true)
+                ->missing('kantin_pin_hash'));
+
+        $source = file_get_contents(resource_path('js/pages/student-app/dashboard.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringNotContainsString('Segera tersedia', $source);
+        $this->assertStringNotContainsString('Buat PIN</button>', $source);
+        $this->assertStringContainsString("'/student/kantin'", $source);
+    }
+
     public function test_student_can_view_profile_with_linked_student_data(): void
     {
         $user = User::factory()->create(['name' => 'Akun Siswa']);

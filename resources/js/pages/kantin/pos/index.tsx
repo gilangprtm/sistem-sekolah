@@ -1,6 +1,5 @@
 import { Head } from '@inertiajs/react';
 import {
-    Camera,
     LogOut,
     Minus,
     Plus,
@@ -28,6 +27,7 @@ type IdentifiedStudent = {
     nis: string | null;
     balance: string;
 };
+type PinChallenge = { token: string };
 
 const rupiah = (amount: number) =>
     new Intl.NumberFormat('id-ID', {
@@ -38,6 +38,8 @@ const rupiah = (amount: number) =>
 
 export default function KantinPos({ categories, products }: Props) {
     const [student, setStudent] = useState<IdentifiedStudent | null>(null);
+    const [pinChallenge, setPinChallenge] = useState<PinChallenge | null>(null);
+    const [pin, setPin] = useState('');
     const [verificationToken, setVerificationToken] = useState('');
     const [qr, setQr] = useState('');
     const [scanning, setScanning] = useState(false);
@@ -97,6 +99,14 @@ export default function KantinPos({ categories, products }: Props) {
             }
 
             stopCamera();
+
+            if (data.pin_required) {
+                setPinChallenge({ token: data.challenge_token as string });
+                setPin('');
+
+                return;
+            }
+
             setStudent(data.student as IdentifiedStudent);
             setVerificationToken(data.verification_token as string);
             setCart({});
@@ -207,6 +217,56 @@ export default function KantinPos({ categories, products }: Props) {
         ),
     });
 
+    async function verifyPin() {
+        if (!pinChallenge || pin.length !== 6 || busy) {
+            return;
+        }
+
+        setBusy(true);
+        setError('');
+
+        try {
+            const response = await fetch('/kantin/pos/verify-pin', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: csrfHeaders(),
+                body: JSON.stringify({
+                    challenge_token: pinChallenge.token,
+                    pin,
+                }),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 429) {
+                    setPinChallenge(null);
+                    setPin('');
+                    setStudent(null);
+                    setVerificationToken('');
+                    setCart({});
+                }
+
+                throw new Error(
+                    data.message ?? 'PIN tidak dapat diverifikasi.',
+                );
+            }
+
+            setPinChallenge(null);
+            setPin('');
+            setStudent(data.student as IdentifiedStudent);
+            setVerificationToken(data.verification_token as string);
+            setCart({});
+        } catch (cause) {
+            setError(
+                cause instanceof Error
+                    ? cause.message
+                    : 'PIN tidak dapat diverifikasi.',
+            );
+        } finally {
+            setBusy(false);
+        }
+    }
+
     async function checkout() {
         if (!student || !count || paying || total > Number(student.balance)) {
             return;
@@ -286,6 +346,8 @@ export default function KantinPos({ categories, products }: Props) {
         setCart({});
         setStudent(null);
         setVerificationToken('');
+        setPinChallenge(null);
+        setPin('');
         setQr('');
         setSearch('');
         setCategory(null);
@@ -307,6 +369,73 @@ export default function KantinPos({ categories, products }: Props) {
         });
     }
 
+    if (pinChallenge && !student) {
+        return (
+            <div className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#160F42] p-5">
+                <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl">
+                    <img
+                        src="/images/logo-sekolah.png"
+                        alt="Logo SMPN 17 Denpasar"
+                        className="mx-auto mb-5 size-16 object-contain"
+                    />
+                    <h1 className="text-2xl font-bold text-[#160F42]">
+                        Masukkan PIN Kantin
+                    </h1>
+                    <p className="mt-3 text-sm text-slate-500">
+                        PIN diperlukan sebelum memilih barang.
+                    </p>
+                    <form
+                        className="mt-6 space-y-4"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            void verifyPin();
+                        }}
+                    >
+                        <input
+                            type="password"
+                            value={pin}
+                            onChange={(event) =>
+                                setPin(
+                                    event.target.value
+                                        .replace(/\D/g, '')
+                                        .slice(0, 6),
+                                )
+                            }
+                            inputMode="numeric"
+                            autoComplete="off"
+                            maxLength={6}
+                            className="min-h-14 w-full rounded-xl border-2 border-[#160F42] bg-white px-4 text-center text-2xl tracking-[0.5em] text-black caret-black placeholder:text-black focus-visible:border-[#160F42] focus-visible:ring-2 focus-visible:ring-[#160F42]/30"
+                            aria-label="PIN Kantin"
+                        />
+                        <button
+                            type="submit"
+                            disabled={busy || pin.length !== 6}
+                            className="min-h-14 w-full rounded-2xl bg-[#160F42] font-semibold text-white disabled:opacity-50"
+                        >
+                            {busy ? 'Memeriksa...' : 'Lanjutkan'}
+                        </button>
+                    </form>
+                    {error && (
+                        <p role="alert" className="mt-4 text-sm text-red-600">
+                            {error}
+                        </p>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setPinChallenge(null);
+                            setPin('');
+                            setError('');
+                        }}
+                        className="mt-4 text-sm text-slate-500 underline"
+                    >
+                        Kembali scan
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     if (!student) {
         return (
             <div
@@ -321,8 +450,12 @@ export default function KantinPos({ categories, products }: Props) {
                     aria-hidden="true"
                 />
                 <div className="relative w-full max-w-md rounded-3xl border border-white/60 bg-white/95 p-8 text-center shadow-2xl backdrop-blur-sm">
-                    <div className="mx-auto mb-5 grid size-20 place-items-center rounded-3xl bg-[#EDEAF5]">
-                        <Camera className="size-10 text-[#160F42]" />
+                    <div className="mx-auto mb-5 grid size-20 place-items-center rounded-3xl bg-[#EDEAF5] p-3">
+                        <img
+                            src="/images/logo-sekolah.png"
+                            alt="Logo SMPN 17 Denpasar"
+                            className="size-full object-contain"
+                        />
                     </div>
                     <p className="text-sm font-semibold text-[#160F42]">
                         SMPN 17 DENPASAR

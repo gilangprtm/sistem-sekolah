@@ -9,12 +9,17 @@ use App\Services\KantinPosService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class KantinPosController extends Controller
 {
     private const VERIFICATION_TOKEN_TTL_MINUTES = 10;
+
+    private const PIN_CHALLENGE_TTL_MINUTES = 5;
+
+    private const MAX_PIN_ATTEMPTS = 3;
 
     public function identify(Request $request): JsonResponse
     {
@@ -29,22 +34,75 @@ class KantinPosController extends Controller
             return response()->json(['message' => 'Kartu pelajar tidak ditemukan atau siswa tidak aktif.'], 404);
         }
 
+        if ($student->kantin_pin_hash === null) {
+            return response()->json(['message' => 'Buat PIN terlebih dulu di aplikasi Portal Siswa'], 409);
+        }
+
+        $challengeToken = bin2hex(random_bytes(32));
+        Cache::put(
+            $this->pinChallengeKey($challengeToken),
+            [
+                'student_id' => $student->id,
+                'session_binding' => $this->sessionBinding($request),
+                'attempts' => 0,
+            ],
+            now()->addMinutes(self::PIN_CHALLENGE_TTL_MINUTES),
+        );
+
+        return response()->json([
+            'pin_required' => true,
+            'challenge_token' => $challengeToken,
+        ]);
+    }
+
+    public function verifyPin(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'challenge_token' => ['required', 'string', 'size:64'],
+            'pin' => ['required', 'digits:6'],
+        ]);
+        $key = $this->pinChallengeKey($data['challenge_token']);
+        $challenge = Cache::get($key);
+
+        if (! is_array($challenge) || ($challenge['session_binding'] ?? null) !== $this->sessionBinding($request)) {
+            return response()->json(['message' => 'Sesi PIN tidak valid. Silakan scan ulang.'], 403);
+        }
+
+        $student = Student::query()->with('kantinSaldo:id,student_id,saldo')->whereKey($challenge['student_id'] ?? 0)->where('status', 'active')->first();
+        if ($student === null || $student->kantin_pin_hash === null) {
+            Cache::forget($key);
+
+            return response()->json(['message' => 'Sesi PIN tidak valid. Silakan scan ulang.'], 403);
+        }
+
+        if (! Hash::check($data['pin'], $student->kantin_pin_hash)) {
+            $attempts = ((int) ($challenge['attempts'] ?? 0)) + 1;
+
+            if ($attempts >= self::MAX_PIN_ATTEMPTS) {
+                Cache::forget($key);
+                $request->session()->forget('pos_student');
+
+                return response()->json(['message' => 'PIN salah 3 kali. Silakan scan ulang.'], 429);
+            }
+
+            $challenge['attempts'] = $attempts;
+            Cache::put($key, $challenge, now()->addMinutes(self::PIN_CHALLENGE_TTL_MINUTES));
+
+            return response()->json(['message' => 'PIN salah. Silakan coba lagi.', 'attempts_remaining' => self::MAX_PIN_ATTEMPTS - $attempts], 422);
+        }
+
+        Cache::forget($key);
         $request->session()->put('pos_student', $student->id);
         $verificationToken = bin2hex(random_bytes(32));
         Cache::put(
             $this->verificationTokenKey($verificationToken),
-            $student->id,
+            ['student_id' => $student->id, 'session_binding' => $this->sessionBinding($request)],
             now()->addMinutes(self::VERIFICATION_TOKEN_TTL_MINUTES),
         );
 
         return response()->json([
             'verification_token' => $verificationToken,
-            'student' => [
-                'id' => $student->id,
-                'name' => $student->full_name,
-                'nis' => $student->nis,
-                'balance' => $student->kantinSaldo?->saldo ?? '0.00',
-            ],
+            'student' => $this->studentPayload($student),
         ]);
     }
 
@@ -55,29 +113,18 @@ class KantinPosController extends Controller
             'items.*.product_id' => ['required', 'integer', 'distinct'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
             'student_id' => ['prohibited'],
-            'verification_token' => ['nullable', 'string', 'size:64'],
+            'verification_token' => ['required', 'string', 'size:64'],
         ]);
-
+        $token = Cache::get($this->verificationTokenKey($data['verification_token']));
         $sessionStudentId = $request->session()->get('pos_student');
-        $tokenStudentId = null;
-        if ($data['verification_token'] ?? null) {
-            $tokenStudentId = Cache::get($this->verificationTokenKey($data['verification_token']));
-        }
 
-        if ($sessionStudentId && $tokenStudentId && (int) $sessionStudentId !== (int) $tokenStudentId) {
+        if (! is_array($token) || ($token['session_binding'] ?? null) !== $this->sessionBinding($request) || ! $sessionStudentId || (int) $sessionStudentId !== (int) ($token['student_id'] ?? 0)) {
             return response()->json(['message' => 'Sesi kartu tidak valid. Silakan scan ulang.'], 403);
         }
 
-        $id = $sessionStudentId ?? $tokenStudentId;
-        if (! $id) {
-            return response()->json(['message' => 'Scan kartu terlebih dahulu.'], 403);
-        }
-
-        $student = Student::query()->whereKey($id)->where('status', 'active')->firstOrFail();
+        $student = Student::query()->whereKey($token['student_id'])->where('status', 'active')->firstOrFail();
         $result = $service->checkout($student, $data['items']);
-        if ($data['verification_token'] ?? null) {
-            Cache::forget($this->verificationTokenKey($data['verification_token']));
-        }
+        Cache::forget($this->verificationTokenKey($data['verification_token']));
         $request->session()->forget('pos_student');
 
         return response()->json(['message' => 'Pembayaran berhasil.', ...$result]);
@@ -93,6 +140,36 @@ class KantinPosController extends Controller
     private function verificationTokenKey(string $token): string
     {
         return 'kantin-pos-verification:'.hash('sha256', $token);
+    }
+
+    private function pinChallengeKey(string $token): string
+    {
+        return 'kantin-pos-pin-challenge:'.hash('sha256', $token);
+    }
+
+    private function sessionBinding(Request $request): string
+    {
+        $binding = $request->session()->get('pos_pin_binding');
+
+        if (! is_string($binding)) {
+            $binding = bin2hex(random_bytes(32));
+            $request->session()->put('pos_pin_binding', $binding);
+        }
+
+        return hash('sha256', $binding);
+    }
+
+    /**
+     * @return array{id: int, name: string, nis: string|null, balance: string}
+     */
+    private function studentPayload(Student $student): array
+    {
+        return [
+            'id' => $student->id,
+            'name' => $student->full_name,
+            'nis' => $student->nis,
+            'balance' => $student->kantinSaldo->saldo ?? '0.00',
+        ];
     }
 
     public function index(): Response

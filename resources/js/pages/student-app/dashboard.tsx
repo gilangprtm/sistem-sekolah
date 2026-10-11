@@ -1,9 +1,8 @@
-import { Deferred, Head } from '@inertiajs/react';
+import { Deferred, Head, Link } from '@inertiajs/react';
 import {
     ArrowUpRight,
     Bell,
     BookOpen,
-    CalendarDays,
     CircleHelp,
     Download,
     Ellipsis,
@@ -36,6 +35,7 @@ type Props = {
         full_name: string;
         nis: string | null;
         photo_url: string | null;
+        has_kantin_pin: boolean;
     } | null;
     rombel: string | null;
 };
@@ -277,17 +277,24 @@ export default function StudentDashboard({ student, news }: Props) {
                 <div>
                     <div className="mb-3 flex items-center justify-between">
                         <h3 className="font-semibold">Layanan Siswa</h3>
-                        <span className="text-xs text-muted-foreground">
-                            Segera tersedia
-                        </span>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
                         {menuItems.map(({ label, icon: Icon }, index) => (
-                            <div
+                            <Link
                                 key={label}
-                                aria-disabled="true"
+                                href={
+                                    label === 'Kantin' ? '/student/kantin' : '#'
+                                }
+                                aria-disabled={
+                                    label === 'Kantin' ? undefined : 'true'
+                                }
                                 className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border bg-card px-2 py-3 text-center shadow-xs"
+                                onClick={
+                                    label === 'Kantin'
+                                        ? undefined
+                                        : (event) => event.preventDefault()
+                                }
                             >
                                 <span
                                     className={[
@@ -304,7 +311,7 @@ export default function StudentDashboard({ student, news }: Props) {
                                 <span className="text-xs font-medium">
                                     {label}
                                 </span>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </div>

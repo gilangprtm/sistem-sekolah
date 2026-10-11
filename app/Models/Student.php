@@ -17,6 +17,7 @@ class Student extends Model
 
     protected $hidden = [
         'photo_path',
+        'kantin_pin_hash',
     ];
 
     protected $fillable = [
@@ -36,6 +37,7 @@ class Student extends Model
         'mother_occupation',
         'father_occupation',
         'parent_phone',
+        'kantin_pin_hash',
         'status',
     ];
 

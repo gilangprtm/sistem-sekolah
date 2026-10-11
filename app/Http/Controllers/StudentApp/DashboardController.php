@@ -8,9 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Throwable;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class DashboardController extends Controller
 {
@@ -30,9 +30,12 @@ class DashboardController extends Controller
         return Inertia::render('student-app/dashboard', [
             'student' => $student === null ? null : array_merge(
                 $student->only(['full_name', 'nis']),
-                ['photo_url' => $this->photoUrl($student->photo_path)],
+                [
+                    'photo_url' => $this->photoUrl($student->photo_path),
+                    'has_kantin_pin' => $student->kantin_pin_hash !== null,
+                ],
             ),
-            'rombel' => $placement?->rombel?->name ?? $placement?->rombel?->code,
+            'rombel' => $placement?->rombel->name ?? $placement?->rombel->code,
             'news' => Inertia::defer(fn (): array => $this->schoolNews()),
         ]);
     }
@@ -59,8 +62,11 @@ class DashboardController extends Controller
                     return [];
                 }
 
-                return collect($response->json('data', []))
-                    ->filter(fn ($post) => is_array($post) && isset($post['title'], $post['url']))
+                /** @var array<int, array<string, mixed>> $posts */
+                $posts = $response->json('data', []);
+
+                return collect($posts)
+                    ->filter(fn (array $post): bool => isset($post['title'], $post['url']))
                     ->take(5)
                     ->map(function (array $post): array {
                         if (isset($post['imageUrl']) && is_string($post['imageUrl'])) {
@@ -74,8 +80,8 @@ class DashboardController extends Controller
                                 && is_string($query['id'])
                             ) {
                                 $post['imageUrl'] = 'https://drive.google.com/thumbnail?id='
-                                    . rawurlencode($query['id'])
-                                    . '&sz=w1200';
+                                    .rawurlencode($query['id'])
+                                    .'&sz=w1200';
                             }
                         }
 
