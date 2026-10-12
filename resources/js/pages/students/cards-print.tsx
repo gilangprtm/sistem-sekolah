@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Download, LoaderCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import { StudentCardVisual } from '@/components/student-card-visual';
@@ -60,15 +60,28 @@ function archiveName(filters: Props['filters'], count: number): string {
     return `kartu-pelajar-${suffix}-${count}-siswa.zip`;
 }
 
-function crc32(bytes: Uint8Array): number {
+async function crc32(blob: Blob): Promise<number> {
     let crc = 0xffffffff;
+    const reader = blob.stream().getReader();
 
-    for (const byte of bytes) {
-        crc ^= byte;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
 
-        for (let bit = 0; bit < 8; bit += 1) {
-            crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+            if (done) {
+                break;
+            }
+
+            for (const byte of value) {
+                crc ^= byte;
+
+                for (let bit = 0; bit < 8; bit += 1) {
+                    crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+                }
+            }
         }
+    } finally {
+        reader.releaseLock();
     }
 
     return (crc ^ 0xffffffff) >>> 0;
@@ -83,13 +96,27 @@ function writeUint32(view: DataView, offset: number, value: number): void {
 }
 
 async function createZip(files: { name: string; blob: Blob }[]): Promise<Blob> {
-    const localParts: Uint8Array[] = [];
+    if (files.length > 0xffff) {
+        throw new Error('Jumlah kartu melebihi batas format ZIP.');
+    }
+
+    const parts: BlobPart[] = [];
     const centralParts: Uint8Array[] = [];
     let offset = 0;
 
     for (const file of files) {
-        const data = new Uint8Array(await file.blob.arrayBuffer());
+        const size = file.blob.size;
         const name = new TextEncoder().encode(file.name);
+
+        if (
+            size > 0xffffffff ||
+            name.length > 0xffff ||
+            offset + 30 + name.length + size > 0xffffffff
+        ) {
+            throw new Error('Ukuran arsip melebihi batas format ZIP.');
+        }
+
+        const checksum = await crc32(file.blob);
         const local = new Uint8Array(30 + name.length);
         const localView = new DataView(local.buffer);
         writeUint32(localView, 0, 0x04034b50);
@@ -98,12 +125,12 @@ async function createZip(files: { name: string; blob: Blob }[]): Promise<Blob> {
         writeUint16(localView, 8, 0);
         writeUint16(localView, 10, 0);
         writeUint16(localView, 12, 0);
-        writeUint32(localView, 14, crc32(data));
-        writeUint32(localView, 18, data.length);
-        writeUint32(localView, 22, data.length);
+        writeUint32(localView, 14, checksum);
+        writeUint32(localView, 18, size);
+        writeUint32(localView, 22, size);
         writeUint16(localView, 26, name.length);
         local.set(name, 30);
-        localParts.push(local, data);
+        parts.push(local, file.blob);
 
         const central = new Uint8Array(46 + name.length);
         const centralView = new DataView(central.buffer);
@@ -114,9 +141,9 @@ async function createZip(files: { name: string; blob: Blob }[]): Promise<Blob> {
         writeUint16(centralView, 10, 0);
         writeUint16(centralView, 12, 0);
         writeUint16(centralView, 14, 0);
-        writeUint32(centralView, 16, crc32(data));
-        writeUint32(centralView, 20, data.length);
-        writeUint32(centralView, 24, data.length);
+        writeUint32(centralView, 16, checksum);
+        writeUint32(centralView, 20, size);
+        writeUint32(centralView, 24, size);
         writeUint16(centralView, 28, name.length);
         writeUint16(centralView, 30, 0);
         writeUint16(centralView, 32, 0);
@@ -126,13 +153,18 @@ async function createZip(files: { name: string; blob: Blob }[]): Promise<Blob> {
         writeUint32(centralView, 42, offset);
         central.set(name, 46);
         centralParts.push(central);
-        offset += local.length + data.length;
+        offset += local.length + size;
     }
 
     const centralSize = centralParts.reduce(
         (sum, part) => sum + part.length,
         0,
     );
+
+    if (centralSize > 0xffffffff) {
+        throw new Error('Ukuran arsip melebihi batas format ZIP.');
+    }
+
     const end = new Uint8Array(22);
     const endView = new DataView(end.buffer);
     writeUint32(endView, 0, 0x06054b50);
@@ -141,15 +173,13 @@ async function createZip(files: { name: string; blob: Blob }[]): Promise<Blob> {
     writeUint32(endView, 12, centralSize);
     writeUint32(endView, 16, offset);
 
-    const archiveBytes = new Uint8Array(offset + centralSize + end.length);
-    let position = 0;
-
-    for (const part of [...localParts, ...centralParts, end]) {
-        archiveBytes.set(part, position);
-        position += part.length;
+    for (const part of centralParts) {
+        parts.push(part);
     }
 
-    return new Blob([archiveBytes.buffer], { type: 'application/zip' });
+    parts.push(end);
+
+    return new Blob(parts, { type: 'application/zip' });
 }
 
 function getCardElement(id: number): HTMLElement {
@@ -167,11 +197,13 @@ function getCardElement(id: number): HTMLElement {
 async function downloadCards(
     students: StudentCard[],
     filters: Props['filters'],
+    prepareCard: (student: StudentCard) => Promise<void>,
     onProgress?: (completed: number, total: number) => void,
 ): Promise<void> {
-    const files = [];
+    const files: { name: string; blob: Blob }[] = [];
 
     for (const [index, student] of students.entries()) {
+        await prepareCard(student);
         files.push({
             name: fileNameForStudent(
                 student.student.full_name,
@@ -185,6 +217,7 @@ async function downloadCards(
     }
 
     const archive = await createZip(files);
+    files.length = 0;
     const url = URL.createObjectURL(archive);
     const link = document.createElement('a');
     link.href = url;
@@ -198,10 +231,68 @@ async function downloadCards(
 
 export default function StudentCardsPrint({ students, filters }: Props) {
     const [isDownloading, setIsDownloading] = useState(false);
+    const [activeStudent, setActiveStudent] = useState<StudentCard | null>(
+        students[0] ?? null,
+    );
+    const [readyStudentId, setReadyStudentId] = useState<number | null>(null);
     const [downloadProgress, setDownloadProgress] = useState({
         completed: 0,
         total: students.length,
     });
+    const activeStudentIdRef = useRef<number | null>(
+        students[0]?.student.id ?? null,
+    );
+    const readyStudentIdRef = useRef<number | null>(null);
+    const pendingCardReadyRef = useRef<{
+        studentId: number;
+        resolve: () => void;
+    } | null>(null);
+
+    const handleCardReady = useCallback(
+        (studentId: number, ready: boolean) => {
+            if (activeStudentIdRef.current !== studentId) {
+                return;
+            }
+
+            readyStudentIdRef.current = ready ? studentId : null;
+            setReadyStudentId(ready ? studentId : null);
+
+            const pending = pendingCardReadyRef.current;
+
+            if (ready && pending?.studentId === studentId) {
+                pendingCardReadyRef.current = null;
+                pending.resolve();
+            }
+        },
+        [],
+    );
+    const prepareCard = useCallback((student: StudentCard): Promise<void> => {
+        const studentId = student.student.id;
+
+        if (readyStudentIdRef.current === studentId) {
+            return Promise.resolve();
+        }
+
+        activeStudentIdRef.current = studentId;
+        readyStudentIdRef.current = null;
+        setReadyStudentId(null);
+
+        return new Promise<void>((resolve) => {
+            pendingCardReadyRef.current = { studentId, resolve };
+            setActiveStudent(student);
+        });
+    }, []);
+    const cardReady =
+        activeStudent !== null && readyStudentId === activeStudent.student.id;
+    const activeStudentId = activeStudent?.student.id ?? null;
+    const reportCardReady = useCallback(
+        (ready: boolean) => {
+            if (activeStudentId !== null) {
+                handleCardReady(activeStudentId, ready);
+            }
+        },
+        [activeStudentId, handleCardReady],
+    );
     const backQuery = new URLSearchParams(
         Object.entries(filters).filter(([, value]) => value !== undefined),
     ).toString();
@@ -214,7 +305,7 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                     <Heading
                         variant="small"
                         title="Unduh Semua Kartu Pelajar"
-                        description={`${students.length} kartu siap diunduh sebagai ZIP`}
+                        description={`${students.length} siswa cocok dengan filter aktif`}
                     />
                     <div className="flex gap-2">
                         {isDownloading ? (
@@ -232,47 +323,61 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                                 </Link>
                             </Button>
                         )}
-                        <Button
-                            disabled={isDownloading || students.length === 0}
-                            onClick={async () => {
-                                setIsDownloading(true);
-                                setDownloadProgress({
-                                    completed: 0,
-                                    total: students.length,
-                                });
+                        {students.length > 0 &&
+                            (isDownloading || cardReady) && (
+                                <Button
+                                    disabled={isDownloading}
+                                    onClick={async () => {
+                                        setIsDownloading(true);
+                                        setDownloadProgress({
+                                            completed: 0,
+                                            total: students.length,
+                                        });
 
-                                try {
-                                    await downloadCards(
-                                        students,
-                                        filters,
-                                        (completed, total) =>
+                                        try {
+                                            await downloadCards(
+                                                students,
+                                                filters,
+                                                prepareCard,
+                                                (completed, total) =>
+                                                    setDownloadProgress({
+                                                        completed,
+                                                        total,
+                                                    }),
+                                            );
+                                        } catch (error) {
+                                            toast.error(
+                                                error instanceof Error
+                                                    ? error.message
+                                                    : 'Kartu tidak dapat diunduh. Coba lagi.',
+                                            );
+                                        } finally {
+                                            setIsDownloading(false);
                                             setDownloadProgress({
-                                                completed,
-                                                total,
-                                            }),
-                                    );
-                                } catch (error) {
-                                    toast.error(
-                                        error instanceof Error
-                                            ? error.message
-                                            : 'Kartu tidak dapat diunduh. Coba lagi.',
-                                    );
-                                } finally {
-                                    setIsDownloading(false);
-                                    setDownloadProgress({
-                                        completed: 0,
-                                        total: students.length,
-                                    });
-                                }
-                            }}
-                        >
-                            {isDownloading ? (
-                                <LoaderCircle className="animate-spin" />
-                            ) : (
-                                <Download />
+                                                completed: 0,
+                                                total: students.length,
+                                            });
+                                        }
+                                    }}
+                                >
+                                    {isDownloading ? (
+                                        <LoaderCircle className="animate-spin" />
+                                    ) : (
+                                        <Download />
+                                    )}
+                                    {isDownloading ? 'Menyiapkan…' : 'Unduh ZIP'}
+                                </Button>
                             )}
-                            {isDownloading ? 'Menyiapkan…' : 'Unduh ZIP'}
-                        </Button>
+                        {students.length > 0 &&
+                            !cardReady &&
+                            !isDownloading && (
+                                <span
+                                    className="self-center text-sm text-muted-foreground"
+                                    role="status"
+                                >
+                                    Memuat pratinjau kartu…
+                                </span>
+                            )}
                     </div>
                 </div>
 
@@ -313,19 +418,16 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                     </div>
                 )}
 
-                {students.length > 0 && (
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {students.map(({ student, qrCode }) => (
-                            <div
-                                key={student.id}
-                                id={`student-card-${student.id}`}
-                            >
-                                <StudentCardVisual
-                                    student={student}
-                                    qrCode={qrCode}
-                                />
-                            </div>
-                        ))}
+                {activeStudent !== null && (
+                    <div className="mx-auto w-full max-w-[1011px]">
+                        <div id={'student-card-' + activeStudent.student.id}>
+                            <StudentCardVisual
+                                key={activeStudent.student.id}
+                                student={activeStudent.student}
+                                qrCode={activeStudent.qrCode}
+                                onReadyChange={reportCardReady}
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -335,9 +437,8 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                     </div>
                 ) : (
                     <div className="rounded-xl border p-4 text-sm text-muted-foreground">
-                        Semua kartu akan mengikuti template resmi, data siswa,
-                        foto, QR code, dan format tanggal yang sama dengan
-                        halaman kartu individual.
+                        Pratinjau dimuat satu per satu. ZIP akan memuat semua
+                        siswa yang cocok dengan filter aktif.
                     </div>
                 )}
             </div>

@@ -15,6 +15,7 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -51,20 +52,45 @@ class StudentController extends Controller
     public function cardsPrint(Request $request): Response
     {
         $angkatanOptions = $this->studentAngkatanOptions();
-        $students = $this->studentQuery($request, $angkatanOptions)
-            ->get()
-            ->map(fn (Student $student): array => $this->cardPayload($student))
-            ->values();
+        $studentCards = [];
+
+        $this->studentQuery($request, $angkatanOptions)
+            ->select([
+                'id',
+                'user_id',
+                'nis',
+                'nisn',
+                'tahun_angkatan',
+                'full_name',
+                'gender',
+                'birth_place',
+                'birth_date',
+                'address',
+                'photo_path',
+            ])
+            ->chunk(500, function (EloquentCollection $studentChunk) use (&$studentCards): void {
+                foreach ($studentChunk as $student) {
+                    $studentCards[] = $this->cardVisualPayload($student);
+                }
+            });
 
         return Inertia::render('students/cards-print', [
-            'students' => $students,
+            'students' => $studentCards,
             'filters' => $request->only(['search', 'gender', 'status', 'tahun_angkatan']),
         ]);
     }
 
     public function card(Student $student): Response
     {
-        return Inertia::render('students/card', $this->cardPayload($student));
+        $activeYear = AcademicYear::query()->where('status', 'active')->first();
+        $placement = $activeYear === null
+            ? null
+            : $this->activeStudentPlacement($student, $activeYear);
+
+        return Inertia::render(
+            'students/card',
+            $this->cardPayload($student, $activeYear, $placement),
+        );
     }
 
     public function downloadTemplate(): StreamedResponse
@@ -291,27 +317,54 @@ class StudentController extends Controller
         ];
     }
 
+    private function activeStudentPlacement(Student $student, AcademicYear $activeYear): ?StudentPlacement
+    {
+        return StudentPlacement::query()
+            ->with('rombel:id,name,code')
+            ->where('academic_year_id', $activeYear->id)
+            ->where('student_id', $student->id)
+            ->where('status', 'active')
+            ->latest('started_at')
+            ->first();
+    }
+
     /**
      * @return array{student: array{id: int, nis: string|null, nisn: string|null, tahun_angkatan: int|null, full_name: string, gender: string|null, birth_place: string|null, birth_date: string|null, address: string|null, photo_url: string|null}, placement: array{academic_year: string, rombel: string|null}|null, qrPayload: string|null, qrCode: string|null}
      */
-    private function cardPayload(Student $student): array
+    private function cardPayload(
+        Student $student,
+        ?AcademicYear $activeYear,
+        ?StudentPlacement $placement,
+    ): array {
+        $visual = $this->cardVisualPayload($student);
+        $rombel = $placement?->rombel;
+
+        return [
+            'student' => $visual['student'],
+            'placement' => $placement === null || $activeYear === null ? null : [
+                'academic_year' => $activeYear->year,
+                'rombel' => $rombel === null ? null : ($rombel->name ?: $rombel->code),
+            ],
+            'qrPayload' => $student->user?->email,
+            'qrCode' => $visual['qrCode'],
+        ];
+    }
+
+    /**
+     * @return array{student: array{id: int, nis: string|null, nisn: string|null, tahun_angkatan: int|null, full_name: string, gender: string|null, birth_place: string|null, birth_date: string|null, address: string|null, photo_url: string|null}, qrCode: string|null}
+     */
+    private function cardVisualPayload(Student $student): array
     {
         $student->loadMissing('user:id,email');
-        $activeYear = AcademicYear::query()->where('status', 'active')->first();
-        $placement = $activeYear === null
-            ? null
-            : StudentPlacement::query()
-                ->with('rombel:id,name,code')
-                ->where('academic_year_id', $activeYear->id)
-                ->where('student_id', $student->id)
-                ->where('status', 'active')
-                ->latest('started_at')
-                ->first();
         $qrPayload = $student->user?->email;
         $qrCode = $qrPayload === null
             ? null
-            : base64_encode((new Writer(new ImageRenderer(new RendererStyle(240, 2), new SvgImageBackEnd)))->writeString($qrPayload));
-        $rombel = $placement?->rombel;
+            : base64_encode((new Writer(
+                new ImageRenderer(
+                    new RendererStyle(240, 2),
+                    new SvgImageBackEnd,
+                ),
+            ))->writeString($qrPayload));
 
         return [
             'student' => array_merge(
@@ -328,11 +381,6 @@ class StudentController extends Controller
                 ]),
                 ['photo_url' => $this->photoUrl($student)],
             ),
-            'placement' => $placement === null ? null : [
-                'academic_year' => $activeYear->year,
-                'rombel' => $rombel === null ? null : ($rombel->name ?: $rombel->code),
-            ],
-            'qrPayload' => $qrPayload,
             'qrCode' => $qrCode === null ? null : 'data:image/svg+xml;base64,'.$qrCode,
         ];
     }
