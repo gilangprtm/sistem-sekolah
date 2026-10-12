@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\StudentKantinPinRequest;
 use App\Http\Requests\StudentKantinPinResetRequest;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -23,6 +27,12 @@ class ProfileController extends Controller
 
         return Inertia::render('student-app/profile', [
             'user' => $user->only(['name', 'email']),
+            'qrCode' => $student === null || ! $user->email
+                ? null
+                : 'data:image/svg+xml;base64,'.base64_encode(
+                    (new Writer(new ImageRenderer(new RendererStyle(240, 2), new SvgImageBackEnd)))
+                        ->writeString($user->email)
+                ),
             'student' => $student === null ? null : array_merge(
                 $student->only([
                     'id',
