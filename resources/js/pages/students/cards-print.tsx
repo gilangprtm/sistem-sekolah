@@ -3,6 +3,7 @@ import { ArrowLeft, Download, LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
+import { StudentCardVisual } from '@/components/student-card-visual';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -580,6 +581,18 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                                 halaman ini.
                             </p>
                         </div>
+                    </div>
+                )}
+
+                {students.length > 0 && (
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {students.map(({ student, qrCode }) => (
+                            <StudentCardVisual
+                                key={student.id}
+                                student={student}
+                                qrCode={qrCode}
+                            />
+                        ))}
                     </div>
                 )}
 
