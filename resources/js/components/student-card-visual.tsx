@@ -114,7 +114,8 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
         ref,
     ) {
         const wrapperRef = useRef<HTMLDivElement>(null);
-        const [scale, setScale] = useState(1);
+        const [scale, setScale] = useState<number | null>(null);
+        const [assetsReady, setAssetsReady] = useState(false);
 
         useEffect(() => {
             const wrapper = wrapperRef.current;
@@ -134,6 +135,30 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
             return () => observer.disconnect();
         }, []);
 
+        useEffect(() => {
+            let active = true;
+            setAssetsReady(false);
+            const sources = [CARD_BACKGROUND, student.photo_url, qrCode].filter(
+                (source): source is string => Boolean(source),
+            );
+            Promise.all(
+                sources.map(
+                    (source) =>
+                        new Promise<void>((resolve) => {
+                            const image = new Image();
+                            image.onload = () => resolve();
+                            image.onerror = () => resolve();
+                            image.src = source;
+                            if (image.complete) resolve();
+                        }),
+                ),
+            ).then(() => {
+                if (active) setAssetsReady(true);
+            });
+            return () => { active = false; };
+        }, [student.photo_url, qrCode]);
+
+        const ready = scale !== null && assetsReady;
         const birthDetails = [
             student.birth_place,
             formatBirthDate(student.birth_date),
@@ -148,6 +173,9 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                 ref={wrapperRef}
                 className={`relative aspect-[1011/639] w-full ${className}`}
             >
+                {!ready && (
+                    <div className="absolute inset-0 animate-pulse rounded-[2.5%] bg-slate-200/20" role="status" aria-label="Memuat kartu pelajar" />
+                )}
                 <article
                     ref={ref}
                     className="absolute top-0 left-0 overflow-hidden rounded-[25px] border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat text-left shadow-sm"
@@ -155,7 +183,8 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                         backgroundImage: `url(${CARD_BACKGROUND})`,
                         width: 1011,
                         height: 639,
-                        transform: `scale(${scale})`,
+                        transform: `scale(${scale ?? 1})`,
+                        visibility: ready ? 'visible' : 'hidden',
                         transformOrigin: 'top left',
                     }}
                     aria-label={`Kartu Pelajar ${student.full_name}`}
