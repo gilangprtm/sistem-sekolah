@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 
 export type StudentCardStudent = {
     id?: number;
@@ -113,6 +113,19 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
         { student, qrCode, barcodeValue, className = '' },
         ref,
     ) {
+        const wrapperRef = useRef<HTMLDivElement>(null);
+        const [scale, setScale] = useState(1);
+
+        useEffect(() => {
+            const wrapper = wrapperRef.current;
+            if (!wrapper) return;
+            const observer = new ResizeObserver(([entry]) => {
+                if (entry) setScale(entry.contentRect.width / 1011);
+            });
+            observer.observe(wrapper);
+            return () => observer.disconnect();
+        }, []);
+
         const birthDetails = [
             student.birth_place,
             formatBirthDate(student.birth_date),
@@ -123,12 +136,16 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
             barcodeValue ?? student.nis ?? student.nisn ?? String(student.id);
 
         return (
+            <div ref={wrapperRef} className={`relative aspect-[1011/639] w-full ${className}`}>
             <article
                 ref={ref}
-                className={`relative aspect-[1011/639] w-full overflow-hidden rounded-[2.5%] border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat shadow-sm ${className}`}
+                className="absolute top-0 left-0 overflow-hidden rounded-[25px] border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat shadow-sm"
                 style={{
                     backgroundImage: `url(${CARD_BACKGROUND})`,
-                    containerType: 'inline-size',
+                    width: 1011,
+                    height: 639,
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'top left',
                 }}
                 aria-label={`Kartu Pelajar ${student.full_name}`}
             >
@@ -149,15 +166,15 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                             className="size-full object-cover"
                         />
                     ) : (
-                        <div className="flex size-full items-center justify-center bg-[#d7d8df] text-[4.7cqw] font-bold text-[#53627a]">
+                        <div className="flex size-full items-center justify-center bg-[#d7d8df] text-[48px] font-bold text-[#53627a]">
                             {initialsForStudent(student.full_name)}
                         </div>
                     )}
                 </div>
-                <div className="absolute top-[31.92%] left-[32.54%] max-w-[64%] truncate text-[clamp(1rem,4.75cqw,3rem)] leading-none font-bold text-[#024059]">
+                <div className="absolute top-[31.92%] left-[32.54%] max-w-[64%] truncate text-[48px] leading-none font-bold text-[#024059]">
                     KARTU PELAJAR SISWA
                 </div>
-                <div className="absolute top-[44.3%] right-[3.5%] left-[32.54%] text-[clamp(0.5rem,2.47cqw,1.55rem)] leading-[1.45] font-bold text-[#024059]">
+                <div className="absolute top-[44.3%] right-[3.5%] left-[32.54%] text-[25px] leading-[1.45] font-bold text-[#024059]">
                     <div className="flex">
                         <span className="w-[21.5%] shrink-0">Nama</span>
                         <span className="w-[1.9%] shrink-0">:</span>
@@ -204,6 +221,7 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                     <Barcode value={codeValue} qrCode={qrCode} />
                 </div>
             </article>
+            </div>
         );
     },
 );
