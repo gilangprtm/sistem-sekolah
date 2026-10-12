@@ -58,6 +58,7 @@ export async function renderStudentCardPng(card: HTMLElement): Promise<Blob> {
     source.style.width = `${STUDENT_CARD_WIDTH}px`;
     source.style.height = `${STUDENT_CARD_HEIGHT}px`;
     source.style.maxWidth = 'none';
+    source.style.transform = 'none';
     host.appendChild(source);
     document.body.appendChild(host);
 
@@ -66,6 +67,7 @@ export async function renderStudentCardPng(card: HTMLElement): Promise<Blob> {
         const copy = await cloneWithStyles(source) as HTMLElement;
         copy.style.width = `${STUDENT_CARD_WIDTH}px`;
         copy.style.height = `${STUDENT_CARD_HEIGHT}px`;
+        copy.style.transform = 'none';
         const markup = new XMLSerializer().serializeToString(copy);
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${STUDENT_CARD_WIDTH}" height="${STUDENT_CARD_HEIGHT}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%">${markup}</div></foreignObject></svg>`;
         const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
