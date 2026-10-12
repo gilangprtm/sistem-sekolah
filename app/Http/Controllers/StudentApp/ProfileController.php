@@ -25,6 +25,7 @@ class ProfileController extends Controller
             'user' => $user->only(['name', 'email']),
             'student' => $student === null ? null : array_merge(
                 $student->only([
+                    'id',
                     'nis',
                     'nisn',
                     'tahun_angkatan',

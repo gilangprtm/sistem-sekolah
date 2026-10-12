@@ -1,9 +1,17 @@
 import { Form, Head, router } from '@inertiajs/react';
-import { CalendarDays, Camera, KeyRound, Mail, UserRound } from 'lucide-react';
+import {
+    CalendarDays,
+    Camera,
+    CreditCard,
+    KeyRound,
+    Mail,
+    UserRound,
+} from 'lucide-react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { StudentCardVisual } from '@/components/student-card-visual';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 type Student = {
+    id: number;
     nis: string | null;
     nisn: string | null;
     tahun_angkatan: number | null;
@@ -88,6 +97,16 @@ function displayStatus(value: string | null): string {
           : '-';
 }
 
+function StudentCardPreview({ student }: { student: NonNullable<Student> }) {
+    return (
+        <StudentCardVisual
+            student={student}
+            qrCode={null}
+            barcodeValue={student.nis || student.nisn || String(student.id)}
+        />
+    );
+}
+
 function InfoRow({
     label,
     value,
@@ -109,6 +128,7 @@ export default function StudentProfile({ user, student }: Props) {
     const [photoError, setPhotoError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [showStudentCard, setShowStudentCard] = useState(false);
     const resetPasswordForm = useRef<(() => void) | null>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -211,22 +231,26 @@ export default function StudentProfile({ user, student }: Props) {
                 </div>
 
                 <div className="flex flex-col items-center rounded-2xl border bg-card p-5 text-center">
-                    <div className="relative aspect-[2/3] w-32 overflow-hidden rounded-xl bg-violet-100 text-violet-700 shadow-sm sm:w-36">
-                        {displayedPhoto ? (
-                            <img
-                                src={displayedPhoto}
-                                alt={`Foto ${student?.full_name ?? user.name}`}
-                                className="size-full object-cover"
-                            />
-                        ) : (
-                            <div className="grid size-full place-items-center">
-                                <UserRound
-                                    className="size-10"
-                                    aria-hidden="true"
+                    {showStudentCard && student ? (
+                        <StudentCardPreview student={student} />
+                    ) : (
+                        <div className="relative aspect-[2/3] w-32 overflow-hidden rounded-xl bg-violet-100 text-violet-700 shadow-sm sm:w-36">
+                            {displayedPhoto ? (
+                                <img
+                                    src={displayedPhoto}
+                                    alt={`Foto ${student?.full_name ?? user.name}`}
+                                    className="size-full object-cover"
                                 />
-                            </div>
-                        )}
-                    </div>
+                            ) : (
+                                <div className="grid size-full place-items-center">
+                                    <UserRound
+                                        className="size-10"
+                                        aria-hidden="true"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div className="mt-4 max-w-full min-w-0">
                         <p className="truncate font-semibold">
                             {student?.full_name ?? user.name}
@@ -235,16 +259,51 @@ export default function StudentProfile({ user, student }: Props) {
                             <Mail className="size-3.5" aria-hidden="true" />
                             {user.email}
                         </p>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="mt-3"
-                            onClick={() => setPasswordDialogOpen(true)}
-                        >
-                            <KeyRound className="size-4" aria-hidden="true" />
-                            Ganti password
-                        </Button>
+                        <div className="mt-3 flex flex-wrap justify-center gap-2">
+                            {student && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    aria-pressed={showStudentCard}
+                                    aria-label={
+                                        showStudentCard
+                                            ? 'Tampilkan foto profil'
+                                            : 'Tampilkan kartu pelajar'
+                                    }
+                                    title={
+                                        showStudentCard
+                                            ? 'Tampilkan foto profil'
+                                            : 'Tampilkan kartu pelajar'
+                                    }
+                                    onClick={() =>
+                                        setShowStudentCard(
+                                            (current) => !current,
+                                        )
+                                    }
+                                >
+                                    <CreditCard
+                                        className="size-4"
+                                        aria-hidden="true"
+                                    />
+                                    {showStudentCard
+                                        ? 'Tampilkan foto profil'
+                                        : 'Tampilkan kartu pelajar'}
+                                </Button>
+                            )}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPasswordDialogOpen(true)}
+                            >
+                                <KeyRound
+                                    className="size-4"
+                                    aria-hidden="true"
+                                />
+                                Ganti password
+                            </Button>
+                        </div>
                     </div>
                 </div>
 

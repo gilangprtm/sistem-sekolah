@@ -48,6 +48,7 @@ class KantinSaldoTest extends TestCase
         $this->assertStringContainsString('Total Top Up', $source);
         $this->assertStringContainsString('summary.topUp.amount', $source);
         $this->assertStringContainsString('summary.topUp.count', $source);
+        $this->assertStringContainsString('formatWitaDateTime', $source);
         $this->assertStringContainsString('SearchableCombobox', $source);
         $this->assertStringContainsString("'/kantin/saldo/top-up'", $source);
         $this->assertStringContainsString('`/kantin/saldo/students?', $source);

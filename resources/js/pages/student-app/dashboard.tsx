@@ -19,6 +19,7 @@ import {
     installStudentPwa,
     useStudentPwaInstall,
 } from '@/hooks/use-student-pwa-install';
+import { formatWitaDate } from '@/lib/date-time';
 
 type NewsItem = {
     id: number;
@@ -104,13 +105,7 @@ function NewsSection({ news }: { news: NewsItem[] }) {
                             </div>
                             <div className="space-y-2 p-3">
                                 <p className="text-xs text-muted-foreground">
-                                    {new Date(
-                                        item.publishedAt,
-                                    ).toLocaleDateString('id-ID', {
-                                        day: 'numeric',
-                                        month: 'long',
-                                        year: 'numeric',
-                                    })}
+                                    {formatWitaDate(item.publishedAt)}
                                 </p>
                                 <h4 className="line-clamp-2 text-sm leading-5 font-semibold">
                                     {item.title}

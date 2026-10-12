@@ -51,7 +51,15 @@ class KantinDashboardController extends Controller
             ->orderByDesc('sales.created_at')
             ->orderByDesc('sales.id')
             ->limit(10)
-            ->get();
+            ->get()
+            ->map(static fn (object $transaction): array => [
+                'id' => (int) $transaction->id,
+                'total' => (string) $transaction->total,
+                'created_at' => Carbon::parse((string) $transaction->created_at)->utc()->toRfc3339String(),
+                'full_name' => (string) $transaction->full_name,
+                'nis' => $transaction->nis,
+                'nisn' => $transaction->nisn,
+            ]);
 
         $topBuyers = (clone $sales)
             ->join('m_students as students', 'students.id', '=', 'sales.student_id')
@@ -82,9 +90,9 @@ class KantinDashboardController extends Controller
         return Inertia::render('kantin/dashboard', [
             'period' => $period,
             'summary' => [
-                'revenue' => $summary?->revenue ?? '0.00',
-                'transactions' => (int) ($summary?->transactions ?? 0),
-                'buyers' => (int) ($summary?->buyers ?? 0),
+                'revenue' => $summary->revenue ?? '0.00',
+                'transactions' => (int) ($summary->transactions ?? 0),
+                'buyers' => (int) ($summary->buyers ?? 0),
                 'itemsSold' => (int) $itemsSold,
                 'activeItems' => KantinBarang::query()->where('status', 'active')->count(),
             ],

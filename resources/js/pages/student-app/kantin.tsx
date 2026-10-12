@@ -1,21 +1,66 @@
-import { Head, router } from '@inertiajs/react';
-import { ShoppingBasket } from 'lucide-react';
+import { Head, InfiniteScroll, router } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
+import { formatWitaDateTime } from '@/lib/date-time';
 
+type Detail = {
+    barang_name: string;
+    quantity: number;
+    harga: string;
+    subtotal: string;
+};
+type Purchase = { id: number; date: string; total: string; details: Detail[] };
+type TopUp = {
+    id: number;
+    date: string;
+    amount: string;
+    balance_after: string;
+    balance_before?: string;
+};
+type Paginator<T> = {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    total: number;
+};
 type Props = {
     has_kantin_pin: boolean;
+    balance: { saldo: string };
+    purchases: Paginator<Purchase>;
+    topups: Paginator<TopUp>;
 };
 
-export default function StudentKantin({ has_kantin_pin }: Props) {
+const currency = (value: string) =>
+    new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 2,
+    }).format(Number(value));
+function HistoryLoading() {
+    return (
+        <p className="border-t p-4 text-sm text-muted-foreground" role="status">
+            Memuat riwayat...
+        </p>
+    );
+}
+
+export default function StudentKantin({
+    has_kantin_pin,
+    balance,
+    purchases,
+    topups,
+}: Props) {
     const [pinOpen, setPinOpen] = useState(!has_kantin_pin);
     const [pin, setPin] = useState('');
     const [pinConfirmation, setPinConfirmation] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
+    const [activeTab, setActiveTab] = useState<'purchases' | 'topups'>(
+        'purchases',
+    );
 
     const submitPin = () => {
         setProcessing(true);
@@ -46,34 +91,161 @@ export default function StudentKantin({ has_kantin_pin }: Props) {
             <Head title="Kantin" />
             <section
                 className="space-y-5"
-                aria-labelledby="student-kantin-heading"
+                aria-labelledby="student-kantin-balance-heading"
             >
-                <div className="flex items-center gap-3">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-pink-100 text-pink-700">
-                        <ShoppingBasket aria-hidden="true" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-muted-foreground">
-                            Portal Siswa
-                        </p>
-                        <h1
-                            id="student-kantin-heading"
-                            className="text-2xl font-semibold"
-                        >
-                            Kantin
-                        </h1>
-                    </div>
+                <div
+                    className="rounded-2xl border bg-card p-5"
+                    aria-labelledby="student-kantin-balance-heading"
+                >
+                    <p
+                        id="student-kantin-balance-heading"
+                        className="text-sm text-muted-foreground"
+                    >
+                        Saldo Kantin
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-violet-700">
+                        {currency(balance.saldo)}
+                    </p>
                 </div>
-                {has_kantin_pin ? (
-                    <div className="rounded-2xl border bg-card p-4 text-sm">
-                        PIN Kantin sudah aktif. Gunakan PIN tersebut saat
-                        bertransaksi di POS Kantin.
-                    </div>
+                <div
+                    className="grid w-full grid-cols-2 rounded-2xl bg-muted p-1"
+                    role="tablist"
+                    aria-label="Riwayat Kantin"
+                >
+                    <button
+                        type="button"
+                        role="tab"
+                        id="purchases-tab"
+                        aria-controls="purchases-panel"
+                        aria-selected={activeTab === 'purchases'}
+                        className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-violet-700 data-[active=true]:shadow-sm"
+                        data-active={activeTab === 'purchases'}
+                        onClick={() => setActiveTab('purchases')}
+                    >
+                        Riwayat Pembelian
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        id="topups-tab"
+                        aria-controls="topups-panel"
+                        aria-selected={activeTab === 'topups'}
+                        className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-violet-700 data-[active=true]:shadow-sm"
+                        data-active={activeTab === 'topups'}
+                        onClick={() => setActiveTab('topups')}
+                    >
+                        Riwayat Top Up
+                    </button>
+                </div>
+                {activeTab === 'purchases' ? (
+                    <section
+                        id="purchases-panel"
+                        className="rounded-2xl border bg-card"
+                        role="tabpanel"
+                        aria-labelledby="purchases-tab"
+                    >
+                        <div className="border-b p-4">
+                            <h2
+                                id="purchases-heading"
+                                className="font-semibold"
+                            >
+                                Riwayat Pembelian
+                            </h2>
+                        </div>
+                        {purchases.data.length === 0 ? (
+                            <p className="p-4 text-sm text-muted-foreground">
+                                Belum ada riwayat pembelian.
+                            </p>
+                        ) : (
+                            <InfiniteScroll
+                                data="purchases"
+                                onlyNext
+                                loading={<HistoryLoading />}
+                            >
+                                {purchases.data.map((purchase) => (
+                                    <article
+                                        key={purchase.id}
+                                        className="space-y-2 border-b p-4 text-sm last:border-b-0"
+                                    >
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-muted-foreground">
+                                                {formatWitaDateTime(
+                                                    purchase.date,
+                                                )}
+                                            </span>
+                                            <strong>
+                                                {currency(purchase.total)}
+                                            </strong>
+                                        </div>
+                                        <ul className="space-y-1 text-muted-foreground">
+                                            {purchase.details.map(
+                                                (detail, index) => (
+                                                    <li
+                                                        key={`${purchase.id}-${index}`}
+                                                        className="flex justify-between gap-3"
+                                                    >
+                                                        <span>
+                                                            {detail.barang_name}{' '}
+                                                            × {detail.quantity}
+                                                        </span>
+                                                        <span>
+                                                            {currency(
+                                                                detail.subtotal,
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ul>
+                                    </article>
+                                ))}
+                            </InfiniteScroll>
+                        )}
+                    </section>
                 ) : (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                        Buat PIN terlebih dahulu agar dapat menggunakan
-                        transaksi Kantin.
-                    </div>
+                    <section
+                        id="topups-panel"
+                        className="rounded-2xl border bg-card"
+                        role="tabpanel"
+                        aria-labelledby="topups-tab"
+                    >
+                        <div className="border-b p-4">
+                            <h2 id="topups-heading" className="font-semibold">
+                                Riwayat Top Up
+                            </h2>
+                        </div>
+                        {topups.data.length === 0 ? (
+                            <p className="p-4 text-sm text-muted-foreground">
+                                Belum ada riwayat top up.
+                            </p>
+                        ) : (
+                            <InfiniteScroll
+                                data="topups"
+                                onlyNext
+                                loading={<HistoryLoading />}
+                            >
+                                {topups.data.map((topup) => (
+                                    <article
+                                        key={topup.id}
+                                        className="flex justify-between gap-3 border-b p-4 text-sm last:border-b-0"
+                                    >
+                                        <div>
+                                            <p className="font-medium">
+                                                {currency(topup.amount)}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                                {formatWitaDateTime(topup.date)}
+                                            </p>
+                                        </div>
+                                        <p className="text-right text-muted-foreground">
+                                            Saldo{' '}
+                                            {currency(topup.balance_after)}
+                                        </p>
+                                    </article>
+                                ))}
+                            </InfiniteScroll>
+                        )}
+                    </section>
                 )}
             </section>
 

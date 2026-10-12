@@ -23,14 +23,14 @@ class KantinSaldoController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->can('kantin.saldo.view'), 403);
-        abort_unless($request->user()?->can('kantin.saldo.history.view'), 403);
+        abort_unless($request->user()->can('kantin.saldo.view'), 403);
+        abort_unless($request->user()->can('kantin.saldo.history.view'), 403);
 
         $search = $request->string('search')->trim()->toString();
         $period = $request->string('period')->trim()->toString();
         $period = in_array($period, self::PERIODS, true) ? $period : 'all';
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
-        $canTopUp = $request->user()?->can('kantin.saldo.topup') ?? false;
+        $canTopUp = $request->user()->can('kantin.saldo.topup');
         $now = Carbon::now();
         $periodStart = match ($period) {
             'today' => $now->copy()->startOfDay(),
@@ -71,6 +71,19 @@ class KantinSaldoController extends Controller
             ->with('student:id,nis,nisn,full_name')
             ->latest()
             ->paginate($perPage, ['*'], 'ledger_page')
+            ->through(static function (KantinSaldoTransaction $transaction): array {
+                return [
+                    'id' => $transaction->id,
+                    'type' => $transaction->type,
+                    'amount' => (string) $transaction->amount,
+                    'balance_after' => (string) $transaction->balance_after,
+                    'created_at' => $transaction->created_at->utc()->toRfc3339String(),
+                    'student' => [
+                        'nis' => $transaction->student?->nis,
+                        'full_name' => $transaction->student?->full_name,
+                    ],
+                ];
+            })
             ->withQueryString();
 
         return Inertia::render('kantin/saldo/index', [
@@ -114,7 +127,11 @@ class KantinSaldoController extends Controller
     public function storeTopUp(KantinTopUpRequest $request): RedirectResponse
     {
         $student = Student::query()->findOrFail($request->integer('student_id'));
-        $this->saldoService->topUp($student, $request->validated(), $request->user());
+        $this->saldoService->topUp(
+            $student,
+            ['amount' => (float) $request->validated('amount')],
+            $request->user(),
+        );
 
         Inertia::flash('toast', [
             'type' => 'success',

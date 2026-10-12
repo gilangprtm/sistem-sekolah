@@ -3,6 +3,7 @@ import { ArrowLeft, Download, LoaderCircle } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
+import { StudentCardVisual } from '@/components/student-card-visual';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -409,30 +410,6 @@ async function downloadCardImage(
     window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
 }
 
-function Barcode({ value, qrCode }: { value: string; qrCode: string | null }) {
-    if (qrCode !== null) {
-        return (
-            <img
-                src={qrCode}
-                alt="QR Code akun siswa"
-                className="size-full object-contain"
-            />
-        );
-    }
-
-    return (
-        <div className="flex h-full w-full" aria-label={`Barcode ${value}`}>
-            {barcodePattern(value).map((isBar, index) => (
-                <span
-                    key={`${value}-${index}`}
-                    className={isBar ? 'bg-[#024059]' : 'bg-transparent'}
-                    style={{ flex: '1 1 0%' }}
-                />
-            ))}
-        </div>
-    );
-}
-
 export default function StudentCard({ student, qrCode }: Props) {
     const { auth } = usePage<{
         auth?: { permissions?: string[]; roles?: string[] };
@@ -446,7 +423,6 @@ export default function StudentCard({ student, qrCode }: Props) {
         { title: 'Siswa', href: '/students' },
         { title: 'Kartu Pelajar', href: `/students/cards/${student.id}` },
     ];
-    const birthDetails = birthDetailsForStudent(student);
     const barcodeValue = student.nis || student.nisn || String(student.id);
 
     return (
@@ -454,18 +430,25 @@ export default function StudentCard({ student, qrCode }: Props) {
             <Head title={`Kartu Pelajar - ${student.full_name}`} />
             <div className="flex flex-1 flex-col gap-4 rounded-xl p-4 print:p-0">
                 <div className="flex items-center justify-between gap-4 print:hidden">
-                    <Heading
-                        variant="small"
-                        title="Kartu Pelajar"
-                        description={`Kartu pelajar untuk ${student.full_name}`}
-                    />
-                    <div className="flex gap-2">
-                        <Button variant="outline" asChild>
+                    <div className="flex min-w-0 items-center gap-3">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            asChild
+                            aria-label="Kembali ke daftar kartu pelajar"
+                            title="Kembali"
+                        >
                             <Link href="/students/cards">
-                                <ArrowLeft />
-                                Kembali
+                                <ArrowLeft aria-hidden="true" />
                             </Link>
                         </Button>
+                        <Heading
+                            variant="small"
+                            title="Kartu Pelajar"
+                            description={`Kartu pelajar untuk ${student.full_name}`}
+                        />
+                    </div>
+                    <div className="flex gap-2">
                         {canPrint && (
                             <Button
                                 disabled={isDownloading}
@@ -505,96 +488,13 @@ export default function StudentCard({ student, qrCode }: Props) {
                 </div>
 
                 <div className="flex justify-center print:block">
-                    <article
+                    <StudentCardVisual
                         ref={cardRef}
-                        className="relative aspect-[1011/639] w-full max-w-[1011px] overflow-hidden rounded-[2.5%] border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat shadow-sm print:rounded-none print:shadow-none"
-                        style={{
-                            backgroundImage: `url(${CARD_BACKGROUND})`,
-                            containerType: 'inline-size',
-                        }}
-                        aria-label={`Kartu Pelajar ${student.full_name}`}
-                    >
-                        <h1 className="sr-only">Kartu Pelajar Siswa</h1>
-                        <div
-                            className="absolute overflow-hidden rounded-[10%]"
-                            style={{
-                                left: '4.25%',
-                                top: '31.61%',
-                                width: '24.63%',
-                                height: '52.74%',
-                            }}
-                        >
-                            {student.photo_url !== null ? (
-                                <img
-                                    src={student.photo_url}
-                                    alt={`Foto ${student.full_name}`}
-                                    className="size-full object-cover"
-                                />
-                            ) : (
-                                <div className="flex size-full items-center justify-center bg-[#d7d8df] text-[4.7cqw] font-bold text-[#53627a]">
-                                    {initialsForStudent(student.full_name)}
-                                </div>
-                            )}
-                        </div>
-                        <div className="absolute top-[31.92%] left-[32.54%] max-w-[64%] truncate text-[clamp(1rem,4.75cqw,3rem)] leading-none font-bold text-[#024059]">
-                            KARTU PELAJAR SISWA
-                        </div>
-                        <div className="absolute top-[44.3%] right-[3.5%] left-[32.54%] text-[clamp(0.5rem,2.47cqw,1.55rem)] leading-[1.45] font-bold text-[#024059]">
-                            <div className="flex">
-                                <span className="w-[21.5%] shrink-0">Nama</span>
-                                <span className="w-[1.9%] shrink-0">:</span>
-                                <span className="min-w-0 truncate">
-                                    {student.full_name}
-                                </span>
-                            </div>
-                            <div className="flex">
-                                <span className="w-[21.5%] shrink-0">
-                                    NIS/NISN
-                                </span>
-                                <span className="w-[1.9%] shrink-0">:</span>
-                                <span className="min-w-0 truncate">
-                                    {formatStudentNumbers(
-                                        student.nis,
-                                        student.nisn,
-                                    )}
-                                </span>
-                            </div>
-                            <div className="flex">
-                                <span className="w-[21.5%] shrink-0">
-                                    Jenis Kelamin
-                                </span>
-                                <span className="w-[1.9%] shrink-0">:</span>
-                                <span className="min-w-0 truncate">
-                                    {student.gender === 'L'
-                                        ? 'Laki-laki'
-                                        : student.gender === 'P'
-                                          ? 'Perempuan'
-                                          : '-'}
-                                </span>
-                            </div>
-                            <div className="flex">
-                                <span className="w-[21.5%] shrink-0">
-                                    T.T.L
-                                </span>
-                                <span className="w-[1.9%] shrink-0">:</span>
-                                <span className="min-w-0 truncate">
-                                    {birthDetails || '-'}
-                                </span>
-                            </div>
-                            <div className="flex">
-                                <span className="w-[21.5%] shrink-0">
-                                    Alamat
-                                </span>
-                                <span className="w-[1.9%] shrink-0">:</span>
-                                <span className="min-w-0 truncate">
-                                    {student.address || '-'}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="absolute right-[6%] bottom-[10%] aspect-square w-[13%]">
-                            <Barcode value={barcodeValue} qrCode={qrCode} />
-                        </div>
-                    </article>
+                        student={student}
+                        qrCode={qrCode}
+                        barcodeValue={barcodeValue}
+                        className="max-w-[1011px] print:rounded-none print:shadow-none"
+                    />
                 </div>
             </div>
         </AppLayout>

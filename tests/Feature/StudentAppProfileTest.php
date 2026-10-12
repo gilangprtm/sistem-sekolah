@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\KantinBarang;
+use App\Models\KantinSaldo;
+use App\Models\KantinSaldoTransaction;
 use App\Models\Student;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -110,6 +114,97 @@ class StudentAppProfileTest extends TestCase
         $this->assertTrue(Hash::check('123456', $student->refresh()->kantin_pin_hash));
     }
 
+    public function test_student_kantin_page_exposes_own_balance_purchase_and_top_up_history_without_sensitive_fields(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+        $student = Student::factory()->create(['user_id' => $user->id]);
+        $otherStudent = Student::factory()->create();
+        $saldo = KantinSaldo::factory()->create(['student_id' => $student->id, 'saldo' => '12500.00']);
+        $product = KantinBarang::factory()->create(['name' => 'Roti Siswa', 'harga' => '2500.00']);
+        $purchaseCreatedAt = now()->subMinute();
+        $purchaseId = DB::table('tr_kantin_penjualan')->insertGetId([
+            'student_id' => $student->id,
+            'total' => '2500.00',
+            'created_at' => $purchaseCreatedAt,
+            'updated_at' => $purchaseCreatedAt,
+        ]);
+        DB::table('tr_kantin_penjualan_detail')->insert([
+            'penjualan_id' => $purchaseId,
+            'kantin_barang_id' => $product->id,
+            'quantity' => 1,
+            'harga' => '2500.00',
+            'subtotal' => '2500.00',
+            'created_at' => now()->subMinute(),
+            'updated_at' => now()->subMinute(),
+        ]);
+        $topupCreatedAt = now()->subMinutes(2)->setSeconds(0);
+        $topup = KantinSaldoTransaction::query()->create([
+            'student_id' => $student->id,
+            'kantin_saldo_id' => $saldo->id,
+            'type' => 'top_up',
+            'amount' => '15000.00',
+            'balance_before' => '0.00',
+            'balance_after' => '15000.00',
+        ]);
+        DB::table('tr_kantin_saldo_mutasi')->where('id', $topup->id)->update([
+            'created_at' => $topupCreatedAt,
+            'updated_at' => $topupCreatedAt,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('student-app.kantin'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('balance.saldo', '12500.00')
+                ->where('purchases.data.0.id', $purchaseId)
+                ->where('purchases.data.0.date', $purchaseCreatedAt->utc()->toRfc3339String())
+                ->where('purchases.data.0.details.0.barang_name', 'Roti Siswa')
+                ->where('topups.data.0.amount', '15000.00')
+                ->where('topups.data.0.date', $topupCreatedAt->utc()->toRfc3339String())
+                ->missing('purchases.data.0.student_id')
+                ->missing('topups.data.0.student_id')
+                ->missing('topups.data.0.created_by'));
+
+        $this->assertNotSame($student->id, $otherStudent->id);
+
+        $source = file_get_contents(resource_path('js/pages/student-app/kantin.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString('role="tablist"', $source);
+        $this->assertStringContainsString('aria-label="Riwayat Kantin"', $source);
+        $this->assertStringContainsString('id="student-kantin-balance-heading"', $source);
+        $this->assertStringContainsString("useState<'purchases' | 'topups'>", $source);
+        $this->assertStringContainsString('Riwayat Pembelian', $source);
+        $this->assertStringContainsString('Riwayat Top Up', $source);
+        $this->assertStringContainsString('aria-controls="purchases-panel"', $source);
+        $this->assertStringContainsString('aria-controls="topups-panel"', $source);
+        $this->assertStringContainsString('grid-cols-2', $source);
+        $this->assertStringContainsString('data="purchases"', $source);
+        $this->assertStringContainsString('data="topups"', $source);
+        $this->assertStringContainsString('onlyNext', $source);
+        $this->assertStringContainsString('HistoryLoading', $source);
+        $this->assertStringContainsString('formatWitaDateTime', $source);
+        $this->assertStringNotContainsString('ShoppingBasket', $source);
+        $this->assertStringNotContainsString('Portal Siswa', $source);
+        $this->assertStringNotContainsString('student-kantin-heading', $source);
+    }
+
+    public function test_unlinked_student_kantin_page_has_safe_empty_state_and_zero_balance(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+
+        $this->actingAs($user)
+            ->get(route('student-app.kantin'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('student-app/kantin')
+                ->where('has_kantin_pin', false)
+                ->where('balance.saldo', '0.00')
+                ->where('purchases.total', 0)
+                ->where('topups.total', 0));
+    }
+
     public function test_student_kantin_page_is_available_and_reports_pin_state_without_hash(): void
     {
         $user = User::factory()->create();
@@ -132,6 +227,27 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringNotContainsString('Segera tersedia', $source);
         $this->assertStringNotContainsString('Buat PIN</button>', $source);
         $this->assertStringContainsString("'/student/kantin'", $source);
+
+        $layoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
+        $this->assertIsString($layoutSource);
+        $this->assertStringContainsString("currentPath === '/student/kantin'", $layoutSource);
+        $this->assertStringContainsString('aria-label="Kembali ke beranda siswa"', $layoutSource);
+        $this->assertStringContainsString('href="/student"', $layoutSource);
+        $this->assertStringContainsString("isKantin ? 'flex-1 px-4 py-5'", $layoutSource);
+        $this->assertStringContainsString('!isKantin &&', $layoutSource);
+        $this->assertStringContainsString('<h1 className="text-sm font-semibold">Kantin</h1>', $layoutSource);
+        $kantinBranchStart = strpos($layoutSource, '{isKantin ? (');
+        $genericBranchStart = strpos($layoutSource, ') : (', $kantinBranchStart === false ? 0 : $kantinBranchStart);
+        $this->assertIsInt($kantinBranchStart);
+        $this->assertIsInt($genericBranchStart);
+        $kantinBranch = substr(
+            $layoutSource,
+            $kantinBranchStart,
+            $genericBranchStart - $kantinBranchStart,
+        );
+        $this->assertStringNotContainsString('Portal Siswa', $kantinBranch);
+        $this->assertSame(1, substr_count($kantinBranch, '<h1 className="text-sm font-semibold">Kantin</h1>'));
+        $this->assertSame(1, substr_count($layoutSource, 'Portal Siswa'));
     }
 
     public function test_student_can_view_profile_with_linked_student_data(): void
@@ -222,12 +338,34 @@ class StudentAppProfileTest extends TestCase
     public function test_student_profile_contains_password_change_form_contract(): void
     {
         $source = file_get_contents(resource_path('js/pages/student-app/profile.tsx'));
+        $visualSource = file_get_contents(resource_path('js/components/student-card-visual.tsx'));
         $this->assertIsString($source);
+        $this->assertIsString($visualSource);
         $this->assertStringContainsString('Ganti password', $source);
         $this->assertStringContainsString('DialogContent', $source);
         $this->assertStringContainsString('action="/student/profile/password"', $source);
         $this->assertStringContainsString('name="current_password"', $source);
         $this->assertStringContainsString('name="password_confirmation"', $source);
+        $this->assertStringContainsString('Tampilkan kartu pelajar', $source);
+        $this->assertStringContainsString('Tampilkan foto profil', $source);
+        $this->assertStringContainsString('aria-pressed={showStudentCard}', $source);
+        $this->assertStringContainsString('StudentCardPreview', $source);
+        $this->assertStringContainsString("import { StudentCardVisual } from '@/components/student-card-visual';", $source);
+        $this->assertStringContainsString('qrCode={null}', $source);
+        $this->assertStringContainsString('barcodeValue={student.nis || student.nisn || String(student.id)}', $source);
+        $controllerSource = file_get_contents(app_path('Http/Controllers/StudentApp/ProfileController.php'));
+        $this->assertIsString($controllerSource);
+        $this->assertStringContainsString("'id',", $controllerSource);
+        $this->assertStringContainsString('.split(/\\s+/)', $visualSource);
+        $this->assertStringContainsString(".join('')", $visualSource);
+        $this->assertStringContainsString('backgroundImage: `url(${CARD_BACKGROUND})`', $visualSource);
+        $this->assertStringContainsString('KARTU PELAJAR SISWA', $visualSource);
+        $this->assertStringContainsString('Jenis Kelamin', $visualSource);
+        $this->assertStringContainsString('T.T.L', $visualSource);
+        $this->assertStringContainsString('Alamat', $visualSource);
+        $this->assertStringNotContainsString('qrPayload', $source);
+        $this->assertStringContainsString('qrCode={null}', $source);
+        $this->assertStringContainsString('barcodeValue={student.nis || student.nisn || String(student.id)}', $source);
     }
 
     public function test_student_can_update_own_photo_and_old_photo_is_removed(): void

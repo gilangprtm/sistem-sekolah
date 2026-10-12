@@ -12,6 +12,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import { formatWitaDateTime } from '@/lib/date-time';
 import type { BreadcrumbItem } from '@/types';
 
 type Period = 'today' | 'week' | 'month' | 'year' | 'all';
@@ -72,12 +73,6 @@ const currency = (value: string | number) =>
         currency: 'IDR',
         maximumFractionDigits: 0,
     }).format(Number(value));
-const dateTime = (value: string) =>
-    new Intl.DateTimeFormat('id-ID', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(new Date(value));
-
 export default function KantinDashboard({
     period,
     summary,
@@ -216,7 +211,7 @@ export default function KantinDashboard({
                                         transactions.map((transaction) => (
                                             <TableRow key={transaction.id}>
                                                 <TableCell className="whitespace-nowrap">
-                                                    {dateTime(
+                                                    {formatWitaDateTime(
                                                         transaction.created_at,
                                                     )}
                                                 </TableCell>

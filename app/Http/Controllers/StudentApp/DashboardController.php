@@ -4,6 +4,7 @@ namespace App\Http\Controllers\StudentApp;
 
 use App\Http\Controllers\Controller;
 use App\Models\StudentPlacement;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -82,6 +83,16 @@ class DashboardController extends Controller
                                 $post['imageUrl'] = 'https://drive.google.com/thumbnail?id='
                                     .rawurlencode($query['id'])
                                     .'&sz=w1200';
+                            }
+                        }
+
+                        if (isset($post['publishedAt']) && is_string($post['publishedAt'])) {
+                            try {
+                                $post['publishedAt'] = Carbon::parse($post['publishedAt'])
+                                    ->utc()
+                                    ->toRfc3339String();
+                            } catch (Throwable) {
+                                $post['publishedAt'] = '';
                             }
                         }
 

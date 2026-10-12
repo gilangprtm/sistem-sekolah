@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Bot, CalendarDays, Home, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import { useFlashToast } from '@/hooks/use-flash-toast';
 
 const navigation = [
@@ -68,11 +69,26 @@ export default function StudentAppLayout({
                         <div className="h-full w-1/3 animate-[pulse_1.2s_ease-in-out_infinite] bg-violet-700" />
                     </div>
                 )}
-                {!isDashboard &&
+                {isKantin ? (
+                    <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 pt-[max(.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            aria-label="Kembali ke beranda siswa"
+                            title="Kembali"
+                        >
+                            <Link href="/student">
+                                <ArrowLeft aria-hidden="true" />
+                            </Link>
+                        </Button>
+                        <h1 className="text-sm font-semibold">Kantin</h1>
+                    </header>
+                ) : (
+                    !isDashboard &&
                     !isProfile &&
                     !isSchedule &&
-                    !isChatbot &&
-                    !isKantin && (
+                    !isChatbot && (
                         <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 pt-[max(.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
                             <Link
                                 href="/student"
@@ -93,44 +109,55 @@ export default function StudentAppLayout({
                                 </h1>
                             </div>
                         </header>
-                    )}
+                    )
+                )}
 
-                <main className="flex-1 px-4 py-5 pb-28">{children}</main>
-
-                <nav
-                    aria-label="Navigasi siswa"
-                    className="fixed inset-x-0 bottom-0 z-50 mx-auto grid w-full max-w-lg grid-cols-4 border-t bg-background/95 px-2 pt-2 pb-[max(.65rem,env(safe-area-inset-bottom))] backdrop-blur"
+                <main
+                    className={
+                        isKantin ? 'flex-1 px-4 py-5' : 'flex-1 px-4 py-5 pb-28'
+                    }
                 >
-                    {navigation.map(({ label, href, icon: Icon }) =>
-                        href ? (
-                            <Link
-                                key={label}
-                                href={href}
-                                aria-current={
-                                    currentPath === href ? 'page' : undefined
-                                }
-                                className={[
-                                    'flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium',
-                                    currentPath === href
-                                        ? 'text-violet-700'
-                                        : 'text-muted-foreground',
-                                ].join(' ')}
-                            >
-                                <Icon className="size-5" />
-                                {label}
-                            </Link>
-                        ) : (
-                            <span
-                                key={label}
-                                aria-disabled="true"
-                                className="flex flex-col items-center gap-1 py-1.5 text-[11px] text-muted-foreground/45"
-                            >
-                                <Icon className="size-5" />
-                                {label}
-                            </span>
-                        ),
-                    )}
-                </nav>
+                    {children}
+                </main>
+
+                {!isKantin && (
+                    <nav
+                        aria-label="Navigasi siswa"
+                        className="fixed inset-x-0 bottom-0 z-50 mx-auto grid w-full max-w-lg grid-cols-4 border-t bg-background/95 px-2 pt-2 pb-[max(.65rem,env(safe-area-inset-bottom))] backdrop-blur"
+                    >
+                        {navigation.map(({ label, href, icon: Icon }) =>
+                            href ? (
+                                <Link
+                                    key={label}
+                                    href={href}
+                                    aria-current={
+                                        currentPath === href
+                                            ? 'page'
+                                            : undefined
+                                    }
+                                    className={[
+                                        'flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium',
+                                        currentPath === href
+                                            ? 'text-violet-700'
+                                            : 'text-muted-foreground',
+                                    ].join(' ')}
+                                >
+                                    <Icon className="size-5" />
+                                    {label}
+                                </Link>
+                            ) : (
+                                <span
+                                    key={label}
+                                    aria-disabled="true"
+                                    className="flex flex-col items-center gap-1 py-1.5 text-[11px] text-muted-foreground/45"
+                                >
+                                    <Icon className="size-5" />
+                                    {label}
+                                </span>
+                            ),
+                        )}
+                    </nav>
+                )}
             </div>
         </div>
     );

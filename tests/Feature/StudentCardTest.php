@@ -146,6 +146,9 @@ class StudentCardTest extends TestCase
         $this->assertStringContainsString('Hapus pilihan', $cardsSource);
         $this->assertStringContainsString('colSpan={8}', $cardsSource);
         $this->assertStringContainsString('href="/students/cards"', $cardSource);
+        $this->assertStringContainsString('size="icon"', $cardSource);
+        $this->assertStringContainsString('aria-label="Kembali ke daftar kartu pelajar"', $cardSource);
+        $this->assertStringContainsString('title="Kembali"', $cardSource);
         $this->assertStringContainsString('downloadCardImage', $cardSource);
         $this->assertStringContainsString('link.download = fileNameForStudent(student.full_name)', $cardSource);
         $this->assertStringContainsString('document.body.appendChild(link)', $cardSource);
@@ -153,15 +156,20 @@ class StudentCardTest extends TestCase
         $this->assertStringContainsString('toast.error', $cardSource);
         $this->assertStringContainsString('const dataUrl = await imageDataUrl(source)', $cardSource);
         $this->assertStringContainsString('CARD_BACKGROUND', $cardSource);
+        $this->assertStringContainsString("import { StudentCardVisual } from '@/components/student-card-visual';", $cardSource);
+        $visualSource = file_get_contents(resource_path('js/components/student-card-visual.tsx'));
+        $this->assertIsString($visualSource);
+        $this->assertStringContainsString('backgroundImage: `url(${CARD_BACKGROUND})`', $visualSource);
+        $this->assertStringContainsString('KARTU PELAJAR SISWA', $visualSource);
+        $this->assertStringContainsString('Jenis Kelamin', $visualSource);
+        $this->assertStringContainsString('T.T.L', $visualSource);
+        $this->assertStringContainsString('Alamat', $visualSource);
         $this->assertStringContainsString('context.drawImage(background', $cardSource);
         $this->assertStringContainsString('drawBarcode(', $cardSource);
         $this->assertStringContainsString('drawQrCode(', $cardSource);
         $this->assertStringContainsString('const qr = qrCode === null ? null : await loadImage(qrCode);', $cardSource);
-        $this->assertStringContainsString("label: 'Nama'", $cardSource);
-        $this->assertStringContainsString("label: 'NIS/NISN'", $cardSource);
-        $this->assertStringContainsString("label: 'Jenis Kelamin'", $cardSource);
-        $this->assertStringContainsString('formatStudentNumbers(student.nis, student.nisn)', $cardSource);
-        $this->assertStringContainsString('return `${nis?.trim() || \'-\'} / ${nisn?.trim() || \'-\'}`;', $cardSource);
+        $this->assertStringContainsString('formatStudentNumbers(student.nis, student.nisn)', $visualSource);
+        $this->assertStringContainsString('return `${nis?.trim() || \'-\'} / ${nisn?.trim() || \'-\'}`;', $visualSource);
         $this->assertStringNotContainsString('Nama Lengkap', $cardSource);
         $this->assertStringNotContainsString("label: 'NISN'", $cardSource);
         $this->assertStringContainsString('qrCode={qrCode}', $cardSource);
@@ -179,10 +187,11 @@ class StudentCardTest extends TestCase
         $cardSource = file_get_contents(resource_path('js/pages/students/card.tsx'));
 
         $this->assertIsString($cardSource);
-        $this->assertStringContainsString('qrCode: string | null', $cardSource);
-        $this->assertStringContainsString('drawQrCode(context, qr, codeX, codeY, codeWidth, codeHeight)', $cardSource);
-        $this->assertStringContainsString('if (qrCode !== null)', $cardSource);
-        $this->assertStringContainsString('alt="QR Code akun siswa"', $cardSource);
+        $visualSource = file_get_contents(resource_path('js/components/student-card-visual.tsx'));
+        $this->assertIsString($visualSource);
+        $this->assertStringContainsString('qrCode: string | null', $visualSource);
+        $this->assertStringContainsString('if (qrCode !== null)', $visualSource);
+        $this->assertStringContainsString('alt="QR Code akun siswa"', $visualSource);
         $this->assertStringContainsString("'Oktober'", $cardSource);
         $this->assertStringContainsString('${day} ${INDONESIAN_MONTHS[monthIndex]} ${year}', $cardSource);
     }

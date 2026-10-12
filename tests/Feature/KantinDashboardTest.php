@@ -63,6 +63,7 @@ class KantinDashboardTest extends TestCase
                 ->where('summary.buyers', 1)
                 ->where('summary.itemsSold', 2)
                 ->where('transactions.0.full_name', 'Pembeli Satu')
+                ->where('transactions.0.created_at', Carbon::now()->subHour()->utc()->toRfc3339String())
                 ->where('topBuyers.0.total', 12000)
                 ->where('topItems.0.quantity', 2));
 
@@ -157,6 +158,7 @@ class KantinDashboardTest extends TestCase
         $this->assertStringContainsString("label: 'Bulan Ini'", $source);
         $this->assertStringContainsString("label: 'Tahun Ini'", $source);
         $this->assertStringContainsString("label: 'All Transaksi'", $source);
+        $this->assertStringContainsString('formatWitaDateTime', $source);
         $this->assertStringContainsString("title: 'Dashboard Kantin'", $sidebar);
     }
 }

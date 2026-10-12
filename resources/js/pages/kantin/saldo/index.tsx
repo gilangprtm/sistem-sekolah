@@ -27,6 +27,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import { formatWitaDateTime } from '@/lib/date-time';
 import type { BreadcrumbItem } from '@/types';
 
 type Student = {
@@ -378,9 +379,9 @@ export default function KantinSaldoIndex({
                             {ledger.data.map((transaction) => (
                                 <TableRow key={transaction.id}>
                                     <TableCell>
-                                        {new Date(
+                                        {formatWitaDateTime(
                                             transaction.created_at,
-                                        ).toLocaleString('id-ID')}
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         {transaction.student.full_name}

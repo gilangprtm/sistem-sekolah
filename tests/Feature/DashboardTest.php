@@ -134,6 +134,7 @@ class DashboardTest extends TestCase
                     'title' => 'Berita sekolah',
                     'url' => 'https://smpn17denpasar.sch.id/berita/1',
                     'imageUrl' => 'https://docs.google.com/uc?id=file-123',
+                    'publishedAt' => '2026-10-09T00:30:00Z',
                 ]],
             ]),
         ]);
@@ -163,7 +164,8 @@ class DashboardTest extends TestCase
             ->assertJsonPath(
                 'props.news.0.imageUrl',
                 'https://drive.google.com/thumbnail?id=file-123&sz=w1200',
-            );
+            )
+            ->assertJsonPath('props.news.0.publishedAt', '2026-10-09T00:30:00+00:00');
         Http::assertSentCount(1);
     }
 }
