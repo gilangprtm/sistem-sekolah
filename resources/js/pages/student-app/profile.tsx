@@ -45,6 +45,7 @@ type Props = {
         email: string;
     };
     student: Student;
+    qrCode: string | null;
 };
 
 const monthNames = [
@@ -112,7 +113,7 @@ function InfoRow({
     );
 }
 
-export default function StudentProfile({ user, student }: Props) {
+export default function StudentProfile({ user, student, qrCode }: Props) {
     const [photo, setPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [photoError, setPhotoError] = useState<string | null>(null);
@@ -224,7 +225,7 @@ export default function StudentProfile({ user, student }: Props) {
                     {showStudentCard && student ? (
                         <StudentCardVisual
                             student={student}
-                            qrCode={null}
+                            qrCode={qrCode}
                             barcodeValue={
                                 student.nis ||
                                 student.nisn ||
