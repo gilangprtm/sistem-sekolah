@@ -45,7 +45,6 @@ type Props = {
         email: string;
     };
     student: Student;
-    qrCode: string | null;
 };
 
 const monthNames = [
@@ -113,7 +112,7 @@ function InfoRow({
     );
 }
 
-export default function StudentProfile({ user, student, qrCode }: Props) {
+export default function StudentProfile({ user, student }: Props) {
     const [photo, setPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [photoError, setPhotoError] = useState<string | null>(null);
@@ -223,7 +222,15 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
 
                 <div className="flex flex-col items-center rounded-2xl border bg-card p-5 text-center">
                     {showStudentCard && student ? (
-                        <StudentCardVisual student={student} qrCode={qrCode} />
+                        <StudentCardVisual
+                            student={student}
+                            qrCode={null}
+                            barcodeValue={
+                                student.nis ||
+                                student.nisn ||
+                                String(student.id)
+                            }
+                        />
                     ) : (
                         <div className="relative aspect-[2/3] w-32 overflow-hidden rounded-xl bg-violet-100 text-violet-700 shadow-sm sm:w-36">
                             {displayedPhoto ? (
@@ -259,13 +266,13 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                                     aria-pressed={showStudentCard}
                                     aria-label={
                                         showStudentCard
-                                            ? 'Tampilkan foto profil'
-                                            : 'Tampilkan kartu pelajar'
+                                            ? 'Foto Profile'
+                                            : 'Kartu Pelajar'
                                     }
                                     title={
                                         showStudentCard
-                                            ? 'Tampilkan foto profil'
-                                            : 'Tampilkan kartu pelajar'
+                                            ? 'Foto Profile'
+                                            : 'Kartu Pelajar'
                                     }
                                     onClick={() =>
                                         setShowStudentCard(
@@ -278,8 +285,8 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                                         aria-hidden="true"
                                     />
                                     {showStudentCard
-                                        ? 'Tampilkan foto profil'
-                                        : 'Tampilkan kartu pelajar'}
+                                        ? 'Foto Profile'
+                                        : 'Kartu Pelajar'}
                                 </Button>
                             )}
                             <Button

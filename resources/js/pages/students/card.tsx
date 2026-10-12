@@ -4,9 +4,12 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import { StudentCardVisual } from '@/components/student-card-visual';
-import { renderStudentCardPng, saveStudentCardBlob } from '@/lib/student-card-export';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import {
+    renderStudentCardPng,
+    saveStudentCardBlob,
+} from '@/lib/student-card-export';
 import type { BreadcrumbItem } from '@/types';
 
 type Student = {
@@ -34,7 +37,13 @@ type Props = {
 };
 
 function fileNameForStudent(name: string): string {
-    const slug = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const slug = name
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+
     return `kartu-pelajar-${slug || 'siswa'}.png`;
 }
 
@@ -89,8 +98,12 @@ export default function StudentCard({ student, qrCode }: Props) {
 
                                     try {
                                         saveStudentCardBlob(
-                                            await renderStudentCardPng(cardRef.current),
-                                            fileNameForStudent(student.full_name),
+                                            await renderStudentCardPng(
+                                                cardRef.current,
+                                            ),
+                                            fileNameForStudent(
+                                                student.full_name,
+                                            ),
                                         );
                                     } catch (error) {
                                         toast.error(

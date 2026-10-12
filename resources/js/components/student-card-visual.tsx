@@ -118,11 +118,19 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
 
         useEffect(() => {
             const wrapper = wrapperRef.current;
-            if (!wrapper) return;
+
+            if (!wrapper) {
+                return;
+            }
+
             const observer = new ResizeObserver(([entry]) => {
-                if (entry) setScale(entry.contentRect.width / 1011);
+                if (entry) {
+                    setScale(entry.contentRect.width / 1011);
+                }
             });
+
             observer.observe(wrapper);
+
             return () => observer.disconnect();
         }, []);
 
@@ -136,91 +144,105 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
             barcodeValue ?? student.nis ?? student.nisn ?? String(student.id);
 
         return (
-            <div ref={wrapperRef} className={`relative aspect-[1011/639] w-full ${className}`}>
-            <article
-                ref={ref}
-                className="absolute top-0 left-0 overflow-hidden rounded-[25px] border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat shadow-sm"
-                style={{
-                    backgroundImage: `url(${CARD_BACKGROUND})`,
-                    width: 1011,
-                    height: 639,
-                    transform: `scale(${scale})`,
-                    transformOrigin: 'top left',
-                }}
-                aria-label={`Kartu Pelajar ${student.full_name}`}
+            <div
+                ref={wrapperRef}
+                className={`relative aspect-[1011/639] w-full ${className}`}
             >
-                <h1 className="sr-only">Kartu Pelajar Siswa</h1>
-                <div
-                    className="absolute overflow-hidden rounded-[10%]"
+                <article
+                    ref={ref}
+                    className="absolute top-0 left-0 overflow-hidden rounded-[25px] border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat text-left shadow-sm"
                     style={{
-                        left: '4.25%',
-                        top: '31.61%',
-                        width: '24.63%',
-                        height: '52.74%',
+                        backgroundImage: `url(${CARD_BACKGROUND})`,
+                        width: 1011,
+                        height: 639,
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'top left',
                     }}
+                    aria-label={`Kartu Pelajar ${student.full_name}`}
                 >
-                    {student.photo_url !== null ? (
-                        <img
-                            src={student.photo_url}
-                            alt={`Foto ${student.full_name}`}
-                            className="size-full object-cover"
-                        />
-                    ) : (
-                        <div className="flex size-full items-center justify-center bg-[#d7d8df] text-[48px] font-bold text-[#53627a]">
-                            {initialsForStudent(student.full_name)}
+                    <h1 className="sr-only">Kartu Pelajar Siswa</h1>
+                    <div
+                        className="absolute overflow-hidden rounded-[10%]"
+                        style={{
+                            left: '4.25%',
+                            top: '31.61%',
+                            width: '24.63%',
+                            height: '52.74%',
+                        }}
+                    >
+                        {student.photo_url !== null ? (
+                            <img
+                                src={student.photo_url}
+                                alt={`Foto ${student.full_name}`}
+                                className="size-full object-cover"
+                            />
+                        ) : (
+                            <div className="flex size-full items-center justify-center bg-[#d7d8df] text-[48px] font-bold text-[#53627a]">
+                                {initialsForStudent(student.full_name)}
+                            </div>
+                        )}
+                    </div>
+                    <div className="absolute top-[31.92%] left-[32.54%] max-w-[64%] truncate text-[48px] leading-none font-bold text-[#024059]">
+                        KARTU PELAJAR SISWA
+                    </div>
+                    <div className="absolute top-[44.3%] right-[3.5%] left-[32.54%] text-[25px] leading-[1.45] font-bold text-[#024059]">
+                        <div className="flex items-center text-left">
+                            <span className="w-[21.5%] shrink-0 whitespace-nowrap">
+                                Nama
+                            </span>
+                            <span className="w-[1.9%] shrink-0">:</span>
+                            <span className="min-w-0 truncate">
+                                {student.full_name}
+                            </span>
                         </div>
-                    )}
-                </div>
-                <div className="absolute top-[31.92%] left-[32.54%] max-w-[64%] truncate text-[48px] leading-none font-bold text-[#024059]">
-                    KARTU PELAJAR SISWA
-                </div>
-                <div className="absolute top-[44.3%] right-[3.5%] left-[32.54%] text-[25px] leading-[1.45] font-bold text-[#024059]">
-                    <div className="flex">
-                        <span className="w-[21.5%] shrink-0">Nama</span>
-                        <span className="w-[1.9%] shrink-0">:</span>
-                        <span className="min-w-0 truncate">
-                            {student.full_name}
-                        </span>
+                        <div className="flex items-center text-left">
+                            <span className="w-[21.5%] shrink-0 whitespace-nowrap">
+                                NIS/NISN
+                            </span>
+                            <span className="w-[1.9%] shrink-0">:</span>
+                            <span className="min-w-0 truncate">
+                                {formatStudentNumbers(
+                                    student.nis,
+                                    student.nisn,
+                                )}
+                            </span>
+                        </div>
+                        <div className="flex items-center text-left">
+                            <span className="w-[21.5%] shrink-0 whitespace-nowrap">
+                                J. Kelamin
+                            </span>
+                            <span className="w-[1.9%] shrink-0">:</span>
+                            <span className="min-w-0 truncate">
+                                {student.gender === 'L'
+                                    ? 'Laki-laki'
+                                    : student.gender === 'P'
+                                      ? 'Perempuan'
+                                      : '-'}
+                            </span>
+                        </div>
+                        <div className="flex items-center text-left">
+                            <span className="w-[21.5%] shrink-0 whitespace-nowrap">
+                                T.T.L
+                            </span>
+                            <span className="w-[1.9%] shrink-0">:</span>
+                            <span className="min-w-0 truncate">
+                                {birthDetails || '-'}
+                            </span>
+                        </div>
+                        <div className="flex items-center text-left">
+                            <span className="w-[21.5%] shrink-0 whitespace-nowrap">
+                                Alamat
+                            </span>
+                            <span className="w-[1.9%] shrink-0">:</span>
+                            <span className="min-w-0 truncate">
+                                {student.address || '-'}
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex">
-                        <span className="w-[21.5%] shrink-0">NIS/NISN</span>
-                        <span className="w-[1.9%] shrink-0">:</span>
-                        <span className="min-w-0 truncate">
-                            {formatStudentNumbers(student.nis, student.nisn)}
-                        </span>
+                    <div className="absolute right-[6%] bottom-[10%] aspect-square w-[13%]">
+                        <Barcode value={codeValue} qrCode={qrCode} />
                     </div>
-                    <div className="flex">
-                        <span className="w-[21.5%] shrink-0">
-                            Jenis Kelamin
-                        </span>
-                        <span className="w-[1.9%] shrink-0">:</span>
-                        <span className="min-w-0 truncate">
-                            {student.gender === 'L'
-                                ? 'Laki-laki'
-                                : student.gender === 'P'
-                                  ? 'Perempuan'
-                                  : '-'}
-                        </span>
-                    </div>
-                    <div className="flex">
-                        <span className="w-[21.5%] shrink-0">T.T.L</span>
-                        <span className="w-[1.9%] shrink-0">:</span>
-                        <span className="min-w-0 truncate">
-                            {birthDetails || '-'}
-                        </span>
-                    </div>
-                    <div className="flex">
-                        <span className="w-[21.5%] shrink-0">Alamat</span>
-                        <span className="w-[1.9%] shrink-0">:</span>
-                        <span className="min-w-0 truncate">
-                            {student.address || '-'}
-                        </span>
-                    </div>
-                </div>
-                <div className="absolute right-[6%] bottom-[10%] aspect-square w-[13%]">
-                    <Barcode value={codeValue} qrCode={qrCode} />
-                </div>
-            </article>
+                </article>
             </div>
         );
     },

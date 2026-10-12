@@ -267,7 +267,7 @@ class StudentAppProfileTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->get(route('student-app.profile'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -279,6 +279,10 @@ class StudentAppProfileTest extends TestCase
                 ->where('student.nisn', 'NISN-001')
                 ->where('student.photo_url', null)
                 ->where('student.birth_date', '2012-05-10T00:00:00.000000Z'));
+
+        $props = $response->inertiaPage()['props'];
+        $this->assertArrayNotHasKey('qrCode', $props);
+        $this->assertArrayNotHasKey('qrPayload', $props);
     }
 
     public function test_student_can_update_own_password_with_current_password_confirmation(): void
@@ -346,13 +350,14 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringContainsString('action="/student/profile/password"', $source);
         $this->assertStringContainsString('name="current_password"', $source);
         $this->assertStringContainsString('name="password_confirmation"', $source);
-        $this->assertStringContainsString('Tampilkan kartu pelajar', $source);
-        $this->assertStringContainsString('Tampilkan foto profil', $source);
+        $this->assertStringContainsString("'Kartu Pelajar'", $source);
+        $this->assertStringContainsString("'Foto Profile'", $source);
         $this->assertStringContainsString('aria-pressed={showStudentCard}', $source);
-        $this->assertStringContainsString('StudentCardPreview', $source);
+        $this->assertStringContainsString('StudentCardVisual', $source);
         $this->assertStringContainsString("import { StudentCardVisual } from '@/components/student-card-visual';", $source);
         $this->assertStringContainsString('qrCode={null}', $source);
-        $this->assertStringContainsString('barcodeValue={student.nis || student.nisn || String(student.id)}', $source);
+        $this->assertStringContainsString('barcodeValue={', $source);
+        $this->assertStringContainsString('String(student.id)', $source);
         $controllerSource = file_get_contents(app_path('Http/Controllers/StudentApp/ProfileController.php'));
         $this->assertIsString($controllerSource);
         $this->assertStringContainsString("'id',", $controllerSource);
@@ -360,12 +365,14 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringContainsString(".join('')", $visualSource);
         $this->assertStringContainsString('backgroundImage: `url(${CARD_BACKGROUND})`', $visualSource);
         $this->assertStringContainsString('KARTU PELAJAR SISWA', $visualSource);
-        $this->assertStringContainsString('Jenis Kelamin', $visualSource);
+        $this->assertStringContainsString('J. Kelamin', $visualSource);
+        $this->assertStringContainsString('items-center text-left', $visualSource);
+        $this->assertStringContainsString('whitespace-nowrap', $visualSource);
         $this->assertStringContainsString('T.T.L', $visualSource);
         $this->assertStringContainsString('Alamat', $visualSource);
         $this->assertStringNotContainsString('qrPayload', $source);
         $this->assertStringContainsString('qrCode={null}', $source);
-        $this->assertStringContainsString('barcodeValue={student.nis || student.nisn || String(student.id)}', $source);
+        $this->assertStringNotContainsString("'qrCode'", $controllerSource);
     }
 
     public function test_student_can_update_own_photo_and_old_photo_is_removed(): void

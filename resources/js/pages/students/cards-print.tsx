@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import { StudentCardVisual } from '@/components/student-card-visual';
-import { renderStudentCardPng } from '@/lib/student-card-export';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { renderStudentCardPng } from '@/lib/student-card-export';
 import type { BreadcrumbItem } from '@/types';
 
 type StudentCard = {
@@ -153,8 +153,14 @@ async function createZip(files: { name: string; blob: Blob }[]): Promise<Blob> {
 }
 
 function getCardElement(id: number): HTMLElement {
-    const element = document.getElementById(`student-card-${id}`)?.querySelector('article');
-    if (!(element instanceof HTMLElement)) throw new Error(`Kartu siswa ${id} tidak ditemukan.`);
+    const element = document
+        .getElementById(`student-card-${id}`)
+        ?.querySelector('article');
+
+    if (!(element instanceof HTMLElement)) {
+        throw new Error(`Kartu siswa ${id} tidak ditemukan.`);
+    }
+
     return element;
 }
 
@@ -171,7 +177,9 @@ async function downloadCards(
                 student.student.full_name,
                 student.student.id,
             ),
-            blob: await renderStudentCardPng(getCardElement(student.student.id)),
+            blob: await renderStudentCardPng(
+                getCardElement(student.student.id),
+            ),
         });
         onProgress?.(index + 1, students.length);
     }
@@ -308,11 +316,14 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                 {students.length > 0 && (
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {students.map(({ student, qrCode }) => (
-                            <div key={student.id} id={`student-card-${student.id}`}>
-                            <StudentCardVisual
-                                student={student}
-                                qrCode={qrCode}
-                            />
+                            <div
+                                key={student.id}
+                                id={`student-card-${student.id}`}
+                            >
+                                <StudentCardVisual
+                                    student={student}
+                                    qrCode={qrCode}
+                                />
                             </div>
                         ))}
                     </div>
