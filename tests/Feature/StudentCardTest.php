@@ -8,8 +8,10 @@ use App\Models\Student;
 use App\Models\StudentPlacement;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -294,6 +296,64 @@ class StudentCardTest extends TestCase
         $this->assertStringContainsString('setIsDownloading(false)', $source);
         $this->assertStringContainsString('toast.error', $source);
         $this->assertStringNotContainsString('window.print()', $source);
+    }
+
+    public function test_student_cards_print_includes_all_filtered_students_without_loading_placements(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $activeYear = AcademicYear::query()->create([
+            'year' => '2026/2027',
+            'status' => 'active',
+        ]);
+        $rombel = Rombel::factory()->create([
+            'name' => 'VII-A',
+            'status' => 'active',
+        ]);
+        $matchingStudents = Student::factory()
+            ->count(12)
+            ->create(['tahun_angkatan' => 2025]);
+        Student::factory()->create(['tahun_angkatan' => 2024]);
+
+        foreach ($matchingStudents as $student) {
+            StudentPlacement::query()->create([
+                'academic_year_id' => $activeYear->id,
+                'rombel_id' => $rombel->id,
+                'student_id' => $student->id,
+                'status' => 'active',
+                'started_at' => now(),
+            ]);
+        }
+
+        $expectedStudentIds = $matchingStudents->modelKeys();
+        sort($expectedStudentIds);
+
+        $cardContextQueryCount = 0;
+        DB::listen(function (QueryExecuted $query) use (&$cardContextQueryCount): void {
+            if (
+                str_contains($query->sql, 'm_academic_years')
+                || str_contains($query->sql, 'tr_curriculum_student_placements')
+            ) {
+                $cardContextQueryCount++;
+            }
+        });
+
+        $this->actingAs($admin)
+            ->get('/students/cards/print?tahun_angkatan=2025')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('students/cards-print')
+                ->where(
+                    'students',
+                    fn (array $cards): bool => count($cards) === count($expectedStudentIds)
+                        && collect($cards)
+                            ->pluck('student.id')
+                            ->sort()
+                            ->values()
+                            ->all() === $expectedStudentIds,
+                ));
+
+        $this->assertSame(0, $cardContextQueryCount);
     }
 
     public function test_student_cards_print_has_a_dedicated_print_surface_with_all_students(): void

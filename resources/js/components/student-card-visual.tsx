@@ -17,6 +17,7 @@ type Props = {
     qrCode: string | null;
     barcodeValue?: string;
     className?: string;
+    onReadyChange?: (ready: boolean) => void;
 };
 
 const CARD_BACKGROUND = '/images/base_kartupelajar.png';
@@ -110,12 +111,13 @@ function Barcode({ value, qrCode }: { value: string; qrCode: string | null }) {
 
 export const StudentCardVisual = forwardRef<HTMLElement, Props>(
     function StudentCardVisual(
-        { student, qrCode, barcodeValue, className = '' },
+        { student, qrCode, barcodeValue, className = '', onReadyChange },
         ref,
     ) {
         const wrapperRef = useRef<HTMLDivElement>(null);
         const [scale, setScale] = useState<number | null>(null);
-        const [assetsReady, setAssetsReady] = useState(false);
+        const [readyAssetKey, setReadyAssetKey] = useState<string | null>(null);
+        const assetKey = JSON.stringify([student.photo_url, qrCode]);
 
         useEffect(() => {
             const wrapper = wrapperRef.current;
@@ -137,10 +139,10 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
 
         useEffect(() => {
             let active = true;
-            setAssetsReady(false);
             const sources = [CARD_BACKGROUND, student.photo_url, qrCode].filter(
                 (source): source is string => Boolean(source),
             );
+
             Promise.all(
                 sources.map(
                     (source) =>
@@ -149,16 +151,29 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                             image.onload = () => resolve();
                             image.onerror = () => resolve();
                             image.src = source;
-                            if (image.complete) resolve();
+
+                            if (image.complete) {
+                                resolve();
+                            }
                         }),
                 ),
             ).then(() => {
-                if (active) setAssetsReady(true);
+                if (active) {
+                    setReadyAssetKey(assetKey);
+                }
             });
-            return () => { active = false; };
-        }, [student.photo_url, qrCode]);
 
-        const ready = scale !== null && assetsReady;
+            return () => {
+                active = false;
+            };
+        }, [assetKey, student.photo_url, qrCode]);
+
+        const ready = scale !== null && readyAssetKey === assetKey;
+
+        useEffect(() => {
+            onReadyChange?.(ready);
+        }, [onReadyChange, ready]);
+
         const birthDetails = [
             student.birth_place,
             formatBirthDate(student.birth_date),

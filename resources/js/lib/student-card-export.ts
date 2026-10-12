@@ -5,17 +5,46 @@
 export const STUDENT_CARD_WIDTH = 1011;
 export const STUDENT_CARD_HEIGHT = 639;
 
-async function asDataUrl(url: string): Promise<string> {
-    if (url.startsWith('data:')) return url;
+const reusableDataUrls = new Map<string, Promise<string>>();
+
+async function readDataUrl(url: string): Promise<string> {
     const response = await fetch(url, { credentials: 'same-origin' });
-    if (!response.ok) throw new Error('Aset kartu tidak dapat dimuat.');
+
+    if (!response.ok) {
+        throw new Error('Aset kartu tidak dapat dimuat.');
+    }
+
     const blob = await response.blob();
+
     return await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('Aset kartu tidak dapat dibaca.'));
+        reader.onerror = () =>
+            reject(new Error('Aset kartu tidak dapat dibaca.'));
         reader.readAsDataURL(blob);
     });
+}
+
+async function asDataUrl(url: string, reuse = false): Promise<string> {
+    if (url.startsWith('data:')) {
+        return url;
+    }
+
+    if (!reuse) {
+        return readDataUrl(url);
+    }
+
+    let cached = reusableDataUrls.get(url);
+
+    if (!cached) {
+        cached = readDataUrl(url).catch((error: unknown) => {
+            reusableDataUrls.delete(url);
+            throw error;
+        });
+        reusableDataUrls.set(url, cached);
+    }
+
+    return cached;
 }
 
 async function cloneWithStyles(source: Element): Promise<Element> {
@@ -35,7 +64,7 @@ async function cloneWithStyles(source: Element): Promise<Element> {
     if (background && background !== 'none') {
         const match = /^url\(["']?(.*?)["']?\)$/.exec(background);
         if (match) {
-            const image = await asDataUrl(match[1]);
+            const image = await asDataUrl(match[1], true);
             (clone as HTMLElement).style.backgroundImage = `url("${image}")`;
         }
     }

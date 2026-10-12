@@ -56,6 +56,7 @@ export default function StudentCard({ student, qrCode }: Props) {
         auth?.permissions?.includes('student.card.print');
     const cardRef = useRef<HTMLElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isCardReady, setIsCardReady] = useState(false);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Siswa', href: '/students' },
         { title: 'Kartu Pelajar', href: `/students/cards/${student.id}` },
@@ -86,7 +87,7 @@ export default function StudentCard({ student, qrCode }: Props) {
                         />
                     </div>
                     <div className="flex gap-2">
-                        {canPrint && (
+                        {canPrint && isCardReady && (
                             <Button
                                 disabled={isDownloading}
                                 onClick={async () => {
@@ -132,6 +133,7 @@ export default function StudentCard({ student, qrCode }: Props) {
                         ref={cardRef}
                         student={student}
                         qrCode={qrCode}
+                        onReadyChange={setIsCardReady}
                         barcodeValue={barcodeValue}
                         className="max-w-[1011px] print:rounded-none print:shadow-none"
                     />
