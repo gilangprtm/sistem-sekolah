@@ -11,6 +11,37 @@ export function toUrl(url: NonNullable<InertiaLinkProps['href']>): string {
     return typeof url === 'string' ? url : url.url;
 }
 
+export function canonicalizeRupiahInput(value: string): string | null {
+    const trimmed = value.trim();
+
+    if (!trimmed || !/^\d[\d.,]*$/.test(trimmed)) {
+        return null;
+    }
+
+    if (/^\d+$/.test(trimmed)) {
+        return `${trimmed}.00`;
+    }
+
+    const groupedDecimal = /^(\d{1,3}(?:\.\d{3})+),(\d{1,2})$/;
+    const groupedMatch = groupedDecimal.exec(trimmed);
+
+    if (groupedMatch) {
+        return `${groupedMatch[1].replace(/\./g, '')}.${groupedMatch[2].padEnd(2, '0')}`;
+    }
+
+    if (/^\d{1,3}(?:\.\d{3})+$/.test(trimmed)) {
+        return `${trimmed.replace(/\./g, '')}.00`;
+    }
+
+    const decimalMatch = /^(\d+)[,.](\d{1,2})$/.exec(trimmed);
+
+    if (decimalMatch) {
+        return `${decimalMatch[1]}.${decimalMatch[2].padEnd(2, '0')}`;
+    }
+
+    return null;
+}
+
 export function formatCurrencyInput(value: string, previousValue = ''): string {
     const trimmed = value.trim();
 
@@ -57,12 +88,18 @@ export function formatCurrencyInput(value: string, previousValue = ''): string {
 }
 
 export function formatRupiah(value: number | string): string {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(Number(value));
+    const rawValue = String(value).trim();
+    const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(rawValue);
+
+    if (!match) {
+        return `Rp ${rawValue}`;
+    }
+
+    const [, sign, integerPart, fraction = ''] = match;
+    const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const formattedFraction = fraction.padEnd(2, '0');
+
+    return `${sign ? '-' : ''}Rp ${groupedInteger},${formattedFraction}`;
 }
 
 export function formatCurrency(

@@ -1,0 +1,153 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Rombel;
+use App\Models\ScheduleCustomSlot;
+use App\Models\ScheduleEntry;
+use App\Models\SchedulePlan;
+use Illuminate\Support\Collection;
+
+final class ScheduleReadService
+{
+    public function publishedPlanForGrade(int $periodId, string $grade): ?SchedulePlan
+    {
+        $publishedPlan = SchedulePlan::query()
+            ->with('customSlots')
+            ->where('academic_period_id', $periodId)
+            ->where('grade_level', $grade)
+            ->where('status', 'published')
+            ->latest('id')
+            ->first();
+
+        if ($publishedPlan !== null) {
+            return $publishedPlan;
+        }
+
+        return SchedulePlan::query()
+            ->with('customSlots')
+            ->where('academic_period_id', $periodId)
+            ->whereNull('grade_level')
+            ->whereIn('status', ['published', 'archived'])
+            ->whereHas('teachingAssignments', fn ($query) => $query->whereIn(
+                'rombel_id',
+                Rombel::query()
+                    ->where('grade_level', $grade)
+                    ->select('id'),
+            ))
+            ->latest('id')
+            ->first();
+    }
+
+    public function publishedPlanForRombel(int $periodId, int $rombelId): ?SchedulePlan
+    {
+        return SchedulePlan::query()
+            ->with('customSlots')
+            ->where('academic_period_id', $periodId)
+            ->where('status', 'published')
+            ->whereHas('entries', fn ($query) => $query->where('rombel_id', $rombelId))
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * @param  array<int, int>  $rombelIds
+     * @return Collection<int, ScheduleEntry>
+     */
+    public function entriesForWeb(?int $periodId, array $rombelIds, ?int $planId = null): Collection
+    {
+        if ($periodId === null || $rombelIds === []) {
+            return collect();
+        }
+
+        return ScheduleEntry::query()
+            ->with([
+                'subject:id,color',
+                'teachingAssignment.teacherSubject:id,code',
+            ])
+            ->where('academic_period_id', $periodId)
+            ->whereIn('rombel_id', $rombelIds)
+            ->when($planId !== null, fn ($query) => $query->where('schedule_plan_id', $planId))
+            ->whereHas('schedulePlan', fn ($query) => $query->where('status', 'published'))
+            ->orderBy('day')
+            ->orderBy('lesson_number')
+            ->get()
+            ->each(function (ScheduleEntry $entry): void {
+                $entry->setAttribute('schedule_entry_id', $entry->id);
+                $entry->setAttribute('schedule_plan_id', $entry->schedule_plan_id);
+                $entry->setAttribute('assignment_code', $entry->teachingAssignment->teacherSubject->code);
+                $entry->setAttribute('subject_color', $entry->subject->color ?? '#F3F4F6');
+                $entry->unsetRelation('subject');
+                $entry->unsetRelation('teachingAssignment');
+            });
+    }
+
+    /**
+     * @return Collection<int, ScheduleEntry>
+     */
+    public function entriesForStudent(int $planId, int $periodId, int $rombelId): Collection
+    {
+        return ScheduleEntry::query()
+            ->where('schedule_plan_id', $planId)
+            ->where('academic_period_id', $periodId)
+            ->where('rombel_id', $rombelId)
+            ->orderByRaw("CASE day WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 ELSE 6 END")
+            ->orderBy('lesson_number')
+            ->get([
+                'id',
+                'day',
+                'lesson_number',
+                'start_time',
+                'end_time',
+                'subject_code',
+                'subject_name',
+                'teacher_name',
+            ]);
+    }
+
+    /**
+     * @return array<string, array<int, array{number: int, start: string, end: string}>>
+     */
+    public function lessonSlotsByDay(): array
+    {
+        return collect(config('schedule.days'))->mapWithKeys(function (array $day): array {
+            $rows = config('schedule.weekdays.'.$day['schedule']);
+
+            return [
+                $day['key'] => array_values(array_filter(
+                    $rows,
+                    fn (array $row): bool => $row['type'] === 'lesson',
+                )),
+            ];
+        })->all();
+    }
+
+    /**
+     * @param  Collection<int, ScheduleCustomSlot>  $customSlots
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public function scheduleRows(Collection $customSlots): array
+    {
+        return collect(config('schedule.days'))->mapWithKeys(function (array $day) use ($customSlots): array {
+            $daySlots = $customSlots->where('day', $day['key'])->keyBy('lesson_number');
+            $rows = collect(config('schedule.weekdays.'.$day['schedule']))
+                ->map(function (array $row) use ($daySlots): array {
+                    if ($row['type'] === 'lesson' && $daySlots->has($row['number'])) {
+                        $customSlot = $daySlots->get($row['number']);
+
+                        return [
+                            ...$row,
+                            'type' => 'custom',
+                            'label' => $customSlot->label,
+                        ];
+                    }
+
+                    return $row;
+                })
+                ->values()
+                ->all();
+
+            return [$day['key'] => $rows];
+        })->all();
+    }
+}

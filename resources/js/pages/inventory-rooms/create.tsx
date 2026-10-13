@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, PackageSearch, Plus, Search, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { useInventoryRoomUnitSelection } from '@/hooks/use-inventory-room-unit-selection';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -69,94 +70,31 @@ export default function InventoryRoomsCreate({
         code: '',
         description: '',
     });
-    const [selectedUnits, setSelectedUnits] = useState<number[]>([]);
-    const [selectedUnitDetails, setSelectedUnitDetails] = useState<
-        Record<number, Unit>
-    >({});
-    const [lookupSelectedUnits, setLookupSelectedUnits] = useState<number[]>(
-        [],
-    );
-    const [lookupOpen, setLookupOpen] = useState(false);
-    const [lookupSearch, setLookupSearch] = useState(
-        lookupFilters.search ?? '',
-    );
-    const [selectedPage, setSelectedPage] = useState(1);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
-
+    const {
+        currentLookupSearch,
+        lookupOpen,
+        lookupSelectedUnits,
+        paginatedSelectedUnitRows,
+        selectedLastPage,
+        selectedPage,
+        selectedUnitRows,
+        selectedUnits,
+        setCurrentLookupSearch,
+        setLookupOpen,
+        setSelectedPage,
+        loadLookupPage,
+        openLookup,
+        confirmLookup,
+        removeSelectedUnit,
+        toggleLookupUnit,
+    } = useInventoryRoomUnitSelection({
+        lookupUnits,
+        lookupSearch: lookupFilters.search,
+        lookupUrl: '/inventaris/inventory-rooms/create',
+    });
     const visibleUnits = lookupUnits.data;
-    const selectedUnitRows = useMemo(
-        () =>
-            selectedUnits.map((id) => selectedUnitDetails[id]).filter(Boolean),
-        [selectedUnitDetails, selectedUnits],
-    );
-    const selectedPerPage = 10;
-    const selectedLastPage = Math.max(
-        1,
-        Math.ceil(selectedUnitRows.length / selectedPerPage),
-    );
-    const paginatedSelectedUnitRows = selectedUnitRows.slice(
-        (selectedPage - 1) * selectedPerPage,
-        selectedPage * selectedPerPage,
-    );
-
-    const openLookup = () => {
-        setLookupSelectedUnits(selectedUnits);
-        setLookupOpen(true);
-    };
-
-    const loadLookupPage = (page: number) => {
-        router.get(
-            '/inventaris/inventory-rooms/create',
-            {
-                lookup_search: lookupSearch || undefined,
-                lookup_page: page,
-                lookup_per_page: lookupUnits.per_page,
-            },
-            { preserveState: true, preserveScroll: true, replace: true },
-        );
-    };
-    const confirmLookup = () => {
-        setSelectedUnits(lookupSelectedUnits);
-        setSelectedPage(1);
-        setLookupOpen(false);
-    };
-    const toggleLookupUnit = (
-        unitId: number,
-        checked: boolean | 'indeterminate',
-    ) => {
-        if (checked === true) {
-            const unit = visibleUnits.find(
-                (candidate) => candidate.id === unitId,
-            );
-
-            if (unit) {
-                setSelectedUnitDetails((current) => ({
-                    ...current,
-                    [unitId]: unit,
-                }));
-            }
-        }
-
-        setLookupSelectedUnits((current) =>
-            checked === true
-                ? current.includes(unitId)
-                    ? current
-                    : [...current, unitId]
-                : current.filter((id) => id !== unitId),
-        );
-    };
-
-    const removeSelectedUnit = (unitId: number) => {
-        setSelectedUnits((current) => current.filter((id) => id !== unitId));
-        setSelectedPage(1);
-        setSelectedUnitDetails((current) => {
-            const next = { ...current };
-            delete next[unitId];
-
-            return next;
-        });
-    };
 
     const submit = () => {
         setProcessing(true);
@@ -406,9 +344,11 @@ export default function InventoryRoomsCreate({
                             <div className="relative flex-1">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    value={lookupSearch}
+                                    value={currentLookupSearch}
                                     onChange={(event) =>
-                                        setLookupSearch(event.target.value)
+                                        setCurrentLookupSearch(
+                                            event.target.value,
+                                        )
                                     }
                                     onKeyDown={(event) => {
                                         if (event.key === 'Enter') {

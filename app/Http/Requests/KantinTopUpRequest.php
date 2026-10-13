@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\RupiahAmount;
 use Illuminate\Foundation\Http\FormRequest;
 
 class KantinTopUpRequest extends FormRequest
@@ -14,20 +15,9 @@ class KantinTopUpRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $amount = $this->input('amount');
+
         if (is_string($amount)) {
-            $amount = trim($amount);
-
-            if (preg_match('/^\d+$/', $amount) === 1) {
-                $amount .= '.00';
-            } elseif (preg_match('/^\d{1,3}(?:\.\d{3})+$/', $amount) === 1) {
-                $amount = str_replace('.', '', $amount).'.00';
-            } elseif (preg_match('/^(\d{1,3}(?:\.\d{3})+),(\d{1,2})$/', $amount, $matches) === 1) {
-                $amount = str_replace('.', '', $matches[1]).'.'.str_pad($matches[2], 2, '0');
-            } elseif (preg_match('/^(\d+)[,.](\d{1,2})$/', $amount, $matches) === 1) {
-                $amount = $matches[1].'.'.str_pad($matches[2], 2, '0');
-            }
-
-            $this->merge(['amount' => $amount]);
+            $this->merge(['amount' => RupiahAmount::normalize($amount)]);
         }
     }
 

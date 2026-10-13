@@ -53,7 +53,11 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { formatCurrencyInput, formatRupiah } from '@/lib/utils';
+import {
+    canonicalizeRupiahInput,
+    formatCurrencyInput,
+    formatRupiah,
+} from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
@@ -141,7 +145,10 @@ export default function KantinBarangIndex({
             name: barang.name,
             brand: barang.brand ?? '',
             satuan: barang.satuan,
-            harga: formatRupiah(barang.harga),
+            harga: formatCurrencyInput(
+                canonicalizeRupiahInput(barang.harga)?.replace('.', ',') ??
+                    barang.harga,
+            ),
             description: barang.description ?? '',
             image: null,
             remove_image: false,
@@ -152,31 +159,8 @@ export default function KantinBarangIndex({
         setOpen(true);
     };
 
-    const cleanHarga = (value: string): string => {
-        const trimmed = value.trim();
-        const groupedDecimal = /^(\d{1,3}(?:\.\d{3})+),(\d{1,2})$/;
-        const plainDecimal = /^(\d+)[,.](\d{1,2})$/;
-        const groupedMatch = groupedDecimal.exec(trimmed);
-        const decimalMatch = plainDecimal.exec(trimmed);
-
-        if (groupedMatch) {
-            return `${groupedMatch[1].replace(/\./g, '')}.${groupedMatch[2].padEnd(2, '0')}`;
-        }
-
-        if (/^\d+$/.test(trimmed)) {
-            return `${trimmed}.00`;
-        }
-
-        if (/^\d{1,3}(?:\.\d{3})+$/.test(trimmed)) {
-            return `${trimmed.replace(/\./g, '')}.00`;
-        }
-
-        if (decimalMatch) {
-            return `${decimalMatch[1]}.${decimalMatch[2].padEnd(2, '0')}`;
-        }
-
-        return value;
-    };
+    const cleanHarga = (value: string): string =>
+        canonicalizeRupiahInput(value) ?? value.trim();
 
     const satuanOptions = ['pcs', 'botol', 'bungkus', 'pak', 'lusin'].map(
         (value) => ({ value, label: value }),

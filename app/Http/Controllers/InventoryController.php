@@ -10,6 +10,7 @@ use App\Models\InventoryType;
 use App\Models\InventoryUnit;
 use App\Models\TangibleAssetType;
 use App\Services\RegisterGeneratorService;
+use App\Support\RupiahAmount;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -254,6 +255,10 @@ class InventoryController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $request->merge([
+            'harga' => RupiahAmount::normalize($request->input('harga')),
+        ]);
+
         $data = $request->validate([
             'kode_barang' => ['required', 'string', 'max:255', 'unique:tr_inventory_items,kode_barang'],
             'nama_jenis_barang' => ['required', 'string', 'max:255'],
@@ -264,7 +269,7 @@ class InventoryController extends Controller
             'tahun_pembelian' => ['nullable', 'integer', 'min:1900', 'max:'.(date('Y') + 1)],
             'ukuran_konstruksi' => ['nullable', 'string', 'max:255'],
             'satuan' => ['nullable', 'string', 'max:255'],
-            'harga' => ['required', 'numeric', 'min:0'],
+            'harga' => ['required', ...RupiahAmount::canonicalValidationRules(13)],
             'keterangan' => ['nullable', 'string'],
             'inventory_category_id' => ['nullable', 'integer', 'exists:m_inventory_categories,id'],
             'category_name' => ['nullable', 'string', 'max:255'],

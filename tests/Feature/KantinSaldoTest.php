@@ -51,7 +51,9 @@ class KantinSaldoTest extends TestCase
         $this->assertStringContainsString('formatWitaDateTime', $source);
         $this->assertStringContainsString('SearchableCombobox', $source);
         $this->assertStringContainsString('formatCurrencyInput(', $source);
-        $this->assertStringContainsString("import { formatCurrencyInput, formatRupiah } from '@/lib/utils';", $source);
+        $this->assertStringContainsString('formatCurrencyInput(', $source);
+        $this->assertStringContainsString('canonicalizeRupiahInput(amount)', $source);
+        $this->assertStringContainsString("from '@/lib/utils';", $source);
         $this->assertStringContainsString("'/kantin/saldo/top-up'", $source);
         $this->assertStringContainsString('`/kantin/saldo/students?', $source);
         $this->assertStringNotContainsString('topUpStudents', $source);

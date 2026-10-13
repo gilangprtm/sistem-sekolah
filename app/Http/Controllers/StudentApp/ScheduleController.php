@@ -7,8 +7,8 @@ use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
 use App\Models\ScheduleCustomSlot;
 use App\Models\ScheduleEntry;
-use App\Models\SchedulePlan;
 use App\Models\StudentPlacement;
+use App\Services\ScheduleReadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -62,35 +62,22 @@ class ScheduleController extends Controller
                         $status = 'no_active_class';
                         $message = 'Penempatan kelas aktif belum tersedia.';
                     } else {
-                        $schedulePlan = SchedulePlan::query()
-                            ->with('customSlots')
-                            ->where('academic_period_id', $academicPeriod->id)
-                            ->where('status', 'published')
-                            ->whereHas('entries', fn ($query) => $query->where('rombel_id', $placement->rombel_id))
-                            ->latest('id')
-                            ->first();
+                        $readService = app(ScheduleReadService::class);
+                        $schedulePlan = $readService->publishedPlanForRombel(
+                            $academicPeriod->id,
+                            $placement->rombel_id,
+                        );
 
                         if ($schedulePlan === null) {
                             $status = 'no_schedule';
                             $message = 'Jadwal untuk kelas ini belum tersedia.';
                         } else {
                             $customSlots = $schedulePlan->customSlots;
-                            $entries = ScheduleEntry::query()
-                                ->where('schedule_plan_id', $schedulePlan->id)
-                                ->where('academic_period_id', $academicPeriod->id)
-                                ->where('rombel_id', $placement->rombel_id)
-                                ->orderByRaw("CASE day WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 ELSE 6 END")
-                                ->orderBy('lesson_number')
-                                ->get([
-                                    'id',
-                                    'day',
-                                    'lesson_number',
-                                    'start_time',
-                                    'end_time',
-                                    'subject_code',
-                                    'subject_name',
-                                    'teacher_name',
-                                ]);
+                            $entries = $readService->entriesForStudent(
+                                $schedulePlan->id,
+                                $academicPeriod->id,
+                                $placement->rombel_id,
+                            );
 
                             $entries = $entries->unique(fn (ScheduleEntry $entry): string => implode('|', [
                                 $entry->day,
@@ -127,24 +114,15 @@ class ScheduleController extends Controller
      */
     private function groupEntriesByDay(Collection $entries, Collection $customSlots): array
     {
-        return collect(config('schedule.days'))->map(function (array $day) use ($entries, $customSlots): array {
+        $rowsByDay = app(ScheduleReadService::class)->scheduleRows($customSlots);
+
+        return collect(config('schedule.days'))->map(function (array $day) use ($entries, $rowsByDay): array {
             $key = $day['key'];
-            $configuredRows = config('schedule.weekdays.'.$day['schedule']);
-            $dayCustomSlots = $customSlots->where('day', $key)->keyBy('lesson_number');
-            $rows = collect($configuredRows)->map(function (array $row) use ($dayCustomSlots): array {
-                if ($row['type'] === 'lesson' && $dayCustomSlots->has($row['number'])) {
-                    $customSlot = $dayCustomSlots->get($row['number']);
-
-                    return [...$row, 'type' => 'custom', 'label' => $customSlot->label];
-                }
-
-                return $row;
-            })->values()->all();
 
             return [
                 'key' => $key,
                 'label' => $day['label'],
-                'rows' => $rows,
+                'rows' => $rowsByDay[$key],
                 'entries' => $entries
                     ->where('day', $key)
                     ->unique(fn (ScheduleEntry $entry): string => implode('|', [

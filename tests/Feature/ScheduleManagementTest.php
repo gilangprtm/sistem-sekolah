@@ -907,7 +907,7 @@ class ScheduleManagementTest extends TestCase
     }
 
     /** @group legacy-publish-disabled */
-    public function test_publish_revalidates_configured_slots_and_rolls_back_on_invalid_entry(): void
+    public function test_manual_publish_endpoint_is_unavailable_for_invalid_entry_scenario(): void
     {
         $period = $this->activePeriod();
         $rombel = Rombel::factory()->create(['grade_level' => 'VII']);
@@ -930,7 +930,7 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->post('/kurikulum/schedule/publish', ['schedule_plan_id' => $plan->id])
-            ->assertStatus(422);
+            ->assertNotFound();
         $this->assertDatabaseHas('tr_curriculum_schedule_plans', ['id' => $plan->id, 'status' => 'draft']);
         $this->assertDatabaseMissing('tr_curriculum_schedule_plans', ['id' => $plan->id, 'status' => 'published']);
     }
@@ -969,7 +969,7 @@ class ScheduleManagementTest extends TestCase
     }
 
     /** @group legacy-publish-disabled */
-    public function test_publish_rejects_empty_draft_plan(): void
+    public function test_manual_publish_endpoint_is_unavailable_for_empty_draft_scenario(): void
     {
         $period = $this->activePeriod();
         $plan = SchedulePlan::factory()->create([
@@ -980,7 +980,7 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAs($this->admin())
             ->post('/kurikulum/schedule/publish', ['schedule_plan_id' => $plan->id])
-            ->assertStatus(422);
+            ->assertNotFound();
     }
 
     public function test_schedule_save_accepts_global_active_rombel_without_period_usage(): void

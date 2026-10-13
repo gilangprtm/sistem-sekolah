@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { cn, formatCurrencyInput } from '@/lib/utils';
+import { canonicalizeRupiahInput, cn, formatCurrencyInput } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -83,11 +83,8 @@ export default function InventoryCreate({
     const set = (field: string, value: string) =>
         setForm((prev) => ({ ...prev, [field]: value }));
 
-    const cleanHarga = (value: string): string => {
-        const normalized = value.replace(/\./g, '').replace(',', '.');
-
-        return normalized || '0';
-    };
+    const cleanHarga = (value: string): string =>
+        canonicalizeRupiahInput(value) ?? value.trim();
 
     const submit = () => {
         setProcessing(true);

@@ -436,7 +436,7 @@ class KantinBarangTest extends TestCase
         $pageSource = File::get(resource_path('js/pages/kantin/barang/index.tsx'));
         $this->assertStringContainsString('onSelect={()=>openEdit(barang)}', preg_replace('/\s+/', '', $pageSource));
         $this->assertStringContainsString('setOpen(true)', $pageSource);
-        $this->assertStringContainsString('harga: formatRupiah(barang.harga)', $pageSource);
+        $this->assertStringContainsString('formatRupiah(barang.harga)', $pageSource);
         $utilsSource = File::get(resource_path('js/lib/utils.ts'));
         $currencyFormatterPages = [
             resource_path('js/pages/inventory/create.tsx'),
@@ -448,6 +448,7 @@ class KantinBarangTest extends TestCase
         foreach ($currencyFormatterPages as $currencyFormatterPage) {
             $currencyFormatterSource = File::get($currencyFormatterPage);
             $this->assertStringContainsString('formatCurrencyInput(', $currencyFormatterSource);
+            $this->assertStringContainsString('canonicalizeRupiahInput', $currencyFormatterSource);
             $this->assertStringContainsString("from '@/lib/utils'", $currencyFormatterSource);
         }
 
@@ -455,7 +456,7 @@ class KantinBarangTest extends TestCase
         $this->assertStringNotContainsString('const formatHargaInput =', File::get($currencyFormatterPages[1]));
         $this->assertStringNotContainsString('const formatAmountInput =', File::get($currencyFormatterPages[2]));
         $this->assertStringContainsString('current.harga', $pageSource);
-        $this->assertStringContainsString('const cleanHarga = (value: string): string =>', $pageSource);
+        $this->assertStringContainsString('canonicalizeRupiahInput', $pageSource);
         $this->assertStringContainsString('satuan: barang.satuan', $pageSource);
         $flashToastSource = File::get(resource_path('js/hooks/use-flash-toast.ts'));
         $dashboardLayoutSource = File::get(resource_path('js/layouts/app/dashboard-layout.tsx'));

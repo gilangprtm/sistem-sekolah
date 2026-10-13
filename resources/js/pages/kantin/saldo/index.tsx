@@ -28,7 +28,11 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { formatWitaDateTime } from '@/lib/date-time';
-import { formatCurrencyInput, formatRupiah } from '@/lib/utils';
+import {
+    canonicalizeRupiahInput,
+    formatCurrencyInput,
+    formatRupiah,
+} from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type Student = {
@@ -172,7 +176,10 @@ export default function KantinSaldoIndex({
     const submitTopUp = () =>
         router.post(
             '/kantin/saldo/top-up',
-            { student_id: studentId, amount },
+            {
+                student_id: studentId,
+                amount: canonicalizeRupiahInput(amount) ?? amount.trim(),
+            },
             {
                 onError: setErrors,
                 onSuccess: () => {

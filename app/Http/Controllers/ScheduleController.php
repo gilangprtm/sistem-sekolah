@@ -12,6 +12,7 @@ use App\Models\SchedulePlan;
 use App\Models\ScheduleTeachingAssignment;
 use App\Models\Subject;
 use App\Models\TeacherSubject;
+use App\Services\ScheduleReadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -44,19 +45,10 @@ class ScheduleController extends Controller
         $selectedPeriod = $periods->firstWhere('id', $validated['academic_period_id'] ?? null) ?? $periods->first();
         $grade = $validated['grade'] ?? 'VII';
         $selectedRombelIds = array_map('intval', Arr::wrap($validated['rombel_ids'] ?? []));
-        $publishedPlan = $selectedPeriod === null
+        $readService = app(ScheduleReadService::class);
+        $readPlan = $selectedPeriod === null
             ? null
-            : SchedulePlan::query()
-                ->with('customSlots')
-                ->where('academic_period_id', $selectedPeriod->id)
-                ->where('grade_level', $grade)
-                ->where('status', 'published')
-                ->latest('id')
-                ->first();
-        $legacyPlan = $publishedPlan === null && $selectedPeriod !== null
-            ? $this->legacyPlanForGrade($selectedPeriod->id, $grade)
-            : null;
-        $readPlan = $publishedPlan ?? $legacyPlan;
+            : $readService->publishedPlanForGrade($selectedPeriod->id, $grade);
         if ($selectedRombelIds === [] && $readPlan !== null) {
             $persistedRombelIds = $readPlan->getAttribute('selected_rombel_ids');
             $selectedRombelIds = is_array($persistedRombelIds) && $persistedRombelIds !== []
@@ -79,7 +71,7 @@ class ScheduleController extends Controller
             'selectedRombels' => $selectedRombels,
             'selectedRombelIds' => $selectedRombelIds,
             'days' => $days,
-            'entries' => $this->publishedEntries($selectedPeriod?->id, $selectedRombelIds, $readPlan?->id),
+            'entries' => $readService->entriesForWeb($selectedPeriod?->id, $selectedRombelIds, $readPlan?->id),
             'scheduleMeta' => [
                 'lessonDurationMinutes' => config('schedule.lesson_duration_minutes'),
                 'breakDurationMinutes' => config('schedule.break_duration_minutes'),
@@ -626,20 +618,6 @@ class ScheduleController extends Controller
         );
     }
 
-    private function legacyPlanForGrade(int $periodId, string $grade): ?SchedulePlan
-    {
-        return SchedulePlan::query()
-            ->with('customSlots')
-            ->where('academic_period_id', $periodId)
-            ->whereNull('grade_level')
-            ->whereIn('status', ['published', 'archived'])
-            ->whereHas('teachingAssignments', fn ($query) => $query->whereIn('rombel_id', Rombel::query()
-                ->where('grade_level', $grade)
-                ->select('id')))
-            ->latest('id')
-            ->first();
-    }
-
     /**
      * @param  array<int, array{teacher_subject_id: int, rombel_ids: array<int, int>}>  $assignments
      * @return Collection<int, Rombel>
@@ -887,50 +865,13 @@ class ScheduleController extends Controller
      */
     private function lessonSlotsByDay(): array
     {
-        return collect(config('schedule.days'))->mapWithKeys(function (array $day): array {
-            $rows = config('schedule.weekdays.'.$day['schedule']);
-
-            return [
-                $day['key'] => array_values(array_filter(
-                    $rows,
-                    fn (array $row): bool => $row['type'] === 'lesson',
-                )),
-            ];
-        })->all();
+        return app(ScheduleReadService::class)->lessonSlotsByDay();
     }
 
     /**
      * @param  array<int, int>  $rombelIds
      * @return Collection<int, ScheduleEntry>
      */
-    private function publishedEntries(?int $periodId, array $rombelIds, ?int $planId = null): Collection
-    {
-        if ($periodId === null || $rombelIds === []) {
-            return collect();
-        }
-
-        return ScheduleEntry::query()
-            ->with([
-                'subject:id,color',
-                'teachingAssignment.teacherSubject:id,code',
-            ])
-            ->where('academic_period_id', $periodId)
-            ->whereIn('rombel_id', $rombelIds)
-            ->when($planId !== null, fn ($query) => $query->where('schedule_plan_id', $planId))
-            ->whereHas('schedulePlan', fn ($query) => $query->where('status', 'published'))
-            ->orderBy('day')
-            ->orderBy('lesson_number')
-            ->get()
-            ->each(function (ScheduleEntry $entry): void {
-                $entry->setAttribute('schedule_entry_id', $entry->id);
-                $entry->setAttribute('schedule_plan_id', $entry->schedule_plan_id);
-                $entry->setAttribute('assignment_code', $entry->teachingAssignment->teacherSubject->code);
-                $entry->setAttribute('subject_color', $entry->subject->color ?? '#F3F4F6');
-                $entry->unsetRelation('subject');
-                $entry->unsetRelation('teachingAssignment');
-            });
-    }
-
     /**
      * @return Collection<int, AcademicPeriod>
      */
@@ -972,30 +913,14 @@ class ScheduleController extends Controller
      */
     private function scheduleDays(Collection $customSlots): array
     {
-        $days = collect(config('schedule.days'))
+        $rowsByDay = app(ScheduleReadService::class)->scheduleRows($customSlots);
+
+        return collect(config('schedule.days'))
             ->map(fn (array $day): array => [
                 'key' => $day['key'],
                 'label' => $day['label'],
-                'rows' => config('schedule.weekdays.'.$day['schedule']),
-            ]);
-
-        return $days->map(function (array $day) use ($customSlots): array {
-            $daySlots = $customSlots->where('day', $day['key'])->keyBy('lesson_number');
-            $rows = [];
-            foreach ($day['rows'] as $row) {
-                if ($row['type'] === 'lesson' && $daySlots->has($row['number'])) {
-                    $customSlot = $daySlots->get($row['number']);
-                    $row = [
-                        ...$row,
-                        'type' => 'custom',
-                        'label' => $customSlot->label,
-                    ];
-                }
-                $rows[] = $row;
-            }
-            $day['rows'] = $rows;
-
-            return $day;
-        })->all();
+                'rows' => $rowsByDay[$day['key']],
+            ])
+            ->all();
     }
 }
