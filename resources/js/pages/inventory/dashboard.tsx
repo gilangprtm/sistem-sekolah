@@ -26,6 +26,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import { formatRupiah } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type CategoryStat = {
@@ -65,14 +66,6 @@ export default function InventoryDashboard({
     statistik_kondisi,
     category_stats,
 }: Props) {
-    const formatRupiah = (value: number) =>
-        new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(value);
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Inventaris" />

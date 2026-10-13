@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrencyInput } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -82,18 +82,6 @@ export default function InventoryCreate({
 
     const set = (field: string, value: string) =>
         setForm((prev) => ({ ...prev, [field]: value }));
-
-    const formatHarga = (value: string): string => {
-        const normalized = value.replace(/[^0-9,]/g, '');
-        const [whole, fraction] = normalized.split(',');
-        const grouped = whole
-            .replace(/^0+(?=\d)/, '')
-            .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        return fraction === undefined
-            ? grouped
-            : `${grouped},${fraction.slice(0, 2)}`;
-    };
 
     const cleanHarga = (value: string): string => {
         const normalized = value.replace(/\./g, '').replace(',', '.');
@@ -647,7 +635,10 @@ export default function InventoryCreate({
                                         onChange={(e) =>
                                             set(
                                                 'harga',
-                                                formatHarga(e.target.value),
+                                                formatCurrencyInput(
+                                                    e.target.value,
+                                                    form.harga,
+                                                ),
                                             )
                                         }
                                     />

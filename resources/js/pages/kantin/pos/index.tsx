@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useMemo, useState } from 'react';
+import { formatRupiah } from '@/lib/utils';
 
 type Category = { id: number; name: string };
 type Product = {
@@ -28,13 +29,6 @@ type IdentifiedStudent = {
     balance: string;
 };
 type PinChallenge = { token: string };
-
-const rupiah = (amount: number) =>
-    new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        maximumFractionDigits: 0,
-    }).format(amount);
 
 export default function KantinPos({ categories, products }: Props) {
     const [student, setStudent] = useState<IdentifiedStudent | null>(null);
@@ -306,9 +300,9 @@ export default function KantinPos({ categories, products }: Props) {
             setCategory(null);
             setNotice(
                 'Pembayaran berhasil! Total ' +
-                    rupiah(Number(data.total)) +
+                    formatRupiah(Number(data.total)) +
                     '. Sisa saldo ' +
-                    rupiah(Number(data.balance)) +
+                    formatRupiah(Number(data.balance)) +
                     '.',
             );
             window.setTimeout(() => setNotice(''), 5000);
@@ -371,8 +365,17 @@ export default function KantinPos({ categories, products }: Props) {
 
     if (pinChallenge && !student) {
         return (
-            <div className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#160F42] p-5">
-                <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl">
+            <div
+                className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#160F42] bg-cover bg-center p-5"
+                style={{
+                    backgroundImage: "url('/images/hero-background.png')",
+                }}
+            >
+                <div
+                    className="absolute inset-0 bg-gradient-to-br from-[#160F42]/95 via-[#160F42]/80 to-[#5D1B68]/70"
+                    aria-hidden="true"
+                />
+                <div className="relative w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl">
                     <img
                         src="/images/logo-sekolah.png"
                         alt="Logo SMPN 17 Denpasar"
@@ -549,7 +552,7 @@ export default function KantinPos({ categories, products }: Props) {
                                 Saldo tersedia
                             </p>
                             <p className="text-xl font-bold text-[#160F42]">
-                                {rupiah(Number(student.balance))}
+                                {formatRupiah(Number(student.balance))}
                             </p>
                             <button
                                 type="button"
@@ -641,7 +644,7 @@ export default function KantinPos({ categories, products }: Props) {
                                         {product.brand || product.satuan}
                                     </p>
                                     <p className="mt-3 text-base font-bold text-[#160F42]">
-                                        {rupiah(Number(product.harga))}
+                                        {formatRupiah(product.harga)}
                                     </p>
                                     <button
                                         type="button"
@@ -697,7 +700,7 @@ export default function KantinPos({ categories, products }: Props) {
                                             {product.name}
                                         </p>
                                         <p className="text-sm text-slate-500">
-                                            {rupiah(
+                                            {formatRupiah(
                                                 Number(product.harga) *
                                                     cart[product.id],
                                             )}
@@ -739,7 +742,7 @@ export default function KantinPos({ categories, products }: Props) {
                     <div className="mt-2 shrink-0 border-t border-slate-200 pt-2 lg:mt-5 lg:pt-5">
                         <div className="flex justify-between text-base font-semibold">
                             <span>Total belanja</span>
-                            <span>{rupiah(total)}</span>
+                            <span>{formatRupiah(total)}</span>
                         </div>
                         <p className="mt-2 text-sm text-slate-500">
                             Sisa saldo setelah belanja:{' '}
@@ -750,7 +753,7 @@ export default function KantinPos({ categories, products }: Props) {
                                         : 'text-[#160F42]'
                                 }
                             >
-                                {rupiah(Number(student.balance) - total)}
+                                {formatRupiah(Number(student.balance) - total)}
                             </strong>
                         </p>
                         {error && (
@@ -775,7 +778,7 @@ export default function KantinPos({ categories, products }: Props) {
                                 ? 'Memproses pembayaran...'
                                 : total > Number(student.balance)
                                   ? 'Saldo tidak mencukupi'
-                                  : 'Bayar ' + rupiah(total)}
+                                  : 'Bayar ' + formatRupiah(total)}
                         </button>
                     </div>
                 </aside>

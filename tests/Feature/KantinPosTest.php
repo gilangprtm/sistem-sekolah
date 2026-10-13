@@ -98,6 +98,10 @@ class KantinPosTest extends TestCase
         $source = file_get_contents(resource_path('js/pages/kantin/pos/index.tsx'));
 
         $this->assertIsString($source);
+        $pinBranch = substr($source, strpos($source, 'if (pinChallenge && !student)'), strpos($source, 'if (!student)') - strpos($source, 'if (pinChallenge && !student)'));
+        $this->assertStringContainsString("backgroundImage: \"url('/images/hero-background.png')\"", $pinBranch);
+        $this->assertStringContainsString('aria-hidden="true"', $pinBranch);
+        $this->assertStringContainsString('bg-gradient-to-br', $pinBranch);
         $this->assertStringContainsString('<input', $source);
         $this->assertStringContainsString('type="password"', $source);
         $this->assertStringContainsString('.replace(/\\D/g, \'\')', $source);

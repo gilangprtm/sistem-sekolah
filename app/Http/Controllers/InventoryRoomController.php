@@ -6,6 +6,7 @@ use App\Models\InventoryRoom;
 use App\Models\InventoryUnit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -48,33 +49,8 @@ class InventoryRoomController extends Controller
 
     public function edit(Request $request, InventoryRoom $inventoryRoom): Response
     {
-        $lookupPerPage = min(max($request->integer('lookup_per_page', 10), 1), 50);
         $lookupSearch = $request->string('lookup_search')->trim()->toString();
-        $lookupQuery = InventoryUnit::query()
-            ->with([
-                'item:id,kode_barang,nama_jenis_barang,merk_type',
-                'room:id,name,code',
-            ])
-            ->orderBy('inventory_item_id')
-            ->orderBy('register');
-
-        if ($lookupSearch !== '') {
-            $lookupQuery->where(function ($query) use ($lookupSearch): void {
-                $query->where('register', 'like', "%{$lookupSearch}%")
-                    ->orWhereHas('item', function ($itemQuery) use ($lookupSearch): void {
-                        $itemQuery
-                            ->where('kode_barang', 'like', "%{$lookupSearch}%")
-                            ->orWhere('nama_jenis_barang', 'like', "%{$lookupSearch}%")
-                            ->orWhere('merk_type', 'like', "%{$lookupSearch}%");
-                    })
-                    ->orWhereHas('room', fn ($roomQuery) => $roomQuery->where('name', 'like', "%{$lookupSearch}%"));
-            });
-        }
-
-        $lookupUnits = $lookupQuery
-            ->paginate($lookupPerPage, ['*'], 'lookup_page')
-            ->withQueryString();
-        $lookupUnits->getCollection()->transform(fn (InventoryUnit $unit): array => $this->unitData($unit));
+        $lookupUnits = $this->lookupUnits($request, $lookupSearch);
         $assignedUnits = $inventoryRoom->units()
             ->with(['item:id,kode_barang,nama_jenis_barang,merk_type', 'room:id,name,code'])
             ->orderBy('inventory_item_id')
@@ -102,33 +78,8 @@ class InventoryRoomController extends Controller
 
     public function create(Request $request): Response
     {
-        $lookupPerPage = min(max($request->integer('lookup_per_page', 10), 1), 50);
         $lookupSearch = $request->string('lookup_search')->trim()->toString();
-        $lookupQuery = InventoryUnit::query()
-            ->with([
-                'item:id,kode_barang,nama_jenis_barang,merk_type',
-                'room:id,name,code',
-            ])
-            ->orderBy('inventory_item_id')
-            ->orderBy('register');
-
-        if ($lookupSearch !== '') {
-            $lookupQuery->where(function ($query) use ($lookupSearch): void {
-                $query->where('register', 'like', "%{$lookupSearch}%")
-                    ->orWhereHas('item', function ($itemQuery) use ($lookupSearch): void {
-                        $itemQuery
-                            ->where('kode_barang', 'like', "%{$lookupSearch}%")
-                            ->orWhere('nama_jenis_barang', 'like', "%{$lookupSearch}%")
-                            ->orWhere('merk_type', 'like', "%{$lookupSearch}%");
-                    })
-                    ->orWhereHas('room', fn ($roomQuery) => $roomQuery->where('name', 'like', "%{$lookupSearch}%"));
-            });
-        }
-
-        $lookupUnits = $lookupQuery
-            ->paginate($lookupPerPage, ['*'], 'lookup_page')
-            ->withQueryString();
-        $lookupUnits->getCollection()->transform(fn (InventoryUnit $unit): array => $this->unitData($unit));
+        $lookupUnits = $this->lookupUnits($request, $lookupSearch);
 
         return Inertia::render('inventory-rooms/create', [
             'lookupUnits' => $lookupUnits,
@@ -205,6 +156,38 @@ class InventoryRoomController extends Controller
         Inertia::flash('toast', ['type' => 'error', 'message' => 'Ruangan berhasil dihapus.']);
 
         return back();
+    }
+
+    private function lookupUnits(Request $request, string $lookupSearch): LengthAwarePaginator
+    {
+        $lookupPerPage = min(max($request->integer('lookup_per_page', 10), 1), 50);
+        $lookupQuery = InventoryUnit::query()
+            ->with([
+                'item:id,kode_barang,nama_jenis_barang,merk_type',
+                'room:id,name,code',
+            ])
+            ->orderBy('inventory_item_id')
+            ->orderBy('register');
+
+        if ($lookupSearch !== '') {
+            $lookupQuery->where(function ($query) use ($lookupSearch): void {
+                $query->where('register', 'like', "%{$lookupSearch}%")
+                    ->orWhereHas('item', function ($itemQuery) use ($lookupSearch): void {
+                        $itemQuery
+                            ->where('kode_barang', 'like', "%{$lookupSearch}%")
+                            ->orWhere('nama_jenis_barang', 'like', "%{$lookupSearch}%")
+                            ->orWhere('merk_type', 'like', "%{$lookupSearch}%");
+                    })
+                    ->orWhereHas('room', fn ($roomQuery) => $roomQuery->where('name', 'like', "%{$lookupSearch}%"));
+            });
+        }
+
+        $lookupUnits = $lookupQuery
+            ->paginate($lookupPerPage, ['*'], 'lookup_page')
+            ->withQueryString();
+        $lookupUnits->getCollection()->transform(fn (InventoryUnit $unit): array => $this->unitData($unit));
+
+        return $lookupUnits;
     }
 
     /**

@@ -887,13 +887,16 @@ class ScheduleController extends Controller
      */
     private function lessonSlotsByDay(): array
     {
-        return collect([
-            'monday' => config('schedule.weekdays.monday_thursday'),
-            'tuesday' => config('schedule.weekdays.monday_thursday'),
-            'wednesday' => config('schedule.weekdays.monday_thursday'),
-            'thursday' => config('schedule.weekdays.monday_thursday'),
-            'friday' => config('schedule.weekdays.friday'),
-        ])->map(fn (array $rows): array => array_values(array_filter($rows, fn (array $row): bool => $row['type'] === 'lesson')))->all();
+        return collect(config('schedule.days'))->mapWithKeys(function (array $day): array {
+            $rows = config('schedule.weekdays.'.$day['schedule']);
+
+            return [
+                $day['key'] => array_values(array_filter(
+                    $rows,
+                    fn (array $row): bool => $row['type'] === 'lesson',
+                )),
+            ];
+        })->all();
     }
 
     /**
@@ -969,16 +972,14 @@ class ScheduleController extends Controller
      */
     private function scheduleDays(Collection $customSlots): array
     {
-        $weekdayRows = config('schedule.weekdays.monday_thursday');
-        $days = [
-            ['key' => 'monday', 'label' => 'Senin', 'rows' => $weekdayRows],
-            ['key' => 'tuesday', 'label' => 'Selasa', 'rows' => $weekdayRows],
-            ['key' => 'wednesday', 'label' => 'Rabu', 'rows' => $weekdayRows],
-            ['key' => 'thursday', 'label' => 'Kamis', 'rows' => $weekdayRows],
-            ['key' => 'friday', 'label' => 'Jumat', 'rows' => config('schedule.weekdays.friday')],
-        ];
+        $days = collect(config('schedule.days'))
+            ->map(fn (array $day): array => [
+                'key' => $day['key'],
+                'label' => $day['label'],
+                'rows' => config('schedule.weekdays.'.$day['schedule']),
+            ]);
 
-        return collect($days)->map(function (array $day) use ($customSlots): array {
+        return $days->map(function (array $day) use ($customSlots): array {
             $daySlots = $customSlots->where('day', $day['key'])->keyBy('lesson_number');
             $rows = [];
             foreach ($day['rows'] as $row) {

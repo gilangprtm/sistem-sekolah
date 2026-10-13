@@ -4,6 +4,7 @@ import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { formatWitaDateTime } from '@/lib/date-time';
+import { formatRupiah } from '@/lib/utils';
 
 type Detail = {
     barang_name: string;
@@ -32,12 +33,7 @@ type Props = {
     topups: Paginator<TopUp>;
 };
 
-const currency = (value: string) =>
-    new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 2,
-    }).format(Number(value));
+const currency = formatRupiah;
 function HistoryLoading() {
     return (
         <p className="border-t p-4 text-sm text-muted-foreground" role="status">

@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
+import { formatRupiah } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type Item = {
@@ -301,14 +302,6 @@ export default function InventoryIndex({
             { preserveState: true },
         );
     };
-
-    const formatRupiah = (value: number) =>
-        new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(value);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

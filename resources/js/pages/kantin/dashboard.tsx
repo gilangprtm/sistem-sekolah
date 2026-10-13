@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { formatWitaDateTime } from '@/lib/date-time';
+import { formatRupiah } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type Period = 'today' | 'week' | 'month' | 'year' | 'all';
@@ -67,12 +68,6 @@ const periodOptions: { value: Period; label: string }[] = [
     { value: 'all', label: 'All Transaksi' },
 ];
 
-const currency = (value: string | number) =>
-    new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        maximumFractionDigits: 0,
-    }).format(Number(value));
 export default function KantinDashboard({
     period,
     summary,
@@ -125,7 +120,7 @@ export default function KantinDashboard({
                         </CardHeader>
                         <CardContent className="flex items-center justify-between">
                             <span className="text-2xl font-bold">
-                                {currency(summary.revenue)}
+                                {formatRupiah(summary.revenue)}
                             </span>
                             <WalletCards className="size-5 text-muted-foreground" />
                         </CardContent>
@@ -226,7 +221,7 @@ export default function KantinDashboard({
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">
-                                                    {currency(
+                                                    {formatRupiah(
                                                         transaction.total,
                                                     )}
                                                 </TableCell>
@@ -281,7 +276,7 @@ export default function KantinDashboard({
                                                     {buyer.transactions}
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">
-                                                    {currency(buyer.total)}
+                                                    {formatRupiah(buyer.total)}
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -330,7 +325,7 @@ export default function KantinDashboard({
                                                 {item.quantity}
                                             </TableCell>
                                             <TableCell className="text-right font-medium">
-                                                {currency(item.total)}
+                                                {formatRupiah(item.total)}
                                             </TableCell>
                                         </TableRow>
                                     ))

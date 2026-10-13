@@ -6,7 +6,6 @@ use Database\Factories\KantinBarangFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
@@ -53,26 +52,19 @@ class KantinBarang extends Model
             return null;
         }
 
-        $url = Storage::disk('public')->url($this->image_path);
+        $path = route('kantin.barang.image', ['kantinBarang' => $this->getKey()], false);
 
         if (! app()->bound('request')) {
-            return $url;
+            return $path;
         }
 
         $request = request();
         $forwardedProto = strtolower((string) $request->header('X-Forwarded-Proto'));
-        $isHttps = $request->isSecure() || $forwardedProto === 'https';
-        $scheme = $isHttps ? 'https' : $request->getScheme();
+        $scheme = $request->isSecure() || $forwardedProto === 'https'
+            ? 'https'
+            : $request->getScheme();
 
-        if (str_starts_with($url, '/')) {
-            return $scheme.'://'.$request->getHttpHost().$url;
-        }
-
-        if ($isHttps && str_starts_with($url, 'http://')) {
-            return 'https://'.substr($url, 7);
-        }
-
-        return $url;
+        return $scheme.'://'.$request->getHttpHost().$path;
     }
 
     /** @return BelongsTo<KantinCategory, $this> */

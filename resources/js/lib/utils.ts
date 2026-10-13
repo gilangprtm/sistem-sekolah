@@ -11,6 +11,60 @@ export function toUrl(url: NonNullable<InertiaLinkProps['href']>): string {
     return typeof url === 'string' ? url : url.url;
 }
 
+export function formatCurrencyInput(value: string, previousValue = ''): string {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+        return '';
+    }
+
+    if (
+        !/^\d[\d.,]*$/.test(trimmed) ||
+        (trimmed.match(/,/g) ?? []).length > 1
+    ) {
+        return value;
+    }
+
+    const groupedInteger = /^\d{1,3}(?:\.\d{3})+$/;
+    const plainInteger = /^\d+$/;
+    const [wholePart, fraction] = trimmed.split(',');
+    const appendedDigitToGroupedValue =
+        groupedInteger.test(previousValue) &&
+        value.startsWith(previousValue) &&
+        /^\d$/.test(value.slice(previousValue.length));
+    const validWhole =
+        plainInteger.test(wholePart) ||
+        groupedInteger.test(wholePart) ||
+        appendedDigitToGroupedValue;
+
+    if (
+        !validWhole ||
+        (fraction !== undefined &&
+            (fraction.length > 2 || !/^\d*$/.test(fraction)))
+    ) {
+        return value;
+    }
+
+    const integer = wholePart.replace(/\./g, '');
+    const normalizedInteger = integer.replace(/^0+(?=\d)/, '');
+    const groupedWhole = new Intl.NumberFormat('id-ID').format(
+        Number(normalizedInteger),
+    );
+
+    return fraction === undefined
+        ? groupedWhole
+        : `${groupedWhole},${fraction}`;
+}
+
+export function formatRupiah(value: number | string): string {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(Number(value));
+}
+
 export function formatCurrency(
     amount: number,
     opts?: {

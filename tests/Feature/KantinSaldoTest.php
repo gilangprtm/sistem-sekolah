@@ -50,6 +50,8 @@ class KantinSaldoTest extends TestCase
         $this->assertStringContainsString('summary.topUp.count', $source);
         $this->assertStringContainsString('formatWitaDateTime', $source);
         $this->assertStringContainsString('SearchableCombobox', $source);
+        $this->assertStringContainsString('formatCurrencyInput(', $source);
+        $this->assertStringContainsString("import { formatCurrencyInput, formatRupiah } from '@/lib/utils';", $source);
         $this->assertStringContainsString("'/kantin/saldo/top-up'", $source);
         $this->assertStringContainsString('`/kantin/saldo/students?', $source);
         $this->assertStringNotContainsString('topUpStudents', $source);
@@ -157,6 +159,50 @@ class KantinSaldoTest extends TestCase
         ]);
         $this->assertSame(1, KantinSaldo::query()->where('student_id', $student->id)->count());
         $this->assertSame(1, KantinSaldoTransaction::query()->where('student_id', $student->id)->count());
+    }
+
+    public function test_top_up_accepts_plain_decimal_formats_and_rejects_malformed_amounts(): void
+    {
+        $role = Role::create(['name' => 'Saldo Amount Grammar Tester '.uniqid()]);
+        $role->syncPermissions(['kantin.saldo.topup']);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        foreach ([
+            '5000' => '5000.00',
+            '50000000' => '50000000.00',
+            '50.000.000' => '50000000.00',
+            '5.000' => '5000.00',
+            '5000.50' => '5000.50',
+            '12445,67' => '12445.67',
+            '5000,50' => '5000.50',
+            '5.000,50' => '5000.50',
+        ] as $amount => $expected) {
+            $student = Student::factory()->create(['status' => 'active']);
+
+            $this->actingAs($user)->post('/kantin/saldo/top-up', [
+                'student_id' => $student->id,
+                'amount' => $amount,
+            ])->assertRedirect('/kantin/saldo')->assertSessionHasNoErrors();
+
+            $this->assertDatabaseHas('tr_kantin_saldo_mutasi', [
+                'student_id' => $student->id,
+                'amount' => $expected,
+            ]);
+        }
+
+        foreach (['5.000,500', '5,000.50', '-5000', 'Rp 5.000', 'abc'] as $amount) {
+            $student = Student::factory()->create(['status' => 'active']);
+
+            $this->actingAs($user)->post('/kantin/saldo/top-up', [
+                'student_id' => $student->id,
+                'amount' => $amount,
+            ])->assertSessionHasErrors('amount');
+
+            $this->assertDatabaseMissing('tr_kantin_saldo_mutasi', [
+                'student_id' => $student->id,
+            ]);
+        }
     }
 
     public function test_top_up_rejects_zero_and_inactive_students(): void

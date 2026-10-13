@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
+import { formatRupiah } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type Unit = {
@@ -149,14 +150,6 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
 
         router.delete(`/inventaris/inventory/${item.id}`);
     };
-
-    const formatRupiah = (value: number) =>
-        new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(value);
 
     return (
         <AppLayout

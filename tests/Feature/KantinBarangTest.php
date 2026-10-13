@@ -291,9 +291,13 @@ class KantinBarangTest extends TestCase
         $user = $this->superAdmin();
         $acceptedPrices = [
             '5000' => '5000.00',
+            '50000000' => '50000000.00',
+            '50.000.000' => '50000000.00',
             '5.000' => '5000.00',
             '5.000,50' => '5000.50',
             '5000.50' => '5000.50',
+            '12445,67' => '12445.67',
+            '5000,50' => '5000.50',
         ];
 
         foreach ($acceptedPrices as $harga => $expected) {
@@ -315,7 +319,7 @@ class KantinBarangTest extends TestCase
             ]);
         }
 
-        foreach (['5.00.0', '5.000,500', '5,000.50', 'abc'] as $harga) {
+        foreach (['5.00.0', '5.000,500', '5,000.50', '-5000', 'Rp 5.000', 'abc'] as $harga) {
             $this->actingAs($user)
                 ->post('/kantin/barang', [
                     'category_name' => 'Malformed '.md5($harga),
@@ -433,6 +437,25 @@ class KantinBarangTest extends TestCase
         $this->assertStringContainsString('onSelect={()=>openEdit(barang)}', preg_replace('/\s+/', '', $pageSource));
         $this->assertStringContainsString('setOpen(true)', $pageSource);
         $this->assertStringContainsString('harga: formatRupiah(barang.harga)', $pageSource);
+        $utilsSource = File::get(resource_path('js/lib/utils.ts'));
+        $currencyFormatterPages = [
+            resource_path('js/pages/inventory/create.tsx'),
+            resource_path('js/pages/kantin/barang/index.tsx'),
+            resource_path('js/pages/kantin/saldo/index.tsx'),
+        ];
+        $this->assertSame(1, substr_count($utilsSource, 'function formatCurrencyInput('));
+
+        foreach ($currencyFormatterPages as $currencyFormatterPage) {
+            $currencyFormatterSource = File::get($currencyFormatterPage);
+            $this->assertStringContainsString('formatCurrencyInput(', $currencyFormatterSource);
+            $this->assertStringContainsString("from '@/lib/utils'", $currencyFormatterSource);
+        }
+
+        $this->assertStringNotContainsString('const formatHarga =', File::get($currencyFormatterPages[0]));
+        $this->assertStringNotContainsString('const formatHargaInput =', File::get($currencyFormatterPages[1]));
+        $this->assertStringNotContainsString('const formatAmountInput =', File::get($currencyFormatterPages[2]));
+        $this->assertStringContainsString('current.harga', $pageSource);
+        $this->assertStringContainsString('const cleanHarga = (value: string): string =>', $pageSource);
         $this->assertStringContainsString('satuan: barang.satuan', $pageSource);
         $flashToastSource = File::get(resource_path('js/hooks/use-flash-toast.ts'));
         $dashboardLayoutSource = File::get(resource_path('js/layouts/app/dashboard-layout.tsx'));

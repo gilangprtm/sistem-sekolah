@@ -278,11 +278,13 @@ class StudentAppProfileTest extends TestCase
                 ->where('student.nis', 'NIS-001')
                 ->where('student.nisn', 'NISN-001')
                 ->where('student.photo_url', null)
-                ->where('student.birth_date', '2012-05-10T00:00:00.000000Z'));
+                ->where('student.birth_date', '2012-05-10T00:00:00.000000Z')
+                ->where('qrCode', fn ($qrCode): bool => is_string($qrCode) && str_starts_with($qrCode, 'data:image/svg+xml;base64,')));
 
         $props = $response->inertiaPage()['props'];
-        $this->assertArrayNotHasKey('qrCode', $props);
-        $this->assertArrayNotHasKey('qrPayload', $props);
+        $this->assertArrayHasKey('qrCode', $props);
+        $this->assertIsString($props['qrCode']);
+        $this->assertStringStartsWith('data:image/svg+xml;base64,', $props['qrCode']);
     }
 
     public function test_student_can_update_own_password_with_current_password_confirmation(): void
@@ -355,7 +357,7 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringContainsString('aria-pressed={showStudentCard}', $source);
         $this->assertStringContainsString('StudentCardVisual', $source);
         $this->assertStringContainsString("import { StudentCardVisual } from '@/components/student-card-visual';", $source);
-        $this->assertStringContainsString('qrCode={null}', $source);
+        $this->assertStringContainsString('qrCode={qrCode}', $source);
         $this->assertStringContainsString('barcodeValue={', $source);
         $this->assertStringContainsString('String(student.id)', $source);
         $controllerSource = file_get_contents(app_path('Http/Controllers/StudentApp/ProfileController.php'));
@@ -371,8 +373,7 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringContainsString('T.T.L', $visualSource);
         $this->assertStringContainsString('Alamat', $visualSource);
         $this->assertStringNotContainsString('qrPayload', $source);
-        $this->assertStringContainsString('qrCode={null}', $source);
-        $this->assertStringNotContainsString("'qrCode'", $controllerSource);
+        $this->assertStringContainsString("'qrCode'", $controllerSource);
     }
 
     public function test_student_can_update_own_photo_and_old_photo_is_removed(): void
@@ -531,6 +532,7 @@ class StudentAppProfileTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('student-app/profile')
                 ->where('user.email', $user->email)
+                ->where('qrCode', null)
                 ->where('student', null));
     }
 }

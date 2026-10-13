@@ -70,7 +70,7 @@ class KantinBarangRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'brand' => ['nullable', 'string', 'max:100'],
             'satuan' => ['required', 'string', 'max:50'],
-            'harga' => ['required', 'numeric', 'min:0', 'decimal:0,2'],
+            'harga' => ['required', 'numeric', 'regex:/^\d+(?:\.\d{1,2})?$/', 'min:0', 'decimal:0,2'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', File::image()->max(1024)],
             'remove_image' => ['sometimes', 'boolean'],

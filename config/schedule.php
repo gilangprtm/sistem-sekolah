@@ -4,6 +4,13 @@ return [
     'lesson_duration_minutes' => 40,
     'break_duration_minutes' => 20,
     'start_time' => '07:30',
+    'days' => [
+        ['key' => 'monday', 'label' => 'Senin', 'schedule' => 'monday_thursday'],
+        ['key' => 'tuesday', 'label' => 'Selasa', 'schedule' => 'monday_thursday'],
+        ['key' => 'wednesday', 'label' => 'Rabu', 'schedule' => 'monday_thursday'],
+        ['key' => 'thursday', 'label' => 'Kamis', 'schedule' => 'monday_thursday'],
+        ['key' => 'friday', 'label' => 'Jumat', 'schedule' => 'friday'],
+    ],
     'weekdays' => [
         'monday_thursday' => [
             ['type' => 'lesson', 'number' => 1, 'start' => '07:30', 'end' => '08:10'],

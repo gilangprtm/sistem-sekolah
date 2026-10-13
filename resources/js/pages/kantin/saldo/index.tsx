@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { formatWitaDateTime } from '@/lib/date-time';
+import { formatCurrencyInput, formatRupiah } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 type Student = {
@@ -76,12 +77,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Kantin', href: '/kantin/saldo' },
     { title: 'Saldo Kantin', href: '/kantin/saldo' },
 ];
-const currency = (value: string | number) =>
-    new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 2,
-    }).format(Number(value));
+const currency = formatRupiah;
 
 const periodOptions: { value: Period; label: string }[] = [
     { value: 'today', label: 'Hari Ini' },
@@ -90,31 +86,6 @@ const periodOptions: { value: Period; label: string }[] = [
     { value: 'year', label: 'Tahun Ini' },
     { value: 'all', label: 'All Transaksi' },
 ];
-
-const formatAmountInput = (value: string): string => {
-    const normalized = value.trim().replace(/[^\d,.]/g, '');
-    const commaIndex = normalized.lastIndexOf(',');
-    const dotIndex = normalized.lastIndexOf('.');
-    const separatorIndex = Math.max(commaIndex, dotIndex);
-    const fractional =
-        separatorIndex >= 0 ? normalized.slice(separatorIndex + 1) : '';
-    const isDecimal = fractional.length <= 2 && separatorIndex >= 0;
-    const integer = isDecimal
-        ? normalized.slice(0, separatorIndex).replace(/\D/g, '')
-        : normalized.replace(/\D/g, '');
-
-    if (!integer) {
-        return '';
-    }
-
-    const formattedInteger = new Intl.NumberFormat('id-ID').format(
-        Number(integer),
-    );
-
-    return isDecimal
-        ? `${formattedInteger},${fractional.replace(/\D/g, '').slice(0, 2)}`
-        : formattedInteger;
-};
 
 export default function KantinSaldoIndex({
     students,
@@ -454,8 +425,9 @@ export default function KantinSaldoIndex({
                                     value={amount}
                                     onChange={(event) =>
                                         setAmount(
-                                            formatAmountInput(
+                                            formatCurrencyInput(
                                                 event.target.value,
+                                                amount,
                                             ),
                                         )
                                     }

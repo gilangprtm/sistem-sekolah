@@ -5,10 +5,12 @@ namespace App\Http\Controllers\StudentApp;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
+use App\Models\ScheduleCustomSlot;
 use App\Models\ScheduleEntry;
 use App\Models\SchedulePlan;
 use App\Models\StudentPlacement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -119,22 +121,15 @@ class ScheduleController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, ScheduleEntry>  $entries
-     * @param  \Illuminate\Support\Collection<int, \App\Models\ScheduleCustomSlot>  $customSlots
+     * @param  Collection<int, ScheduleEntry>  $entries
+     * @param  Collection<int, ScheduleCustomSlot>  $customSlots
      * @return array<int, array{key: string, label: string, rows: array<int, array<string, mixed>>, entries: array<int, array<string, mixed>>}>
      */
-    private function groupEntriesByDay(\Illuminate\Support\Collection $entries, \Illuminate\Support\Collection $customSlots): array
+    private function groupEntriesByDay(Collection $entries, Collection $customSlots): array
     {
-        $labels = [
-            'monday' => 'Senin',
-            'tuesday' => 'Selasa',
-            'wednesday' => 'Rabu',
-            'thursday' => 'Kamis',
-            'friday' => 'Jumat',
-        ];
-
-        return collect($labels)->map(function (string $label, string $key) use ($entries, $customSlots): array {
-            $configuredRows = config('schedule.weekdays.'.($key === 'friday' ? 'friday' : 'monday_thursday'));
+        return collect(config('schedule.days'))->map(function (array $day) use ($entries, $customSlots): array {
+            $key = $day['key'];
+            $configuredRows = config('schedule.weekdays.'.$day['schedule']);
             $dayCustomSlots = $customSlots->where('day', $key)->keyBy('lesson_number');
             $rows = collect($configuredRows)->map(function (array $row) use ($dayCustomSlots): array {
                 if ($row['type'] === 'lesson' && $dayCustomSlots->has($row['number'])) {
@@ -148,7 +143,7 @@ class ScheduleController extends Controller
 
             return [
                 'key' => $key,
-                'label' => $label,
+                'label' => $day['label'],
                 'rows' => $rows,
                 'entries' => $entries
                     ->where('day', $key)

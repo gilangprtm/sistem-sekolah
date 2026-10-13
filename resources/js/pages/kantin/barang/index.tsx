@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
+import { formatCurrencyInput, formatRupiah } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
@@ -151,58 +152,30 @@ export default function KantinBarangIndex({
         setOpen(true);
     };
 
-    const formatRupiah = (value: string | number): string => {
-        const numericValue = Number(value);
-
-        return Number.isFinite(numericValue)
-            ? new Intl.NumberFormat('id-ID', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-              }).format(numericValue)
-            : '';
-    };
-
-    const formatHargaInput = (value: string): string => {
-        const normalized = value.trim().replace(/[^\d,.]/g, '');
-        const commaIndex = normalized.lastIndexOf(',');
-        const dotIndex = normalized.lastIndexOf('.');
-        const separatorIndex = Math.max(commaIndex, dotIndex);
-        const fractional =
-            separatorIndex >= 0 ? normalized.slice(separatorIndex + 1) : '';
-        const isDecimal = fractional.length <= 2 && separatorIndex >= 0;
-        const integer = isDecimal
-            ? normalized.slice(0, separatorIndex).replace(/\D/g, '')
-            : normalized.replace(/\D/g, '');
-
-        if (!integer) {
-            return '';
-        }
-
-        const formattedInteger = new Intl.NumberFormat('id-ID').format(
-            Number(integer),
-        );
-
-        return isDecimal
-            ? `${formattedInteger},${fractional.replace(/\D/g, '').slice(0, 2)}`
-            : formattedInteger;
-    };
-
     const cleanHarga = (value: string): string => {
-        const normalized = value.trim().replace(/[^\d,.]/g, '');
-        const lastComma = normalized.lastIndexOf(',');
-        const lastDot = normalized.lastIndexOf('.');
-        const separatorIndex = Math.max(lastComma, lastDot);
+        const trimmed = value.trim();
+        const groupedDecimal = /^(\d{1,3}(?:\.\d{3})+),(\d{1,2})$/;
+        const plainDecimal = /^(\d+)[,.](\d{1,2})$/;
+        const groupedMatch = groupedDecimal.exec(trimmed);
+        const decimalMatch = plainDecimal.exec(trimmed);
 
-        if (separatorIndex < 0) {
-            return `${normalized}.00`;
+        if (groupedMatch) {
+            return `${groupedMatch[1].replace(/\./g, '')}.${groupedMatch[2].padEnd(2, '0')}`;
         }
 
-        const fractional = normalized.slice(separatorIndex + 1);
-        const integer = normalized.slice(0, separatorIndex).replace(/\D/g, '');
+        if (/^\d+$/.test(trimmed)) {
+            return `${trimmed}.00`;
+        }
 
-        return fractional.length <= 2 && integer
-            ? `${integer}.${fractional.padEnd(2, '0')}`
-            : normalized;
+        if (/^\d{1,3}(?:\.\d{3})+$/.test(trimmed)) {
+            return `${trimmed.replace(/\./g, '')}.00`;
+        }
+
+        if (decimalMatch) {
+            return `${decimalMatch[1]}.${decimalMatch[2].padEnd(2, '0')}`;
+        }
+
+        return value;
     };
 
     const satuanOptions = ['pcs', 'botol', 'bungkus', 'pak', 'lusin'].map(
@@ -459,7 +432,7 @@ export default function KantinBarangIndex({
                                         </TableCell>
                                         <TableCell>{barang.satuan}</TableCell>
                                         <TableCell>
-                                            Rp {formatRupiah(barang.harga)}
+                                            {formatRupiah(barang.harga)}
                                         </TableCell>
                                         <TableCell>
                                             {barang.status === 'active'
@@ -700,8 +673,9 @@ export default function KantinBarangIndex({
                                 onChange={(event) =>
                                     setForm((current) => ({
                                         ...current,
-                                        harga: formatHargaInput(
+                                        harga: formatCurrencyInput(
                                             event.target.value,
+                                            current.harga,
                                         ),
                                     }))
                                 }
