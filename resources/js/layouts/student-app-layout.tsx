@@ -29,6 +29,7 @@ export default function StudentAppLayout({
     const isSchedule = currentPath === '/student/schedule';
     const isChatbot = currentPath === '/student/chatbot';
     const isKantin = currentPath === '/student/kantin';
+    const isUas = currentPath === '/student/uas';
     const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {
@@ -101,11 +102,13 @@ export default function StudentAppLayout({
                                 />
                             </Link>
                             <div>
-                                <p className="text-xs text-muted-foreground">
-                                    Portal Siswa
-                                </p>
+                                {!isUas && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Portal Siswa
+                                    </p>
+                                )}
                                 <h1 className="text-sm font-semibold">
-                                    Kembali ke beranda
+                                    {isUas ? 'Ujian' : 'Kembali ke beranda'}
                                 </h1>
                             </div>
                         </header>

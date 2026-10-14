@@ -3,7 +3,7 @@ import {
     ArrowUpRight,
     Bell,
     BookOpen,
-    CircleHelp,
+    ClipboardCheck,
     Download,
     Ellipsis,
     Info,
@@ -44,7 +44,7 @@ type Props = {
 const menuItems = [
     { label: 'Pengumuman', icon: Megaphone },
     { label: 'Kantin', icon: ShoppingBasket },
-    { label: 'Kuis', icon: CircleHelp },
+    { label: 'Ujian', icon: ClipboardCheck },
     { label: 'Absensi', icon: Bell },
     { label: 'Perpustakaan', icon: Library },
     { label: 'Lainnya', icon: Ellipsis },
@@ -279,14 +279,20 @@ export default function StudentDashboard({ student, news }: Props) {
                             <Link
                                 key={label}
                                 href={
-                                    label === 'Kantin' ? '/student/kantin' : '#'
+                                    label === 'Kantin'
+                                        ? '/student/kantin'
+                                        : label === 'Ujian'
+                                          ? '/student/uas'
+                                          : '#'
                                 }
                                 aria-disabled={
-                                    label === 'Kantin' ? undefined : 'true'
+                                    label === 'Kantin' || label === 'Ujian'
+                                        ? undefined
+                                        : 'true'
                                 }
                                 className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border bg-card px-2 py-3 text-center shadow-xs"
                                 onClick={
-                                    label === 'Kantin'
+                                    label === 'Kantin' || label === 'Ujian'
                                         ? undefined
                                         : (event) => event.preventDefault()
                                 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\StudentApp\DashboardController;
 use App\Http\Controllers\StudentApp\KantinController;
 use App\Http\Controllers\StudentApp\ProfileController;
 use App\Http\Controllers\StudentApp\ScheduleController;
+use App\Http\Controllers\StudentApp\UasController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -13,6 +14,8 @@ Route::middleware(['auth', 'verified', 'role:Siswa'])
     ->group(function (): void {
         Route::get('/', DashboardController::class)->name('dashboard');
         Route::get('/schedule', ScheduleController::class)->name('schedule');
+        Route::get('/uas', UasController::class)->name('uas');
+        Route::get('/uas/{uasLink}/open', [UasController::class, 'open'])->name('uas.open');
         Route::get('/chatbot', fn () => Inertia::render('student-app/chatbot'))->name('chatbot');
         Route::get('/kantin', KantinController::class)->name('kantin');
         Route::get('/profile', ProfileController::class)->name('profile');

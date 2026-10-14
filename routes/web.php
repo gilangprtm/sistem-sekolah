@@ -26,3 +26,4 @@ require __DIR__.'/categories.php';
 require __DIR__.'/inventory-types.php';
 require __DIR__.'/inventory-rooms.php';
 require __DIR__.'/kantin.php';
+require __DIR__.'/uas.php';

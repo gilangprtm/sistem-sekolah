@@ -124,7 +124,7 @@ class ApiUsersRolesTest extends TestCase
         $this->withToken($this->adminToken())
             ->getJson('/api/v1/roles')
             ->assertOk()
-            ->assertJsonCount(6, 'data');
+            ->assertJsonCount(7, 'data');
     }
 
     public function test_unauthorized_without_token(): void

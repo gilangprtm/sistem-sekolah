@@ -3,6 +3,7 @@ import {
     BookOpen,
     CreditCard,
     CalendarDays,
+    ClipboardList,
     DoorOpen,
     FolderGit2,
     GraduationCap,
@@ -99,6 +100,7 @@ export function AppSidebar({
     const inventoryItems: NavMainItem[] = [];
     const adminItems: NavMainItem[] = [];
     const curriculumItems: NavMainItem[] = [];
+    const examItems: NavMainItem[] = [];
     const studentAffairsItems: NavMainItem[] = [];
     const canteenItems: NavMainItem[] = [];
 
@@ -234,6 +236,15 @@ export function AppSidebar({
         });
     }
 
+    if (can('curriculum.uas.view')) {
+        curriculumItems.push({
+            id: 'exams',
+            title: 'Ujian',
+            url: '/kurikulum/ujian',
+            icon: ClipboardList,
+        });
+    }
+
     if (can('users.manage')) {
         adminItems.push({
             id: 'users',
@@ -266,8 +277,11 @@ export function AppSidebar({
         ...(canteenItems.length > 0
             ? [{ id: 5, label: 'Kantin', items: canteenItems }]
             : []),
+        ...(examItems.length > 0
+            ? [{ id: 6, label: 'Ujian', items: examItems }]
+            : []),
         ...(adminItems.length > 0
-            ? [{ id: 6, label: 'Administrasi', items: adminItems }]
+            ? [{ id: 7, label: 'Administrasi', items: adminItems }]
             : []),
     ];
 
