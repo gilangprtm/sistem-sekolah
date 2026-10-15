@@ -4,6 +4,12 @@ import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
 import { formatWitaDateTime } from '@/lib/date-time';
 
+const INTERRUPTION_LIMIT = 3;
+const FIRST_INTERRUPTION_WARNING =
+    'Kamu telah keluar aplikasi, kamu tidak akan bisa mengikuti ujian jika tetap keluar dari aplikasi';
+const SECOND_INTERRUPTION_WARNING =
+    'Jika kamu keluar aplikasi sekali lagi, ujian akan langsung terkunci.';
+
 type Props = {
     attemptId: number | null;
     linkId: number;
@@ -94,7 +100,7 @@ export default function StudentExam({
     const [count, setCount] = useState(initialCount);
     const [error, setError] = useState('');
     const [wakeLockMessage, setWakeLockMessage] = useState('');
-    const [warning, setWarning] = useState(false);
+    const [warning, setWarning] = useState('');
     const [activityLog, setActivityLog] = useState<ActivityEntry[]>(() =>
         readActivityLog(),
     );
@@ -145,6 +151,7 @@ export default function StudentExam({
 
             const eventStatus =
                 eventType === 'exam_page_hidden' ? 'HIDDEN' : 'VISIBLE';
+            setWarning('');
             setSyncStatus(eventStatus);
             setActivityLog(appendActivityStatus(eventStatus));
 
@@ -192,8 +199,14 @@ export default function StudentExam({
                 setSyncStatus('SYNCED');
                 setActivityLog(appendActivityStatus('SYNCED'));
 
-                if (result.warning) {
-                    setWarning(true);
+                if (result.warning && result.interruptionCount !== undefined) {
+                    setWarning(
+                        result.interruptionCount === 1
+                            ? FIRST_INTERRUPTION_WARNING
+                            : result.interruptionCount === 2
+                              ? SECOND_INTERRUPTION_WARNING
+                              : '',
+                    );
                 }
 
                 if (result.locked || response.status === 423) {
@@ -305,7 +318,7 @@ export default function StudentExam({
         <>
             <Head title={`${category} ${subjectCode ?? ''}`.trim()} />
             <SecondaryPageShell
-                title={`${category} ${subjectCode ?? ''} · ◉ ${count}/4 · ${syncStatus}`.trim()}
+                title={`${category} ${subjectCode ?? ''} · ◉ ${count}/${INTERRUPTION_LIMIT} · ${syncStatus}`.trim()}
                 fallbackHref="/student/uas"
             >
                 <main
@@ -386,7 +399,10 @@ export default function StudentExam({
                             className="grid gap-2 p-4 text-sm"
                             aria-live="polite"
                         >
-                            <p>Gangguan halaman tercatat: {count} dari 4</p>
+                            <p>
+                                Gangguan halaman tercatat: {count} dari{' '}
+                                {INTERRUPTION_LIMIT}
+                            </p>
                             <p className="text-muted-foreground">
                                 {wakeLockMessage}
                             </p>
@@ -395,9 +411,7 @@ export default function StudentExam({
                                     role="status"
                                     className="font-medium text-amber-700"
                                 >
-                                    Perhatian: gangguan halaman kembali
-                                    tercatat. Gangguan keempat akan mengunci
-                                    percobaan.
+                                    {warning}
                                 </p>
                             )}
                             {error && (

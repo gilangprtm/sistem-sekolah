@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class StudentExamAttemptService
 {
-    public const INTERRUPTION_LIMIT = 4;
+    public const INTERRUPTION_LIMIT = 3;
 
     public function start(Student $student, UasLink $uasLink): StudentExamAttempt
     {
@@ -60,7 +60,7 @@ class StudentExamAttemptService
                     'interruption_count' => $count,
                 ]);
 
-                return ['attempt' => $attempt, 'warning' => $count > 0, 'locked' => false];
+                return ['attempt' => $attempt, 'warning' => false, 'locked' => false];
             }
 
             if ($lastEvent?->event_type !== 'exam_page_hidden') {
@@ -70,7 +70,7 @@ class StudentExamAttemptService
             $count++;
             $durationSeconds = max(
                 0,
-                CarbonImmutable::parse((string) $lastEvent->occurred_at)->diffInSeconds($receivedAt),
+                (int) CarbonImmutable::parse((string) $lastEvent->occurred_at)->diffInSeconds($receivedAt),
             );
             $attempt->forceFill([
                 'interruption_count' => $count,

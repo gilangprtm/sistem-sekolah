@@ -79,17 +79,18 @@ class StudentExamAttemptTest extends TestCase
         ]);
         $visibleEvent = $attempt->events()->where('event_type', 'exam_page_visible')->firstOrFail();
         $this->assertSame(1, $visibleEvent->interruption_count);
+        $this->assertIsInt($visibleEvent->duration_seconds);
         $this->assertGreaterThanOrEqual(0, $visibleEvent->duration_seconds);
         $this->assertLessThan(5, $visibleEvent->duration_seconds);
     }
 
-    public function test_fourth_visible_return_locks_attempt_and_raw_events_are_retained(): void
+    public function test_third_visible_return_locks_attempt_and_raw_events_are_retained(): void
     {
         [$link, $studentUser] = $this->examForStudent();
         $this->actingAs($studentUser)->postJson(route('student-app.uas.attempt.start', $link));
         $attempt = StudentExamAttempt::query()->firstOrFail();
 
-        for ($count = 1; $count <= 4; $count++) {
+        for ($count = 1; $count <= 3; $count++) {
             $this->actingAs($studentUser)
                 ->postJson(route('student-app.uas.attempt.event', $attempt), [
                     'event_type' => 'exam_page_hidden',
@@ -101,22 +102,23 @@ class StudentExamAttemptTest extends TestCase
                     'occurred_at' => now()->utc()->toIso8601String(),
                     'duration_seconds' => 12,
                 ])
-                ->assertStatus($count === 4 ? 423 : 200)
-                ->assertJsonPath('interruptionCount', $count);
+                ->assertStatus($count === 3 ? 423 : 200)
+                ->assertJsonPath('interruptionCount', $count)
+                ->assertJsonPath('warning', $count < 3);
         }
 
         $this->assertDatabaseHas('tr_curriculum_exam_attempts', [
             'id' => $attempt->id,
             'status' => 'locked',
-            'interruption_count' => 4,
+            'interruption_count' => 3,
         ]);
-        $this->assertDatabaseCount('tr_curriculum_exam_attempt_events', 8);
+        $this->assertDatabaseCount('tr_curriculum_exam_attempt_events', 6);
 
         $this->actingAs($studentUser)->get(route('student-app.uas.attempt', $link))
             ->assertInertia(fn ($page) => $page
                 ->component('student-app/exam-locked')
                 ->where('subjectCode', $link->subject->code)
-                ->where('interruptionCount', 4));
+                ->where('interruptionCount', 3));
         $this->actingAs($studentUser)->get(route('student-app.uas.open', $link))->assertStatus(423);
 
         $this->actingAs($studentUser)->postJson(route('student-app.uas.attempt.event', $attempt), [
@@ -129,7 +131,7 @@ class StudentExamAttemptTest extends TestCase
         [$link, $studentUser] = $this->examForStudent();
         $this->actingAs($studentUser)->postJson(route('student-app.uas.attempt.start', $link));
         $attempt = StudentExamAttempt::query()->firstOrFail();
-        $attempt->update(['status' => 'locked', 'locked_at' => now(), 'interruption_count' => 4]);
+        $attempt->update(['status' => 'locked', 'locked_at' => now(), 'interruption_count' => 3]);
 
         $this->actingAs($studentUser)
             ->post(route('uas.attempt.unlock', $attempt), ['reason' => 'Tidak diizinkan.'])
@@ -150,7 +152,7 @@ class StudentExamAttemptTest extends TestCase
             'occurred_at' => now()->utc()->toIso8601String(),
             'duration_seconds' => 5,
         ]);
-        $attempt->update(['status' => 'locked', 'locked_at' => now(), 'interruption_count' => 4]);
+        $attempt->update(['status' => 'locked', 'locked_at' => now(), 'interruption_count' => 3]);
         $admin = User::factory()->create();
         $admin->givePermissionTo(['curriculum.uas.view', 'curriculum.uas.update']);
 
@@ -209,6 +211,11 @@ class StudentExamAttemptTest extends TestCase
         $this->assertStringContainsString('sessionStorage.setItem(activityLogKey', $source);
         $this->assertStringContainsString('result.interruptionCount', $source);
         $this->assertStringContainsString('Diagnostik sesi', $source);
+        $this->assertStringContainsString('const INTERRUPTION_LIMIT = 3', $source);
+        $this->assertStringContainsString('Kamu telah keluar aplikasi, kamu tidak akan bisa mengikuti ujian jika tetap keluar dari aplikasi', $source);
+        $this->assertStringContainsString('Jika kamu keluar aplikasi sekali lagi, ujian akan langsung terkunci.', $source);
+        $this->assertStringContainsString('result.interruptionCount === 1', $source);
+        $this->assertStringContainsString('result.interruptionCount === 2', $source);
         $this->assertStringContainsString("import { formatWitaDateTime } from '@/lib/date-time';", $source);
         $this->assertStringContainsString('formatWitaDateTime(entry.at)', $source);
         $this->assertStringContainsString('<time dateTime={entry.at}>', $source);
