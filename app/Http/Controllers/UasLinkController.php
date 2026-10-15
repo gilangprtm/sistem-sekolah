@@ -34,8 +34,6 @@ class UasLinkController extends Controller
                 'academicYear:id,year',
                 'academicPeriod:id,name,code',
                 'subject:id,code,name',
-                'examAttempts.student:id,user_id,full_name',
-                'examAttempts',
             ])
             ->where('category', $category)
             ->when(! $hasYearFilter && $activeYear !== null && $activePeriod !== null, function ($query) use ($activeYear, $activePeriod): void {
@@ -61,15 +59,45 @@ class UasLinkController extends Controller
                 'opens_at' => $link->opens_at === null
                     ? null
                     : CarbonImmutable::parse((string) $link->opens_at)->setTimezone('Asia/Makassar')->format('Y-m-d H:i'),
-                'attempts' => $link->examAttempts->map(fn ($attempt): array => [
-                    'id' => $attempt->id,
-                    'student_name' => $attempt->student?->full_name,
-                    'status' => $attempt->status,
-                    'interruption_count' => $attempt->interruption_count,
-                ])->values()->all(),
             ]);
+        $monitoringLinkId = $request->integer('monitor_uas_link_id') ?: null;
+        $monitoring = null;
+
+        if ($monitoringLinkId !== null && $activeYear !== null && $activePeriod !== null) {
+            $monitoringLink = UasLink::query()
+                ->with('subject:id,code,name')
+                ->whereKey($monitoringLinkId)
+                ->where('category', $category)
+                ->where('academic_year_id', $activeYear->id)
+                ->where('academic_period_id', $activePeriod->id)
+                ->when($search !== '', fn ($query) => $query->whereHas('subject', function ($subjectQuery) use ($search): void {
+                    $subjectQuery->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%");
+                }))
+                ->first();
+
+            if ($monitoringLink !== null) {
+                $monitoring = [
+                    'uas_link_id' => $monitoringLink->id,
+                    'subject' => $monitoringLink->subject?->only(['id', 'code', 'name']),
+                    'attempts' => $monitoringLink->examAttempts()
+                        ->with('student:id,user_id,full_name')
+                        ->where('status', 'locked')
+                        ->whereIn('interruption_count', [3, 4])
+                        ->latest('id')
+                        ->paginate(min(max($request->integer('monitor_per_page', 10), 1), 50), ['*'], 'monitor_page')
+                        ->withQueryString()
+                        ->through(fn ($attempt): array => [
+                            'id' => $attempt->id,
+                            'student_name' => $attempt->student?->full_name,
+                            'interruption_count' => $attempt->interruption_count,
+                        ]),
+                ];
+            }
+        }
 
         return Inertia::render('uas/index', [
+            'monitoring' => $monitoring,
             'links' => $links,
             'category' => $category,
             'activeContext' => $activeYear === null || $activePeriod === null ? null : [

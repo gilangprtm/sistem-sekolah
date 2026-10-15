@@ -60,6 +60,162 @@ class UasLinkTest extends TestCase
         $this->assertStringContainsString('academic_year_id', $source);
         $this->assertStringContainsString('DataTableEmptyState', $source);
         $this->assertStringContainsString('DropdownMenuItem', $source);
+        $this->assertStringContainsString('Monitoring', $source);
+        $this->assertStringContainsString('monitor_uas_link_id', $source);
+        $this->assertStringContainsString('Nama Siswa', $source);
+        $this->assertStringNotContainsString('<TableHead>Status Percobaan</TableHead>', $source);
+        $this->assertStringNotContainsString('window.prompt', $source);
+        $this->assertStringContainsString('unlock-reason', $source);
+        $this->assertStringContainsString('Alasan wajib diisi minimal 5 karakter.', $source);
+        $this->assertStringContainsString('Buka Percobaan', $source);
+    }
+
+    public function test_admin_monitoring_exposes_only_locked_three_or_four_attempts_with_pagination(): void
+    {
+        [$year, $period] = $this->activeContext();
+        $subject = Subject::factory()->create();
+        $link = UasLink::query()->create([
+            'academic_year_id' => $year->id,
+            'academic_period_id' => $period->id,
+            'subject_id' => $subject->id,
+            'category' => 'UAS',
+            'link' => 'https://forms.gle/monitoring',
+        ]);
+        $lockedStudent = User::factory()->create();
+        $lockedStudent->assignRole('Siswa');
+        $locked = Student::factory()->create(['user_id' => $lockedStudent->id, 'full_name' => 'Siswa Terkunci']);
+        StudentExamAttempt::query()->create([
+            'student_id' => $locked->id,
+            'uas_link_id' => $link->id,
+            'status' => 'locked',
+            'interruption_count' => 3,
+            'started_at' => now(),
+            'locked_at' => now(),
+        ]);
+        $legacyStudent = User::factory()->create();
+        $legacyStudent->assignRole('Siswa');
+        $legacy = Student::factory()->create(['user_id' => $legacyStudent->id, 'full_name' => 'Siswa Legacy']);
+        StudentExamAttempt::query()->create([
+            'student_id' => $legacy->id,
+            'uas_link_id' => $link->id,
+            'status' => 'locked',
+            'interruption_count' => 4,
+            'started_at' => now(),
+            'locked_at' => now(),
+        ]);
+        $activeStudent = User::factory()->create();
+        $activeStudent->assignRole('Siswa');
+        $active = Student::factory()->create(['user_id' => $activeStudent->id, 'full_name' => 'Siswa Aktif']);
+        StudentExamAttempt::query()->create([
+            'student_id' => $active->id,
+            'uas_link_id' => $link->id,
+            'status' => 'active',
+            'interruption_count' => 2,
+            'started_at' => now(),
+        ]);
+        $lockedWrongCountStudent = User::factory()->create();
+        $lockedWrongCount = Student::factory()->create(['user_id' => $lockedWrongCountStudent->id]);
+        StudentExamAttempt::query()->create([
+            'student_id' => $lockedWrongCount->id,
+            'uas_link_id' => $link->id,
+            'status' => 'locked',
+            'interruption_count' => 2,
+            'started_at' => now(),
+            'locked_at' => now(),
+        ]);
+        $activeThreeCountStudent = User::factory()->create();
+        $activeThreeCount = Student::factory()->create(['user_id' => $activeThreeCountStudent->id]);
+        StudentExamAttempt::query()->create([
+            'student_id' => $activeThreeCount->id,
+            'uas_link_id' => $link->id,
+            'status' => 'active',
+            'interruption_count' => 3,
+            'started_at' => now(),
+        ]);
+        $operator = User::factory()->create();
+        $operator->givePermissionTo('curriculum.uas.view');
+
+        $this->actingAs($operator)->get(route('uas.index', [
+            'monitor_uas_link_id' => $link->id,
+            'monitor_per_page' => 10,
+        ]))->assertInertia(fn ($page) => $page
+            ->where('monitoring.uas_link_id', $link->id)
+            ->where('monitoring.attempts.total', 2)
+            ->where('monitoring.attempts.data.0.student_name', 'Siswa Legacy')
+            ->where('monitoring.attempts.data.0.interruption_count', 4)
+            ->where('monitoring.attempts.data.1.student_name', 'Siswa Terkunci')
+            ->where('monitoring.attempts.data.1.interruption_count', 3)
+            ->where('monitoring.attempts.per_page', 10));
+
+        $historicalYear = AcademicYear::query()->create(['year' => '2025/2026', 'status' => 'inactive']);
+        $historicalPeriod = AcademicPeriod::query()->create([
+            'academic_year_id' => $historicalYear->id,
+            'code' => 'ganjil',
+            'name' => 'Semester Ganjil',
+            'status' => 'inactive',
+        ]);
+        $historicalSubject = Subject::factory()->create();
+        $historicalLink = UasLink::query()->create([
+            'academic_year_id' => $historicalYear->id,
+            'academic_period_id' => $historicalPeriod->id,
+            'subject_id' => $historicalSubject->id,
+            'category' => 'UAS',
+            'link' => 'https://forms.gle/historical-monitoring',
+        ]);
+
+        $this->actingAs($operator)->get(route('uas.index', [
+            'academic_year_id' => $historicalYear->id,
+            'monitor_uas_link_id' => $historicalLink->id,
+        ]))->assertInertia(fn ($page) => $page->where('monitoring', null));
+
+        $otherCategoryLink = UasLink::query()->create([
+            'academic_year_id' => $year->id,
+            'academic_period_id' => $period->id,
+            'subject_id' => $subject->id,
+            'category' => 'UTS',
+            'link' => 'https://forms.gle/other-category',
+        ]);
+
+        $this->actingAs($operator)->get(route('uas.index', [
+            'category' => 'UAS',
+            'monitor_uas_link_id' => $otherCategoryLink->id,
+        ]))->assertInertia(fn ($page) => $page->where('monitoring', null));
+    }
+
+    public function test_deleting_uas_link_cascades_exam_attempts_and_events(): void
+    {
+        [$year, $period] = $this->activeContext();
+        $subject = Subject::factory()->create();
+        $link = UasLink::query()->create([
+            'academic_year_id' => $year->id,
+            'academic_period_id' => $period->id,
+            'subject_id' => $subject->id,
+            'category' => 'UAS',
+            'link' => 'https://forms.gle/cascade',
+        ]);
+        $studentUser = User::factory()->create();
+        $student = Student::factory()->create(['user_id' => $studentUser->id]);
+        $attempt = StudentExamAttempt::query()->create([
+            'student_id' => $student->id,
+            'uas_link_id' => $link->id,
+            'status' => 'locked',
+            'interruption_count' => 3,
+            'started_at' => now(),
+            'locked_at' => now(),
+        ]);
+        $event = $attempt->events()->create([
+            'event_type' => 'exam_page_hidden',
+            'occurred_at' => now(),
+            'interruption_count' => 3,
+        ]);
+        $operator = User::factory()->create();
+        $operator->givePermissionTo(['curriculum.uas.view', 'curriculum.uas.delete']);
+
+        $this->actingAs($operator)->delete(route('uas.destroy', $link))->assertRedirect();
+
+        $this->assertDatabaseMissing('tr_curriculum_uas_links', ['id' => $link->id]);
+        $this->assertDatabaseMissing('tr_curriculum_exam_attempts', ['id' => $attempt->id]);
+        $this->assertDatabaseMissing('tr_curriculum_exam_attempt_events', ['id' => $event->id]);
     }
 
     public function test_admin_year_filter_returns_only_selected_year_and_preserves_query_state(): void

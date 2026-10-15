@@ -42,12 +42,22 @@ type UasLink = {
     subject: Subject;
     link: string;
     opens_at: string | null;
+};
+type MonitoringAttempt = {
+    id: number;
+    student_name: string | null;
+    interruption_count: number;
+};
+type Monitoring = {
+    uas_link_id: number;
+    subject: Subject;
     attempts: {
-        id: number;
-        student_name: string | null;
-        status: string;
-        interruption_count: number;
-    }[];
+        data: MonitoringAttempt[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
 };
 type Props = {
     links: {
@@ -57,6 +67,7 @@ type Props = {
         per_page: number;
         total: number;
     };
+    monitoring: Monitoring | null;
     activeContext: {
         academic_year_id: number;
         academic_year: string;
@@ -79,6 +90,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function UasIndex({
     links,
+    monitoring,
     activeContext,
     subjects,
     years,
@@ -100,6 +112,16 @@ export default function UasIndex({
         filters.academic_year_id?.toString() ?? '',
     );
     const [deleteTarget, setDeleteTarget] = useState<UasLink | null>(null);
+    const [monitorTarget, setMonitorTarget] = useState<UasLink | null>(null);
+    const [unlockTarget, setUnlockTarget] = useState<MonitoringAttempt | null>(
+        null,
+    );
+    const [unlockReason, setUnlockReason] = useState('');
+    const [unlockError, setUnlockError] = useState('');
+    const [unlockProcessing, setUnlockProcessing] = useState(false);
+    const [monitoringVisible, setMonitoringVisible] = useState(
+        new URLSearchParams(window.location.search).has('monitor_uas_link_id'),
+    );
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
     const filterParams = (): Record<string, string> => ({
@@ -334,7 +356,6 @@ export default function UasIndex({
                                     <TableHead>Tahun Ajaran</TableHead>
                                     <TableHead>Semester</TableHead>
                                     <TableHead>Google Form</TableHead>
-                                    <TableHead>Status Percobaan</TableHead>
                                     <TableHead>Waktu Buka (WITA)</TableHead>
                                     <TableHead className="text-right">
                                         Aksi
@@ -396,66 +417,6 @@ export default function UasIndex({
                                             {item.opens_at ??
                                                 'Langsung tersedia'}
                                         </TableCell>
-                                        <TableCell>
-                                            {item.attempts.length === 0 ? (
-                                                'Belum ada percobaan'
-                                            ) : (
-                                                <ul className="space-y-2">
-                                                    {item.attempts.map(
-                                                        (attempt) => (
-                                                            <li
-                                                                key={attempt.id}
-                                                                className="flex flex-wrap items-center gap-2"
-                                                            >
-                                                                <span>
-                                                                    {attempt.student_name ??
-                                                                        'Siswa'}{' '}
-                                                                    ·{' '}
-                                                                    {attempt.status ===
-                                                                    'locked'
-                                                                        ? 'Terkunci'
-                                                                        : 'Aktif'}{' '}
-                                                                    ·{' '}
-                                                                    {
-                                                                        attempt.interruption_count
-                                                                    }{' '}
-                                                                    gangguan
-                                                                </span>
-                                                                {attempt.status ===
-                                                                    'locked' && (
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        onClick={() => {
-                                                                            const reason =
-                                                                                window.prompt(
-                                                                                    'Alasan wajib untuk membuka percobaan:',
-                                                                                );
-
-                                                                            if (
-                                                                                reason?.trim()
-                                                                            ) {
-                                                                                router.post(
-                                                                                    `/kurikulum/ujian/attempts/${attempt.id}/unlock`,
-                                                                                    {
-                                                                                        reason,
-                                                                                    },
-                                                                                    {
-                                                                                        preserveScroll: true,
-                                                                                    },
-                                                                                );
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        Buka
-                                                                    </Button>
-                                                                )}
-                                                            </li>
-                                                        ),
-                                                    )}
-                                                </ul>
-                                            )}
-                                        </TableCell>
                                         <TableCell className="text-right">
                                             <DataTableRowActions
                                                 label={`Aksi ${item.category} ${item.subject.name}`}
@@ -466,6 +427,25 @@ export default function UasIndex({
                                                     }
                                                 >
                                                     Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => {
+                                                        setMonitorTarget(item);
+                                                        setMonitoringVisible(
+                                                            true,
+                                                        );
+                                                        navigate({
+                                                            ...filterParams(),
+                                                            page: links.current_page,
+                                                            per_page:
+                                                                links.per_page,
+                                                            monitor_uas_link_id:
+                                                                item.id,
+                                                            monitor_page: 1,
+                                                        });
+                                                    }}
+                                                >
+                                                    Monitoring
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     className="text-destructive focus:text-destructive"
@@ -481,7 +461,7 @@ export default function UasIndex({
                                     </TableRow>
                                 ))}
                                 {links.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={9}>
+                                    <DataTableEmptyState colSpan={8}>
                                         Belum ada data {activeCategory}.
                                     </DataTableEmptyState>
                                 )}
@@ -507,6 +487,215 @@ export default function UasIndex({
                         }
                     />
                 </DataTableShell>
+                <Dialog
+                    open={monitoringVisible}
+                    onOpenChange={(isOpen) => {
+                        if (!isOpen) {
+                            setMonitoringVisible(false);
+                            setMonitorTarget(null);
+                            navigate({
+                                ...filterParams(),
+                                page: links.current_page,
+                                per_page: links.per_page,
+                            });
+                        }
+                    }}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Monitoring Siswa Terkunci</DialogTitle>
+                            <DialogDescription>
+                                Siswa dengan percobaan terkunci untuk{' '}
+                                {monitoring?.subject.name ??
+                                    monitorTarget?.subject.name}
+                                .
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Nama Siswa</TableHead>
+                                    <TableHead className="text-right">
+                                        Aksi
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {monitoring?.attempts.data.map((attempt) => (
+                                    <TableRow key={attempt.id}>
+                                        <TableCell>
+                                            {attempt.student_name ?? 'Siswa'}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setUnlockTarget(attempt);
+                                                    setUnlockReason('');
+                                                    setUnlockError('');
+                                                }}
+                                            >
+                                                Buka
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {(!monitoring ||
+                                    monitoring.attempts.data.length === 0) && (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={2}
+                                            className="text-center text-muted-foreground"
+                                        >
+                                            Tidak ada siswa terkunci.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                        {monitoring && (
+                            <DataTablePagination
+                                resource={monitoring.attempts}
+                                noun="siswa terkunci"
+                                onPageChange={(monitorPage) =>
+                                    navigate({
+                                        ...filterParams(),
+                                        page: links.current_page,
+                                        per_page: links.per_page,
+                                        monitor_uas_link_id:
+                                            monitoring.uas_link_id,
+                                        monitor_page: monitorPage,
+                                        monitor_per_page:
+                                            monitoring.attempts.per_page,
+                                    })
+                                }
+                                onPerPageChange={(monitorPerPage) =>
+                                    navigate({
+                                        ...filterParams(),
+                                        page: links.current_page,
+                                        per_page: links.per_page,
+                                        monitor_uas_link_id:
+                                            monitoring.uas_link_id,
+                                        monitor_page: 1,
+                                        monitor_per_page: monitorPerPage,
+                                    })
+                                }
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
+                <Dialog
+                    open={unlockTarget !== null}
+                    onOpenChange={(isOpen) => {
+                        if (!isOpen && !unlockProcessing) {
+                            setUnlockTarget(null);
+                            setUnlockReason('');
+                            setUnlockError('');
+                        }
+                    }}
+                >
+                    <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Buka Percobaan Ujian</DialogTitle>
+                            <DialogDescription>
+                                Masukkan alasan wajib untuk membuka percobaan{' '}
+                                {unlockTarget?.student_name ?? 'siswa'}.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-2">
+                            <Label htmlFor="unlock-reason">Alasan</Label>
+                            <Input
+                                id="unlock-reason"
+                                value={unlockReason}
+                                onChange={(event) => {
+                                    setUnlockReason(event.target.value);
+                                    setUnlockError('');
+                                }}
+                                aria-invalid={unlockError !== ''}
+                                aria-describedby={
+                                    unlockError
+                                        ? 'unlock-reason-error'
+                                        : undefined
+                                }
+                                autoFocus
+                            />
+                            {unlockError && (
+                                <p
+                                    id="unlock-reason-error"
+                                    role="alert"
+                                    className="text-sm text-destructive"
+                                >
+                                    {unlockError}
+                                </p>
+                            )}
+                        </div>
+                        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={unlockProcessing}
+                                onClick={() => {
+                                    setUnlockTarget(null);
+                                    setUnlockReason('');
+                                    setUnlockError('');
+                                }}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="button"
+                                disabled={
+                                    unlockProcessing ||
+                                    unlockReason.trim().length < 5
+                                }
+                                onClick={() => {
+                                    if (
+                                        !unlockTarget ||
+                                        unlockReason.trim().length < 5
+                                    ) {
+                                        setUnlockError(
+                                            'Alasan wajib diisi minimal 5 karakter.',
+                                        );
+
+                                        return;
+                                    }
+
+                                    setUnlockProcessing(true);
+                                    router.post(
+                                        `/kurikulum/ujian/attempts/${unlockTarget.id}/unlock`,
+                                        { reason: unlockReason.trim() },
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () => {
+                                                setUnlockTarget(null);
+                                                setUnlockReason('');
+                                                setMonitoringVisible(false);
+                                                setMonitorTarget(null);
+                                                navigate({
+                                                    ...filterParams(),
+                                                    page: links.current_page,
+                                                    per_page: links.per_page,
+                                                });
+                                            },
+                                            onError: () => {
+                                                setUnlockError(
+                                                    'Alasan tidak dapat diproses. Periksa kembali lalu coba lagi.',
+                                                );
+                                            },
+                                            onFinish: () =>
+                                                setUnlockProcessing(false),
+                                        },
+                                    );
+                                }}
+                            >
+                                {unlockProcessing
+                                    ? 'Membuka...'
+                                    : 'Buka Percobaan'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
                 <Dialog
                     open={deleteTarget !== null}
                     onOpenChange={(isOpen) => {
