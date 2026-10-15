@@ -273,7 +273,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
                                 <dt className="text-muted-foreground">
                                     Harga/unit
                                 </dt>
-                                <dd>{formatRupiah(Number(item.harga))}</dd>
+                                <dd>{formatRupiah(item.harga)}</dd>
                             </div>
                             <div className="flex justify-between gap-2 border-t pt-2">
                                 <dt className="font-medium">Qty</dt>

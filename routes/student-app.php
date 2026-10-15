@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\StudentApp\DashboardController;
+use App\Http\Controllers\StudentApp\ExamAttemptController;
 use App\Http\Controllers\StudentApp\KantinController;
 use App\Http\Controllers\StudentApp\ProfileController;
 use App\Http\Controllers\StudentApp\ScheduleController;
@@ -16,6 +17,9 @@ Route::middleware(['auth', 'verified', 'role:Siswa'])
         Route::get('/schedule', ScheduleController::class)->name('schedule');
         Route::get('/uas', UasController::class)->name('uas');
         Route::get('/uas/{uasLink}/open', [UasController::class, 'open'])->name('uas.open');
+        Route::get('/uas/{uasLink}/attempt', [ExamAttemptController::class, 'show'])->name('uas.attempt');
+        Route::post('/uas/{uasLink}/attempt', [ExamAttemptController::class, 'start'])->name('uas.attempt.start');
+        Route::post('/uas/attempts/{attempt}/events', [ExamAttemptController::class, 'event'])->name('uas.attempt.event');
         Route::get('/chatbot', fn () => Inertia::render('student-app/chatbot'))->name('chatbot');
         Route::get('/kantin', KantinController::class)->name('kantin');
         Route::get('/profile', ProfileController::class)->name('profile');

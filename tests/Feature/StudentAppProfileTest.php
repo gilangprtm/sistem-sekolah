@@ -44,7 +44,9 @@ class StudentAppProfileTest extends TestCase
         $student->refresh();
         $this->assertNotSame('123456', $student->kantin_pin_hash);
         $this->assertNotNull($student->kantin_pin_hash);
-        $this->assertStringNotContainsString('123456', json_encode($this->actingAs($user)->get(route('student-app.profile'))->inertiaPage()['props']));
+        $profileProps = json_encode($this->actingAs($user)->get(route('student-app.profile'))->inertiaPage()['props']);
+        $this->assertIsString($profileProps);
+        $this->assertStringNotContainsString('123456', $profileProps);
     }
 
     public function test_student_can_change_kantin_pin_with_current_password(): void
@@ -231,23 +233,27 @@ class StudentAppProfileTest extends TestCase
         $layoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
         $this->assertIsString($layoutSource);
         $this->assertStringContainsString("currentPath === '/student/kantin'", $layoutSource);
-        $this->assertStringContainsString('aria-label="Kembali ke beranda siswa"', $layoutSource);
-        $this->assertStringContainsString('href="/student"', $layoutSource);
-        $this->assertStringContainsString("isKantin ? 'flex-1 px-4 py-5'", $layoutSource);
-        $this->assertStringContainsString('!isKantin &&', $layoutSource);
-        $this->assertStringContainsString('<h1 className="text-sm font-semibold">Kantin</h1>', $layoutSource);
-        $kantinBranchStart = strpos($layoutSource, '{isKantin ? (');
-        $genericBranchStart = strpos($layoutSource, ') : (', $kantinBranchStart === false ? 0 : $kantinBranchStart);
-        $this->assertIsInt($kantinBranchStart);
-        $this->assertIsInt($genericBranchStart);
-        $kantinBranch = substr(
-            $layoutSource,
-            $kantinBranchStart,
-            $genericBranchStart - $kantinBranchStart,
-        );
-        $this->assertStringNotContainsString('Portal Siswa', $kantinBranch);
-        $this->assertSame(1, substr_count($kantinBranch, '<h1 className="text-sm font-semibold">Kantin</h1>'));
-        $this->assertSame(1, substr_count($layoutSource, 'Portal Siswa'));
+        $this->assertStringContainsString('isSecondaryPage = isKantin || isExam', $layoutSource);
+        $this->assertStringContainsString('!isSecondaryPage && (', $layoutSource);
+        $this->assertStringContainsString("'flex-1 p-0'", $layoutSource);
+
+        $shellSource = file_get_contents(resource_path('js/components/student-app/secondary-page-shell.tsx'));
+        $this->assertIsString($shellSource);
+        $this->assertStringContainsString('title: string', $shellSource);
+        $this->assertStringContainsString('fallbackHref: string', $shellSource);
+        $this->assertStringContainsString('window.history.back()', $shellSource);
+        $this->assertStringContainsString('router.visit(fallbackHref)', $shellSource);
+        $this->assertStringContainsString('aria-label="Kembali"', $shellSource);
+        $this->assertStringContainsString('<h1 className="text-sm font-semibold">{title}</h1>', $shellSource);
+        $kantinSource = file_get_contents(resource_path('js/pages/student-app/kantin.tsx'));
+        $this->assertIsString($kantinSource);
+        $this->assertStringContainsString('SecondaryPageShell title="Kantin"', $kantinSource);
+        $examSource = file_get_contents(resource_path('js/pages/student-app/exam.tsx'));
+        $this->assertIsString($examSource);
+        $this->assertStringContainsString('SecondaryPageShell', $examSource);
+        $lockedExamSource = file_get_contents(resource_path('js/pages/student-app/exam-locked.tsx'));
+        $this->assertIsString($lockedExamSource);
+        $this->assertStringContainsString('SecondaryPageShell', $lockedExamSource);
     }
 
     public function test_student_can_view_profile_with_linked_student_data(): void

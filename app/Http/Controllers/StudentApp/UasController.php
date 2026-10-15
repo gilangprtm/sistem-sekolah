@@ -4,7 +4,9 @@ namespace App\Http\Controllers\StudentApp;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\StudentExamAttempt;
 use App\Models\UasLink;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -33,9 +35,8 @@ class UasController extends Controller
                     'id' => $link->id,
                     'category' => $link->category,
                     'subject' => $link->subject?->only(['code', 'name']),
-                    'opens_at' => $link->opens_at?->toIso8601String(),
+                    'opens_at' => $link->opens_at === null ? null : CarbonImmutable::parse((string) $link->opens_at)->toIso8601String(),
                     'available' => $link->opens_at === null || $now->greaterThanOrEqualTo($link->opens_at),
-                    ...($link->opens_at === null || $now->greaterThanOrEqualTo($link->opens_at) ? ['link' => $link->link] : []),
                 ])
                 ->values();
 
@@ -63,6 +64,14 @@ class UasController extends Controller
         );
 
         abort_if($uasLink->opens_at !== null && now()->lt($uasLink->opens_at), 403);
+        $attempt = StudentExamAttempt::query()
+            ->where('student_id', $student->id)
+            ->where('uas_link_id', $uasLink->id)
+            ->whereNotNull('started_at')
+            ->first();
+
+        abort_if($attempt?->status === 'locked', 423);
+        abort_unless($attempt?->status === 'active', 403);
 
         return redirect()->away($uasLink->link);
     }

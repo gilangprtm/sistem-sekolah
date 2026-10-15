@@ -30,7 +30,13 @@ class UasLinkController extends Controller
             ? $request->query('category')
             : 'UAS';
         $links = UasLink::query()
-            ->with(['academicYear:id,year', 'academicPeriod:id,name,code', 'subject:id,code,name'])
+            ->with([
+                'academicYear:id,year',
+                'academicPeriod:id,name,code',
+                'subject:id,code,name',
+                'examAttempts.student:id,user_id,full_name',
+                'examAttempts',
+            ])
             ->where('category', $category)
             ->when(! $hasYearFilter && $activeYear !== null && $activePeriod !== null, function ($query) use ($activeYear, $activePeriod): void {
                 $query->where('academic_year_id', $activeYear->id)
@@ -52,7 +58,15 @@ class UasLinkController extends Controller
                 'academic_period' => $link->academicPeriod?->name,
                 'subject' => $link->subject?->only(['id', 'code', 'name']),
                 'link' => $link->link,
-                'opens_at' => $link->opens_at?->copy()->setTimezone('Asia/Makassar')->format('Y-m-d H:i'),
+                'opens_at' => $link->opens_at === null
+                    ? null
+                    : CarbonImmutable::parse((string) $link->opens_at)->setTimezone('Asia/Makassar')->format('Y-m-d H:i'),
+                'attempts' => $link->examAttempts->map(fn ($attempt): array => [
+                    'id' => $attempt->id,
+                    'student_name' => $attempt->student?->full_name,
+                    'status' => $attempt->status,
+                    'interruption_count' => $attempt->interruption_count,
+                ])->values()->all(),
             ]);
 
         return Inertia::render('uas/index', [

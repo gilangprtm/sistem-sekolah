@@ -2,7 +2,6 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Bot, CalendarDays, Home, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
 import { useFlashToast } from '@/hooks/use-flash-toast';
 
 const navigation = [
@@ -30,6 +29,8 @@ export default function StudentAppLayout({
     const isChatbot = currentPath === '/student/chatbot';
     const isKantin = currentPath === '/student/kantin';
     const isUas = currentPath === '/student/uas';
+    const isExam = /^\/student\/uas\/\d+\/(attempt|open)$/.test(currentPath);
+    const isSecondaryPage = isKantin || isUas || isExam;
     const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {
@@ -70,31 +71,16 @@ export default function StudentAppLayout({
                         <div className="h-full w-1/3 animate-[pulse_1.2s_ease-in-out_infinite] bg-violet-700" />
                     </div>
                 )}
-                {isKantin ? (
-                    <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 pt-[max(.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            asChild
-                            aria-label="Kembali ke beranda siswa"
-                            title="Kembali"
-                        >
-                            <Link href="/student">
-                                <ArrowLeft aria-hidden="true" />
-                            </Link>
-                        </Button>
-                        <h1 className="text-sm font-semibold">Kantin</h1>
-                    </header>
-                ) : (
-                    !isDashboard &&
+                {!isDashboard &&
                     !isProfile &&
                     !isSchedule &&
-                    !isChatbot && (
+                    !isChatbot &&
+                    !isSecondaryPage && (
                         <header className="sticky top-0 z-40 flex items-center gap-3 border-b bg-background/95 px-4 pt-[max(.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur">
                             <Link
                                 href="/student"
                                 aria-label="Kembali ke beranda siswa"
-                                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700"
+                                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-violet-700 focus-visible:outline-2 focus-visible:outline-offset-2"
                             >
                                 <ArrowLeft
                                     className="size-5"
@@ -112,18 +98,19 @@ export default function StudentAppLayout({
                                 </h1>
                             </div>
                         </header>
-                    )
-                )}
+                    )}
 
                 <main
                     className={
-                        isKantin ? 'flex-1 px-4 py-5' : 'flex-1 px-4 py-5 pb-28'
+                        isSecondaryPage
+                            ? 'flex-1 p-0'
+                            : 'flex-1 px-4 py-5 pb-28'
                     }
                 >
                     {children}
                 </main>
 
-                {!isKantin && (
+                {!isSecondaryPage && (
                     <nav
                         aria-label="Navigasi siswa"
                         className="fixed inset-x-0 bottom-0 z-50 mx-auto grid w-full max-w-lg grid-cols-4 border-t bg-background/95 px-2 pt-2 pb-[max(.65rem,env(safe-area-inset-bottom))] backdrop-blur"

@@ -42,6 +42,12 @@ type UasLink = {
     subject: Subject;
     link: string;
     opens_at: string | null;
+    attempts: {
+        id: number;
+        student_name: string | null;
+        status: string;
+        interruption_count: number;
+    }[];
 };
 type Props = {
     links: {
@@ -328,6 +334,7 @@ export default function UasIndex({
                                     <TableHead>Tahun Ajaran</TableHead>
                                     <TableHead>Semester</TableHead>
                                     <TableHead>Google Form</TableHead>
+                                    <TableHead>Status Percobaan</TableHead>
                                     <TableHead>Waktu Buka (WITA)</TableHead>
                                     <TableHead className="text-right">
                                         Aksi
@@ -389,6 +396,66 @@ export default function UasIndex({
                                             {item.opens_at ??
                                                 'Langsung tersedia'}
                                         </TableCell>
+                                        <TableCell>
+                                            {item.attempts.length === 0 ? (
+                                                'Belum ada percobaan'
+                                            ) : (
+                                                <ul className="space-y-2">
+                                                    {item.attempts.map(
+                                                        (attempt) => (
+                                                            <li
+                                                                key={attempt.id}
+                                                                className="flex flex-wrap items-center gap-2"
+                                                            >
+                                                                <span>
+                                                                    {attempt.student_name ??
+                                                                        'Siswa'}{' '}
+                                                                    ·{' '}
+                                                                    {attempt.status ===
+                                                                    'locked'
+                                                                        ? 'Terkunci'
+                                                                        : 'Aktif'}{' '}
+                                                                    ·{' '}
+                                                                    {
+                                                                        attempt.interruption_count
+                                                                    }{' '}
+                                                                    gangguan
+                                                                </span>
+                                                                {attempt.status ===
+                                                                    'locked' && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => {
+                                                                            const reason =
+                                                                                window.prompt(
+                                                                                    'Alasan wajib untuk membuka percobaan:',
+                                                                                );
+
+                                                                            if (
+                                                                                reason?.trim()
+                                                                            ) {
+                                                                                router.post(
+                                                                                    `/kurikulum/ujian/attempts/${attempt.id}/unlock`,
+                                                                                    {
+                                                                                        reason,
+                                                                                    },
+                                                                                    {
+                                                                                        preserveScroll: true,
+                                                                                    },
+                                                                                );
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        Buka
+                                                                    </Button>
+                                                                )}
+                                                            </li>
+                                                        ),
+                                                    )}
+                                                </ul>
+                                            )}
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             <DataTableRowActions
                                                 label={`Aksi ${item.category} ${item.subject.name}`}
@@ -414,7 +481,7 @@ export default function UasIndex({
                                     </TableRow>
                                 ))}
                                 {links.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={8}>
+                                    <DataTableEmptyState colSpan={9}>
                                         Belum ada data {activeCategory}.
                                     </DataTableEmptyState>
                                 )}

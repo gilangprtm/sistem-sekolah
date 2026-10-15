@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
 use App\Models\Student;
+use App\Models\StudentExamAttempt;
 use App\Models\Subject;
 use App\Models\UasLink;
 use App\Models\User;
@@ -40,6 +41,21 @@ class UasLinkTest extends TestCase
         $this->assertStringContainsString('<Label>Kategori</Label>', $source);
         $this->assertStringNotContainsString('role="tablist"', $source);
         $this->assertStringContainsString('Tambah Ujian', $source);
+
+        $studentUasSource = file_get_contents(resource_path('js/pages/student-app/uas.tsx'));
+        $this->assertIsString($studentUasSource);
+        $this->assertStringContainsString('SecondaryPageShell title="Ujian" fallbackHref="/student"', $studentUasSource);
+        $this->assertStringNotContainsString('id="student-uas-heading"', $studentUasSource);
+        $this->assertStringContainsString('role="tablist"', $studentUasSource);
+        $this->assertStringContainsString('Konfirmasi Mulai Ujian', $studentUasSource);
+        $this->assertStringContainsString('Setuju dan mulai', $studentUasSource);
+        $this->assertStringContainsString('Aktivitas halaman ujian dicatat', $studentUasSource);
+        $this->assertStringContainsString('setSelectedExam(null)', $studentUasSource);
+        $this->assertStringContainsString('href={`/student/uas/${selectedExam.id}/attempt`}', $studentUasSource);
+
+        $studentLayoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
+        $this->assertIsString($studentLayoutSource);
+        $this->assertStringContainsString('isSecondaryPage = isKantin || isUas || isExam', $studentLayoutSource);
         $this->assertStringContainsString("category: 'UAS'", $source);
         $this->assertStringContainsString('academic_year_id', $source);
         $this->assertStringContainsString('DataTableEmptyState', $source);
@@ -292,7 +308,7 @@ class UasLinkTest extends TestCase
         ])->assertRedirect(route('uas.index', ['category' => 'UAS']))->assertSessionHasNoErrors();
 
         $link = UasLink::query()->firstOrFail();
-        $this->assertSame('2026-11-01 01:30:00', $link->opens_at?->utc()->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-11-01 01:30:00', Carbon::parse((string) $link->opens_at)->utc()->format('Y-m-d H:i:s'));
         $this->assertSame($year->id, $link->academic_year_id);
         $this->assertSame($period->id, $link->academic_period_id);
 
@@ -342,10 +358,16 @@ class UasLinkTest extends TestCase
         $this->get(route('student-app.uas.open', $link))->assertForbidden();
 
         Carbon::setTestNow($opensAt);
+        StudentExamAttempt::query()->create([
+            'student_id' => $studentUser->student->id,
+            'uas_link_id' => $link->id,
+            'status' => 'active',
+            'started_at' => now(),
+        ]);
         $this->get(route('student-app.uas'))
             ->assertInertia(fn ($page) => $page
                 ->where('links.0.available', true)
-                ->where('links.0.link', 'https://forms.gle/secret-form-url'));
+                ->missing('links.0.link'));
         $this->get(route('student-app.uas.open', $link))
             ->assertRedirect('https://forms.gle/secret-form-url');
 
@@ -372,7 +394,15 @@ class UasLinkTest extends TestCase
         ]);
 
         $this->actingAs($studentUser)->get(route('student-app.uas'))
-            ->assertInertia(fn ($page) => $page->where('links.0.available', true)->where('links.0.link', $link->link));
+            ->assertInertia(fn ($page) => $page
+                ->where('links.0.available', true)
+                ->missing('links.0.link'));
+        StudentExamAttempt::query()->create([
+            'student_id' => $studentUser->student->id,
+            'uas_link_id' => $link->id,
+            'status' => 'active',
+            'started_at' => now(),
+        ]);
         $this->get(route('student-app.uas.open', $link))->assertRedirect($link->link);
 
         $period->update(['status' => 'inactive']);
@@ -440,8 +470,8 @@ class UasLinkTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('student-app/uas')
                 ->where('status', 'ready')
-                ->where('links.0.link', 'https://forms.gle/ipa')
                 ->where('links.0.subject.name', 'IPA')
+                ->missing('links.0.link')
                 ->missing('links.0.student_id')
                 ->missing('links.0.student')
                 ->missing('links.1'));
