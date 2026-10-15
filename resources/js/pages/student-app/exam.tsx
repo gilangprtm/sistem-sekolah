@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
+import { formatWitaDateTime } from '@/lib/date-time';
 
 type Props = {
     attemptId: number | null;
@@ -18,6 +19,62 @@ type WakeLockSentinel = {
     release: () => Promise<void>;
     addEventListener: (type: 'release', listener: () => void) => void;
 };
+type ActivityStatus = 'HIDDEN' | 'VISIBLE' | 'SENDING' | 'SYNCED' | 'FAILED';
+type ActivityEntry = { status: ActivityStatus; at: string };
+const activityLogKey = 'student-exam-activity-log';
+const activityLogLimit = 30;
+const activityStatuses: readonly ActivityStatus[] = [
+    'HIDDEN',
+    'VISIBLE',
+    'SENDING',
+    'SYNCED',
+    'FAILED',
+];
+
+function isActivityEntry(value: unknown): value is ActivityEntry {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+
+    const entry = value as Partial<ActivityEntry>;
+
+    return (
+        typeof entry.status === 'string' &&
+        activityStatuses.includes(entry.status as ActivityStatus) &&
+        typeof entry.at === 'string' &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(entry.at) &&
+        !Number.isNaN(Date.parse(entry.at))
+    );
+}
+
+function readActivityLog(): ActivityEntry[] {
+    try {
+        const stored = JSON.parse(
+            sessionStorage.getItem(activityLogKey) ?? '[]',
+        ) as unknown;
+
+        return Array.isArray(stored)
+            ? stored.filter(isActivityEntry).slice(-activityLogLimit)
+            : [];
+    } catch {
+        return [];
+    }
+}
+
+function appendActivityStatus(status: ActivityStatus): ActivityEntry[] {
+    const entries = [
+        ...readActivityLog(),
+        { status, at: new Date().toISOString() },
+    ].slice(-activityLogLimit);
+
+    try {
+        sessionStorage.setItem(activityLogKey, JSON.stringify(entries));
+    } catch {
+        // Diagnostics remain best-effort when session storage is unavailable.
+    }
+
+    return entries;
+}
 type WakeLockNavigator = Navigator & {
     wakeLock?: { request: (type: 'screen') => Promise<WakeLockSentinel> };
 };
@@ -38,6 +95,12 @@ export default function StudentExam({
     const [error, setError] = useState('');
     const [wakeLockMessage, setWakeLockMessage] = useState('');
     const [warning, setWarning] = useState(false);
+    const [activityLog, setActivityLog] = useState<ActivityEntry[]>(() =>
+        readActivityLog(),
+    );
+    const [syncStatus, setSyncStatus] = useState<ActivityStatus | 'READY'>(
+        'READY',
+    );
     const [isStarting, setIsStarting] = useState(false);
     const startRequested = useRef(false);
     const hiddenAt = useRef<number | null>(null);
@@ -80,7 +143,14 @@ export default function StudentExam({
                 return;
             }
 
+            const eventStatus =
+                eventType === 'exam_page_hidden' ? 'HIDDEN' : 'VISIBLE';
+            setSyncStatus(eventStatus);
+            setActivityLog(appendActivityStatus(eventStatus));
+
             try {
+                setSyncStatus('SENDING');
+                setActivityLog(appendActivityStatus('SENDING'));
                 const token = document.querySelector<HTMLMetaElement>(
                     'meta[name="csrf-token"]',
                 )?.content;
@@ -99,6 +169,8 @@ export default function StudentExam({
                 );
 
                 if (!response.ok && response.status !== 423) {
+                    setSyncStatus('FAILED');
+                    setActivityLog(appendActivityStatus('FAILED'));
                     setError(
                         `Server menolak pencatatan gangguan (HTTP ${response.status}). Status ujian akan diverifikasi ulang.`,
                     );
@@ -117,6 +189,9 @@ export default function StudentExam({
                     setCount(result.interruptionCount);
                 }
 
+                setSyncStatus('SYNCED');
+                setActivityLog(appendActivityStatus('SYNCED'));
+
                 if (result.warning) {
                     setWarning(true);
                 }
@@ -125,6 +200,8 @@ export default function StudentExam({
                     window.location.reload();
                 }
             } catch {
+                setSyncStatus('FAILED');
+                setActivityLog(appendActivityStatus('FAILED'));
                 setError(
                     'Tidak dapat menghubungi server untuk mencatat gangguan halaman. Periksa koneksi Anda lalu coba kembali.',
                 );
@@ -228,7 +305,7 @@ export default function StudentExam({
         <>
             <Head title={`${category} ${subjectCode ?? ''}`.trim()} />
             <SecondaryPageShell
-                title={`${category} ${subjectCode ?? ''}`.trim()}
+                title={`${category} ${subjectCode ?? ''} · ◉ ${count}/4 · ${syncStatus}`.trim()}
                 fallbackHref="/student/uas"
             >
                 <main
@@ -272,13 +349,38 @@ export default function StudentExam({
                             )}
                         </section>
                     ) : formUrl ? (
-                        <iframe
-                            title={`Google Form ${subject ?? 'ujian'}`}
-                            src={`${formUrl}${formUrl.includes('?') ? '&' : '?'}embedded=true`}
-                            className="block size-full border-0 bg-white"
-                            referrerPolicy="no-referrer"
-                            allow="fullscreen"
-                        />
+                        <div className="relative size-full">
+                            <iframe
+                                title={`Google Form ${subject ?? 'ujian'}`}
+                                src={`${formUrl}${formUrl.includes('?') ? '&' : '?'}embedded=true`}
+                                className="block size-full border-0 bg-white"
+                                referrerPolicy="no-referrer"
+                                allow="fullscreen"
+                            />
+                            <details className="absolute right-2 bottom-2 max-w-[min(90vw,24rem)] rounded bg-background/90 p-2 text-xs shadow">
+                                <summary>
+                                    Diagnostik sesi ({activityLog.length})
+                                </summary>
+                                <ol className="mt-1 max-h-32 overflow-auto">
+                                    {activityLog.map((entry, index) => (
+                                        <li key={`${entry.at}-${index}`}>
+                                            <time dateTime={entry.at}>
+                                                {formatWitaDateTime(entry.at)}
+                                            </time>{' '}
+                                            · {entry.status}
+                                        </li>
+                                    ))}
+                                </ol>
+                                {error && (
+                                    <p
+                                        role="alert"
+                                        className="mt-2 text-destructive"
+                                    >
+                                        {error}
+                                    </p>
+                                )}
+                            </details>
+                        </div>
                     ) : (
                         <section
                             className="grid gap-2 p-4 text-sm"
