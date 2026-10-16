@@ -1,0 +1,46 @@
+# Coolify: Docker Compose build pack, repository root, service web on port 80.
+# DB_URL, REDIS_URL, APP_KEY and APP_URL are configured as secrets in Coolify.
+x-app-env: &app-env
+  APP_NAME: "Sistem Sekolah"
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: ${APP_URL:?Set APP_URL in Coolify}
+  APP_KEY: ${APP_KEY:?Set APP_KEY in Coolify}
+  DB_CONNECTION: pgsql
+  DB_URL: ${DB_URL:?Set DB_URL in Coolify}
+  REDIS_CLIENT: phpredis
+  REDIS_URL: ${REDIS_URL:?Set REDIS_URL in Coolify}
+  SESSION_DRIVER: database
+  SESSION_SECURE_COOKIE: "true"
+  CACHE_STORE: redis
+  QUEUE_CONNECTION: redis
+  FILESYSTEM_DISK: local
+  LOG_CHANNEL: stack
+  LOG_STACK: single
+  LOG_LEVEL: warning
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      APP_ROLE: web
+    volumes:
+      - /mnt/storage/sistem-sekolah/uploads:/var/www/html/storage/app/public
+    expose:
+      - "80"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      APP_ROLE: worker
+    depends_on:
+      web:
+        condition: service_started
