@@ -32,6 +32,9 @@ services:
       - /mnt/storage/sistem-sekolah/uploads:/var/www/html/storage/app/public
     expose:
       - "80"
+    networks:
+      - default
+      - coolify
 
   worker:
     build:
@@ -44,3 +47,10 @@ services:
     depends_on:
       web:
         condition: service_started
+    networks:
+      - default
+      - coolify
+
+networks:
+  coolify:
+    external: true
