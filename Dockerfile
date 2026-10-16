@@ -7,7 +7,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-scripts --no-interaction --prefer-dist
 
 # 2) Frontend build — needs PHP + full vendor (wayfinder plugin shells out to artisan)
-FROM ubuntu:24.04 AS frontend
+FROM debian:bookworm-slim AS frontend
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl gnupg lsb-release \
@@ -27,8 +27,8 @@ COPY . .
 RUN php artisan package:discover --ansi
 RUN npm run build
 
-# 3) Runtime — php8.5-fpm + nginx on Ubuntu 24.04
-FROM ubuntu:24.04 AS runtime
+# 3) Runtime — php8.5-fpm + nginx on Debian Bookworm
+FROM debian:bookworm-slim AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl gnupg lsb-release \
@@ -45,7 +45,7 @@ COPY --from=vendor /app/vendor ./vendor
 COPY --from=frontend /app/public/build ./public/build
 COPY . .
 RUN rm -f public/hot \
-    && composer install --no-scripts --no-interaction --prefer-dist \
+    && composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader \
     && php artisan package:discover --ansi \
     && rm -rf bootstrap/cache/*.php
 COPY docker/nginx.conf /etc/nginx/sites-enabled/default
