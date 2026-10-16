@@ -54,9 +54,15 @@ class DashboardTest extends TestCase
         $this->assertFileExists(public_path('icons/icon_192.png'));
         $this->assertFileExists(public_path('icons/icon_512.png'));
         $this->assertFileExists(public_path('icons/apple_touch_icon.png'));
-        $this->assertStringContainsString('student-app-shell-v2', file_get_contents(public_path('sw.js')));
+        $this->assertSame('/', $manifest['start_url']);
+        $this->assertSame('/', $manifest['scope']);
+        $serviceWorker = file_get_contents(public_path('sw.js'));
+        $this->assertStringContainsString('student-app-shell-v2', $serviceWorker);
+        $this->assertStringNotContainsString('APP_SHELL', $serviceWorker);
+        $this->assertStringNotContainsString('caches.match', $serviceWorker);
         $pwaRegistration = file_get_contents(resource_path('js/lib/register-student-pwa.ts'));
-        $this->assertStringContainsString("'/sw.js?v=school-logo-2'", $pwaRegistration);
+        $this->assertStringContainsString("'/sw.js?v=school-logo-3'", $pwaRegistration);
+        $this->assertStringContainsString("scope: '/'", $pwaRegistration);
         $this->assertStringContainsString("updateViaCache: 'none'", $pwaRegistration);
     }
 
