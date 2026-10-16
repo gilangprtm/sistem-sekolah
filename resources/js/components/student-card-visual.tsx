@@ -115,7 +115,9 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
     ) {
         const wrapperRef = useRef<HTMLDivElement>(null);
         const [scale, setScale] = useState<number | null>(null);
-        const [assetsReady, setAssetsReady] = useState(false);
+        const [loadedAssetKey, setLoadedAssetKey] = useState<string | null>(
+            null,
+        );
 
         useEffect(() => {
             const wrapper = wrapperRef.current;
@@ -137,10 +139,10 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
 
         useEffect(() => {
             let active = true;
-            setAssetsReady(false);
             const sources = [CARD_BACKGROUND, student.photo_url, qrCode].filter(
                 (source): source is string => Boolean(source),
             );
+            const assetKey = JSON.stringify(sources);
             Promise.all(
                 sources.map(
                     (source) =>
@@ -149,16 +151,29 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                             image.onload = () => resolve();
                             image.onerror = () => resolve();
                             image.src = source;
-                            if (image.complete) resolve();
+
+                            if (image.complete) {
+                                resolve();
+                            }
                         }),
                 ),
             ).then(() => {
-                if (active) setAssetsReady(true);
+                if (active) {
+                    setLoadedAssetKey(assetKey);
+                }
             });
-            return () => { active = false; };
+
+            return () => {
+                active = false;
+            };
         }, [student.photo_url, qrCode]);
 
-        const ready = scale !== null && assetsReady;
+        const currentAssetKey = JSON.stringify(
+            [CARD_BACKGROUND, student.photo_url, qrCode].filter(
+                (source): source is string => Boolean(source),
+            ),
+        );
+        const ready = scale !== null && loadedAssetKey === currentAssetKey;
         const birthDetails = [
             student.birth_place,
             formatBirthDate(student.birth_date),
@@ -174,7 +189,11 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                 className={`relative aspect-[1011/639] w-full ${className}`}
             >
                 {!ready && (
-                    <div className="absolute inset-0 animate-pulse rounded-[2.5%] bg-slate-200/20" role="status" aria-label="Memuat kartu pelajar" />
+                    <div
+                        className="absolute inset-0 animate-pulse rounded-[2.5%] bg-slate-200/20"
+                        role="status"
+                        aria-label="Memuat kartu pelajar"
+                    />
                 )}
                 <article
                     ref={ref}

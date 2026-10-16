@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->trustProxies(at: '*');
         $middleware->statefulApi();
+        $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
@@ -61,6 +62,11 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $status = $exception->statusCode();
+
+            if ($status < 400) {
+                return null;
+            }
+
             $copy = match ($status) {
                 403 => ['title' => 'Akses ditolak', 'message' => 'Anda tidak memiliki izin untuk membuka halaman ini.'],
                 404 => ['title' => 'Halaman tidak ditemukan', 'message' => 'Halaman yang Anda cari tidak tersedia atau sudah dipindahkan.'],

@@ -1,4 +1,4 @@
-import { Deferred, Head, Link } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import {
     ArrowUpRight,
     Bell,
@@ -31,7 +31,7 @@ type NewsItem = {
 };
 
 type Props = {
-    news?: NewsItem[];
+    news: NewsItem[];
     student: {
         full_name: string;
         nis: string | null;
@@ -122,40 +122,6 @@ function NewsSection({ news }: { news: NewsItem[] }) {
                     Berita sekolah belum tersedia saat ini.
                 </p>
             )}
-        </section>
-    );
-}
-
-function NewsLoading() {
-    return (
-        <section
-            aria-labelledby="student-news-heading"
-            aria-busy="true"
-            className="space-y-3"
-        >
-            <div className="flex items-center justify-between gap-3">
-                <h3 id="student-news-heading" className="font-semibold">
-                    Berita Sekolah
-                </h3>
-                <span className="text-xs text-muted-foreground" role="status">
-                    Memuat...
-                </span>
-            </div>
-            <div className="flex gap-3 overflow-hidden" aria-hidden="true">
-                {[1, 2].map((item) => (
-                    <div
-                        key={item}
-                        className="w-[76%] max-w-72 shrink-0 overflow-hidden rounded-2xl border bg-card"
-                    >
-                        <div className="aspect-[16/9] animate-pulse bg-muted" />
-                        <div className="space-y-2 p-3">
-                            <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
-                            <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
-                            <div className="h-3 w-full animate-pulse rounded bg-muted" />
-                        </div>
-                    </div>
-                ))}
-            </div>
         </section>
     );
 }
@@ -317,21 +283,7 @@ export default function StudentDashboard({ student, news }: Props) {
                     </div>
                 </div>
 
-                <Deferred
-                    data="news"
-                    fallback={<NewsLoading />}
-                    rescue={
-                        <p className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
-                            Berita sekolah belum tersedia saat ini.
-                        </p>
-                    }
-                >
-                    {({ reloading }) => (
-                        <div className={reloading ? 'opacity-70' : undefined}>
-                            <NewsSection news={news ?? []} />
-                        </div>
-                    )}
-                </Deferred>
+                <NewsSection news={news} />
 
                 {!student && (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">

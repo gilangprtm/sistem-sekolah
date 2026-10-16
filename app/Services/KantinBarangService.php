@@ -15,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 final class KantinBarangService
 {
     /**
-     * @param  array{category_id?: int|null, category_name?: string|null, name: string, brand?: string|null, satuan: string, harga: numeric-string|int|float, description?: string|null, status?: string}  $data
+     * @param  array{category_id?: int|null, category_name?: string|null, name: string, brand?: string|null, satuan: string, harga: numeric-string|int|float, description?: string|null, status?: string|null, image?: UploadedFile|null, remove_image?: bool}  $data
      */
     public function create(array $data): KantinBarang
     {
@@ -46,7 +46,7 @@ final class KantinBarangService
     }
 
     /**
-     * @param  array{category_id?: int|null, category_name?: string|null, name: string, brand?: string|null, satuan: string, harga: numeric-string|int|float, description?: string|null, status?: string}  $data
+     * @param  array{category_id?: int|null, category_name?: string|null, name: string, brand?: string|null, satuan: string, harga: numeric-string|int|float, description?: string|null, status?: string|null, image?: UploadedFile|null, remove_image?: bool}  $data
      */
     public function update(KantinBarang $barang, array $data): KantinBarang
     {
@@ -161,7 +161,9 @@ final class KantinBarangService
 
     private function storeImage(?UploadedFile $image): ?string
     {
-        return $image?->store('kantin/barang', 'public');
+        $path = $image?->store('kantin/barang', 'public');
+
+        return is_string($path) ? $path : null;
     }
 
     private function lockCodeAllocation(): void

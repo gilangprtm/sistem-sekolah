@@ -32,8 +32,8 @@ class KantinBarangController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless($request->user()?->can('kantin.barang.view'), 403);
-        abort_unless($request->user()?->can('kantin.kategori.view'), 403);
+        abort_unless($request->user()->can('kantin.barang.view'), 403);
+        abort_unless($request->user()->can('kantin.kategori.view'), 403);
 
         $search = $request->string('search')->trim()->toString();
         $status = $request->string('status')->toString();
@@ -78,7 +78,7 @@ class KantinBarangController extends Controller
     public function store(KantinBarangRequest $request): RedirectResponse
     {
         $this->authorizeCategoryInput($request);
-        $this->barangService->create($request->validated());
+        $this->barangService->create($request->validatedData());
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -91,7 +91,7 @@ class KantinBarangController extends Controller
     public function update(KantinBarangRequest $request, KantinBarang $kantinBarang): RedirectResponse
     {
         $this->authorizeCategoryInput($request);
-        $this->barangService->update($kantinBarang, $request->validated());
+        $this->barangService->update($kantinBarang, $request->validatedData());
 
         Inertia::flash('toast', [
             'type' => 'success',

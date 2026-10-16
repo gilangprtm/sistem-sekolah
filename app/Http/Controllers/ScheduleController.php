@@ -650,62 +650,6 @@ class ScheduleController extends Controller
         return $relations;
     }
 
-    private function validatePlanForPublish(SchedulePlan $plan, AcademicPeriod $period): void
-    {
-        $assignments = $plan->teachingAssignments()->lockForUpdate()->get();
-        $entries = $plan->entries()->lockForUpdate()->get();
-        $customSlots = $plan->customSlots()->lockForUpdate()->get();
-        $configuredSlots = $this->lessonSlotsByDay();
-        $customSlotKeys = [];
-        foreach ($customSlots as $customSlot) {
-            $slot = collect($configuredSlots[$customSlot->day] ?? [])
-                ->firstWhere('number', $customSlot->lesson_number);
-            abort_unless($slot !== null && $slot['start'] === $customSlot->start_time && $slot['end'] === $customSlot->end_time, 422, 'Slot kegiatan khusus tidak sesuai konfigurasi jadwal.');
-            $customSlotKey = $customSlot->day.':'.$customSlot->lesson_number;
-            abort_if(isset($customSlotKeys[$customSlotKey]), 422, 'Satu slot hanya dapat memiliki satu kegiatan khusus.');
-            $customSlotKeys[$customSlotKey] = true;
-        }
-        $relations = TeacherSubject::query()
-            ->with(['subject', 'teacher'])
-            ->whereIn('id', $assignments->pluck('teacher_subject_id')->unique())
-            ->get()
-            ->keyBy('id');
-        $rombels = Rombel::query()->whereIn('id', $assignments->pluck('rombel_id')->unique())->get()->keyBy('id');
-        $slots = $this->lessonSlotsByDay();
-        $seenTeacherSlots = [];
-        $seenRombelSlots = [];
-
-        $seenAssignmentIds = [];
-        foreach ($assignments as $assignment) {
-            $seenAssignmentIds[$assignment->id] = true;
-            $relation = $relations->get($assignment->teacher_subject_id);
-            $rombel = $rombels->get($assignment->rombel_id);
-            abort_unless($assignment->status === 'active', 422, 'Tugas mengajar tidak aktif.');
-            abort_unless($assignment->schedule_plan_id === $plan->id && $assignment->academic_period_id === $period->id, 422, 'Scope tugas mengajar tidak konsisten.');
-            abort_unless($relation !== null && $relation->subject->status === 'active' && $relation->teacher->status === 'active' && $relation->teacher->staff_type === 'guru', 422, 'Anchor Guru Mata Pelajaran sudah tidak aktif.');
-            abort_unless($rombel !== null && $rombel->status === 'active', 422, 'Rombel sudah tidak aktif.');
-            abort_unless($assignment->subject_id === $relation->subject_id && $assignment->teacher_id === $relation->teacher_id && $assignment->weekly_jp === $relation->subject->jp_per_class, 422, 'Snapshot tugas mengajar sudah tidak konsisten.');
-            abort_unless($assignment->subject_code === $relation->subject->code && $assignment->subject_name === $relation->subject->name && $assignment->teacher_name === $relation->teacher->full_name && $assignment->rombel_code === $rombel->code, 422, 'Label historis tugas mengajar sudah tidak konsisten.');
-
-            $assignmentEntries = $entries->where('teaching_assignment_id', $assignment->id);
-            abort_unless($assignmentEntries->count() <= $assignment->weekly_jp && $assignmentEntries->count() === $assignment->weekly_jp, 422, 'Jumlah slot tidak sesuai JP mingguan.');
-            foreach ($assignmentEntries as $entry) {
-                $slot = collect($slots[$entry->day] ?? [])->firstWhere('number', $entry->lesson_number);
-                abort_unless($slot !== null && $slot['start'] === $entry->start_time && $slot['end'] === $entry->end_time, 422, 'Slot jadwal tidak sesuai konfigurasi hari.');
-                abort_if(isset($customSlotKeys[$entry->day.':'.$entry->lesson_number]), 422, 'Guru tidak dapat menggunakan slot kegiatan khusus.');
-                abort_unless($entry->schedule_plan_id === $plan->id && $entry->academic_period_id === $period->id && $entry->rombel_id === $assignment->rombel_id && $entry->subject_id === $assignment->subject_id && $entry->teacher_id === $assignment->teacher_id, 422, 'Scope entri jadwal tidak konsisten.');
-                abort_unless($entry->subject_code === $assignment->subject_code && $entry->subject_name === $assignment->subject_name && $entry->teacher_name === $assignment->teacher_name && $entry->rombel_code === $assignment->rombel_code, 422, 'Snapshot label entri jadwal tidak konsisten.');
-                $teacherKey = $entry->teacher_id.':'.$entry->day.':'.$entry->lesson_number;
-                $rombelKey = $entry->rombel_id.':'.$entry->day.':'.$entry->lesson_number;
-                abort_if(isset($seenTeacherSlots[$teacherKey]), 422, 'Guru memiliki benturan slot.');
-                abort_if(isset($seenRombelSlots[$rombelKey]), 422, 'Rombel memiliki benturan slot.');
-                $seenTeacherSlots[$teacherKey] = true;
-                $seenRombelSlots[$rombelKey] = true;
-            }
-        }
-        abort_unless($entries->every(fn (ScheduleEntry $entry): bool => isset($seenAssignmentIds[$entry->teaching_assignment_id])), 422, 'Entri jadwal tidak memiliki tugas mengajar yang valid.');
-    }
-
     /**
      * @param  array{teacher_subject_id: int, rombel_id: int, slots: array<int, array{day: string, lesson_number: int}>}|null  $manualPlacement
      */
@@ -913,9 +857,10 @@ class ScheduleController extends Controller
      */
     private function scheduleDays(Collection $customSlots): array
     {
-        $rowsByDay = app(ScheduleReadService::class)->scheduleRows($customSlots);
+        $readService = app(ScheduleReadService::class);
+        $rowsByDay = $readService->scheduleRows($customSlots);
 
-        return collect(config('schedule.days'))
+        return collect($readService->days())
             ->map(fn (array $day): array => [
                 'key' => $day['key'],
                 'label' => $day['label'],

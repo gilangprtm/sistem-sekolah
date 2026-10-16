@@ -302,18 +302,31 @@ class AssistantToolExecutor
             ->orderBy('products.id');
 
         $result = $query->paginate($perPage, ['*'], 'page', $page);
-        $data = $result->getCollection()->map(fn (object $item): array => [
-            'name' => $item->name,
-            'brand' => $item->brand,
-            'category' => $item->category,
-            'satuan' => $item->satuan,
-            'harga' => $this->formatKantinHarga((string) $item->harga),
-            'quantity' => (int) $item->quantity,
-            'total' => (string) $item->total,
-            'recommendation' => $mode === 'recommendations'
-                ? 'Pilihan populer berdasarkan agregat penjualan pada periode yang dipilih.'
-                : null,
-        ])->values()->all();
+        $data = [];
+        foreach ($result->getCollection() as $item) {
+            $row = get_object_vars($item);
+            if (! isset($row['name'], $row['satuan'], $row['harga'], $row['quantity'], $row['total'])
+                || ! is_string($row['name'])
+                || ! is_string($row['satuan'])
+                || ! is_numeric($row['harga'])
+                || ! is_numeric($row['quantity'])
+                || ! is_numeric($row['total'])) {
+                continue;
+            }
+
+            $data[] = [
+                'name' => $row['name'],
+                'brand' => is_string($row['brand'] ?? null) ? $row['brand'] : null,
+                'category' => is_string($row['category'] ?? null) ? $row['category'] : null,
+                'satuan' => $row['satuan'],
+                'harga' => $this->formatKantinHarga((string) $row['harga']),
+                'quantity' => (int) $row['quantity'],
+                'total' => (string) $row['total'],
+                'recommendation' => $mode === 'recommendations'
+                    ? 'Pilihan populer berdasarkan agregat penjualan pada periode yang dipilih.'
+                    : null,
+            ];
+        }
 
         return [
             'mode' => $mode,

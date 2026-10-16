@@ -158,6 +158,9 @@ class InventoryRoomController extends Controller
         return back();
     }
 
+    /**
+     * @return LengthAwarePaginator<int, InventoryUnit>
+     */
     private function lookupUnits(Request $request, string $lookupSearch): LengthAwarePaginator
     {
         $lookupPerPage = min(max($request->integer('lookup_per_page', 10), 1), 50);

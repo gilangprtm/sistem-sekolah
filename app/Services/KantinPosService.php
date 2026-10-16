@@ -11,7 +11,10 @@ use Illuminate\Validation\ValidationException;
 
 final class KantinPosService
 {
-    /** @param array<int, array{product_id: int, quantity: int}> $items */
+    /**
+     * @param  array<int, array{product_id: int, quantity: int}>  $items
+     * @return array{transaction_id: int, total: string, balance: string}
+     */
     public function checkout(Student $student, array $items): array
     {
         return DB::transaction(function () use ($student, $items): array {
@@ -68,6 +71,7 @@ final class KantinPosService
     private function cents(string $amount): int
     {
         [$whole, $fraction] = explode('.', $amount);
+
         return (int) $whole * 100 + (int) str_pad($fraction, 2, '0');
     }
 

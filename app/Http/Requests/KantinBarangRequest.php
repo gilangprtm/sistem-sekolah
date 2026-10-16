@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\KantinBarang;
 use App\Support\RupiahAmount;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\File;
 
@@ -27,6 +28,27 @@ class KantinBarangRequest extends FormRequest
             'harga' => RupiahAmount::normalize($this->input('harga')),
             'description' => is_string($this->input('description')) ? trim($this->input('description')) : $this->input('description'),
         ]);
+    }
+
+    /**
+     * @return array{category_id?: int|null, category_name?: string|null, name: string, brand?: string|null, satuan: string, harga: numeric-string|int|float, description?: string|null, status?: string, image?: UploadedFile|null, remove_image?: bool}
+     */
+    public function validatedData(): array
+    {
+        $data = $this->validator->validated();
+
+        return [
+            'category_id' => $data['category_id'] ?? null,
+            'category_name' => $data['category_name'] ?? null,
+            'name' => $data['name'],
+            'brand' => $data['brand'] ?? null,
+            'satuan' => $data['satuan'],
+            'harga' => $data['harga'],
+            'description' => $data['description'] ?? null,
+            'status' => $data['status'] ?? null,
+            'image' => $data['image'] ?? null,
+            'remove_image' => $data['remove_image'] ?? false,
+        ];
     }
 
     /** @return array<string, array<int, mixed>> */

@@ -106,20 +106,59 @@ final class ScheduleReadService
     }
 
     /**
+     * @return array<int, array{key: string, label: string, schedule: string}>
+     */
+    public function days(): array
+    {
+        $days = config('schedule.days');
+
+        if (! is_array($days)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($days as $day) {
+            if (! is_array($day)
+                || ! is_string($day['key'] ?? null)
+                || ! is_string($day['label'] ?? null)
+                || ! is_string($day['schedule'] ?? null)) {
+                continue;
+            }
+
+            $result[] = [
+                'key' => $day['key'],
+                'label' => $day['label'],
+                'schedule' => $day['schedule'],
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * @return array<string, array<int, array{number: int, start: string, end: string}>>
      */
     public function lessonSlotsByDay(): array
     {
-        return collect(config('schedule.days'))->mapWithKeys(function (array $day): array {
-            $rows = config('schedule.weekdays.'.$day['schedule']);
+        $result = [];
+        foreach ($this->days() as $day) {
+            $slots = [];
+            foreach ($this->weekdayRows($day['schedule']) as $row) {
+                if ($row['type'] !== 'lesson' || ! isset($row['number'])) {
+                    continue;
+                }
 
-            return [
-                $day['key'] => array_values(array_filter(
-                    $rows,
-                    fn (array $row): bool => $row['type'] === 'lesson',
-                )),
-            ];
-        })->all();
+                $slots[] = [
+                    'number' => $row['number'],
+                    'start' => $row['start'],
+                    'end' => $row['end'],
+                ];
+            }
+
+            $result[$day['key']] = $slots;
+        }
+
+        return $result;
     }
 
     /**
@@ -128,26 +167,67 @@ final class ScheduleReadService
      */
     public function scheduleRows(Collection $customSlots): array
     {
-        return collect(config('schedule.days'))->mapWithKeys(function (array $day) use ($customSlots): array {
+        $result = [];
+        foreach ($this->days() as $day) {
             $daySlots = $customSlots->where('day', $day['key'])->keyBy('lesson_number');
-            $rows = collect(config('schedule.weekdays.'.$day['schedule']))
-                ->map(function (array $row) use ($daySlots): array {
-                    if ($row['type'] === 'lesson' && $daySlots->has($row['number'])) {
-                        $customSlot = $daySlots->get($row['number']);
+            $rows = [];
+            foreach ($this->weekdayRows($day['schedule']) as $row) {
+                if ($row['type'] === 'lesson' && isset($row['number']) && $daySlots->has($row['number'])) {
+                    $customSlot = $daySlots->get($row['number']);
+                    $rows[] = [
+                        ...$row,
+                        'type' => 'custom',
+                        'label' => $customSlot->label,
+                    ];
 
-                        return [
-                            ...$row,
-                            'type' => 'custom',
-                            'label' => $customSlot->label,
-                        ];
-                    }
+                    continue;
+                }
 
-                    return $row;
-                })
-                ->values()
-                ->all();
+                $rows[] = $row;
+            }
 
-            return [$day['key'] => $rows];
-        })->all();
+            $result[$day['key']] = $rows;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array{type: string, number?: int, start: string, end: string}>
+     */
+    private function weekdayRows(string $schedule): array
+    {
+        $rows = config('schedule.weekdays.'.$schedule);
+
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)
+                || ! is_string($row['type'] ?? null)
+                || ! is_string($row['start'] ?? null)
+                || ! is_string($row['end'] ?? null)) {
+                continue;
+            }
+
+            $number = $row['number'] ?? null;
+            if ($number !== null && ! is_int($number)) {
+                continue;
+            }
+
+            $normalized = [
+                'type' => $row['type'],
+                'start' => $row['start'],
+                'end' => $row['end'],
+            ];
+            if ($number !== null) {
+                $normalized['number'] = $number;
+            }
+            $result[] = $normalized;
+        }
+
+        return $result;
     }
 }

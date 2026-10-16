@@ -37,7 +37,7 @@ class DashboardController extends Controller
                 ],
             ),
             'rombel' => $placement?->rombel->name ?? $placement?->rombel->code,
-            'news' => Inertia::defer(fn (): array => $this->schoolNews()),
+            'news' => $this->schoolNews(),
         ]);
     }
 

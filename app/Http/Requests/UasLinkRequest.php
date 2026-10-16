@@ -69,7 +69,7 @@ class UasLinkRequest extends FormRequest
                 $parsed = CarbonImmutable::createFromFormat('!Y-m-d H:i', "{$date} {$time}", 'Asia/Makassar');
                 $parseErrors = CarbonImmutable::getLastErrors();
 
-                if ($parsed === false || ($parseErrors !== false && ($parseErrors['warning_count'] > 0 || $parseErrors['error_count'] > 0))) {
+                if ($parseErrors !== false && ($parseErrors['warning_count'] > 0 || $parseErrors['error_count'] > 0)) {
                     $validator->errors()->add('opens_at_date', 'Tanggal dan jam buka tidak valid.');
                 }
             }

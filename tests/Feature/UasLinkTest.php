@@ -567,7 +567,7 @@ class UasLinkTest extends TestCase
 
     public function test_unauthenticated_and_non_student_users_cannot_access_student_uas_page(): void
     {
-        $this->get(route('student-app.uas'))->assertRedirect('/');
+        $this->get(route('student-app.uas'))->assertRedirect(route('login'));
 
         $teacher = User::factory()->create();
         $teacher->assignRole('Guru');

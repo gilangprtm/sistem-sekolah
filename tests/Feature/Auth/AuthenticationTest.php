@@ -35,7 +35,7 @@ class AuthenticationTest extends TestCase
             "url('/images/hero-background.png')",
             $layoutSource,
         );
-        $this->assertStringContainsString('bg-slate-800/75', $layoutSource);
+        $this->assertStringContainsString('bg-slate-950/75', $layoutSource);
         $this->assertStringContainsString('bg-slate-950/35', $layoutSource);
         $this->assertStringContainsString('[&_input]:text-white', $layoutSource);
         $this->assertStringContainsString('[&_label]:text-white', $layoutSource);

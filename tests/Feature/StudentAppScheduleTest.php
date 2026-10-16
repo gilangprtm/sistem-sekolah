@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\StudentApp\ScheduleController;
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
 use App\Models\Rombel;
 use App\Models\ScheduleCustomSlot;
 use App\Models\ScheduleEntry;
 use App\Models\SchedulePlan;
+use App\Models\ScheduleTeachingAssignment;
 use App\Models\Student;
 use App\Models\StudentPlacement;
 use App\Models\Subject;
@@ -194,7 +196,7 @@ class StudentAppScheduleTest extends TestCase
             'subject_code' => 'IPS',
             'subject_name' => 'Ilmu Pengetahuan Sosial',
         ]);
-        $controller = app(\App\Http\Controllers\StudentApp\ScheduleController::class);
+        $controller = app(ScheduleController::class);
         $method = new \ReflectionMethod($controller, 'groupEntriesByDay');
 
         $days = $method->invoke($controller, collect([$entry, $duplicate, $distinctSubject]), collect());
@@ -211,8 +213,8 @@ class StudentAppScheduleTest extends TestCase
         Subject $subject,
         Teacher $teacher,
         TeacherSubject $teacherSubject,
-    ): \App\Models\ScheduleTeachingAssignment {
-        return \App\Models\ScheduleTeachingAssignment::query()->create([
+    ): ScheduleTeachingAssignment {
+        return ScheduleTeachingAssignment::query()->create([
             'schedule_plan_id' => $plan->id,
             'academic_period_id' => $period->id,
             'rombel_id' => $rombel->id,

@@ -233,7 +233,7 @@ class StudentAppProfileTest extends TestCase
         $layoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
         $this->assertIsString($layoutSource);
         $this->assertStringContainsString("currentPath === '/student/kantin'", $layoutSource);
-        $this->assertStringContainsString('isSecondaryPage = isKantin || isExam', $layoutSource);
+        $this->assertStringContainsString('isSecondaryPage = isKantin || isUas || isExam', $layoutSource);
         $this->assertStringContainsString('!isSecondaryPage && (', $layoutSource);
         $this->assertStringContainsString("'flex-1 p-0'", $layoutSource);
 

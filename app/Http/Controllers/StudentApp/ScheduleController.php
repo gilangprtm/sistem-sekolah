@@ -115,8 +115,9 @@ class ScheduleController extends Controller
     private function groupEntriesByDay(Collection $entries, Collection $customSlots): array
     {
         $rowsByDay = app(ScheduleReadService::class)->scheduleRows($customSlots);
+        $days = config('schedule.days');
 
-        return collect(config('schedule.days'))->map(function (array $day) use ($entries, $rowsByDay): array {
+        return collect(app(ScheduleReadService::class)->days())->map(function (array $day) use ($entries, $rowsByDay): array {
             $key = $day['key'];
 
             return [

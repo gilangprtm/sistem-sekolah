@@ -6,14 +6,23 @@ export const STUDENT_CARD_WIDTH = 1011;
 export const STUDENT_CARD_HEIGHT = 639;
 
 async function asDataUrl(url: string): Promise<string> {
-    if (url.startsWith('data:')) return url;
+    if (url.startsWith('data:')) {
+        return url;
+    }
+
     const response = await fetch(url, { credentials: 'same-origin' });
-    if (!response.ok) throw new Error('Aset kartu tidak dapat dimuat.');
+
+    if (!response.ok) {
+        throw new Error('Aset kartu tidak dapat dimuat.');
+    }
+
     const blob = await response.blob();
+
     return await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('Aset kartu tidak dapat dibaca.'));
+        reader.onerror = () =>
+            reject(new Error('Aset kartu tidak dapat dibaca.'));
         reader.readAsDataURL(blob);
     });
 }
@@ -21,19 +30,24 @@ async function asDataUrl(url: string): Promise<string> {
 async function cloneWithStyles(source: Element): Promise<Element> {
     const clone = source.cloneNode(false) as Element;
     const style = window.getComputedStyle(source);
-    const css = Array.from(style).map((property) =>
-        `${property}:${style.getPropertyValue(property)};`
-    ).join('');
+    const css = Array.from(style)
+        .map((property) => `${property}:${style.getPropertyValue(property)};`)
+        .join('');
     clone.setAttribute('style', css);
 
-    if (source instanceof HTMLImageElement && clone instanceof HTMLImageElement) {
+    if (
+        source instanceof HTMLImageElement &&
+        clone instanceof HTMLImageElement
+    ) {
         clone.src = await asDataUrl(source.currentSrc || source.src);
         clone.removeAttribute('srcset');
     }
 
     const background = style.backgroundImage;
+
     if (background && background !== 'none') {
         const match = /^url\(["']?(.*?)["']?\)$/.exec(background);
+
         if (match) {
             const image = await asDataUrl(match[1]);
             (clone as HTMLElement).style.backgroundImage = `url("${image}")`;
@@ -47,6 +61,7 @@ async function cloneWithStyles(source: Element): Promise<Element> {
             clone.appendChild(child.cloneNode(true));
         }
     }
+
     return clone;
 }
 
@@ -64,28 +79,47 @@ export async function renderStudentCardPng(card: HTMLElement): Promise<Blob> {
 
     try {
         await document.fonts.ready;
-        const copy = await cloneWithStyles(source) as HTMLElement;
+        const copy = (await cloneWithStyles(source)) as HTMLElement;
         copy.style.width = `${STUDENT_CARD_WIDTH}px`;
         copy.style.height = `${STUDENT_CARD_HEIGHT}px`;
         copy.style.transform = 'none';
         const markup = new XMLSerializer().serializeToString(copy);
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${STUDENT_CARD_WIDTH}" height="${STUDENT_CARD_HEIGHT}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%">${markup}</div></foreignObject></svg>`;
-        const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+        const svgUrl = URL.createObjectURL(
+            new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }),
+        );
+
         try {
             const image = new Image();
             await new Promise<void>((resolve, reject) => {
                 image.onload = () => resolve();
-                image.onerror = () => reject(new Error('Browser tidak dapat merender kartu. Coba browser lain.'));
+                image.onerror = () =>
+                    reject(
+                        new Error(
+                            'Browser tidak dapat merender kartu. Coba browser lain.',
+                        ),
+                    );
                 image.src = svgUrl;
             });
             const canvas = document.createElement('canvas');
             canvas.width = STUDENT_CARD_WIDTH;
             canvas.height = STUDENT_CARD_HEIGHT;
             const context = canvas.getContext('2d');
-            if (!context) throw new Error('Canvas tidak tersedia.');
+
+            if (!context) {
+                throw new Error('Canvas tidak tersedia.');
+            }
+
             context.drawImage(image, 0, 0);
+
             return await new Promise<Blob>((resolve, reject) =>
-                canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Gagal mengekspor PNG.')), 'image/png')
+                canvas.toBlob(
+                    (blob) =>
+                        blob
+                            ? resolve(blob)
+                            : reject(new Error('Gagal mengekspor PNG.')),
+                    'image/png',
+                ),
             );
         } finally {
             URL.revokeObjectURL(svgUrl);

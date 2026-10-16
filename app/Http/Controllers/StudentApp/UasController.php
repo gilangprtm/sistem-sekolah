@@ -17,9 +17,7 @@ class UasController extends Controller
     public function __invoke(Request $request): Response
     {
         $student = $request->user()->student;
-        $year = $student === null
-            ? null
-            : AcademicYear::query()->where('status', 'active')->latest('id')->first();
+        $year = AcademicYear::query()->where('status', 'active')->latest('id')->first();
         $period = $year?->periods()->where('status', 'active')->latest('id')->first();
         $now = now();
         $links = $period === null

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
@@ -21,11 +22,9 @@ class DashboardTest extends TestCase
         $response->assertOk()
             ->assertSee('<meta name="application-name" content="Portal SMPN 17 Denpasar">', false)
             ->assertSee('<meta name="apple-mobile-web-app-title" content="Portal SMPN 17 Denpasar">', false)
-            ->assertSee('<link rel="icon" type="image/png" sizes="1080x1080" href="/images/logo-sekolah.png?v=school-logo-1">', false)
-            ->assertSee('<link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=school-logo-1">', false)
-            ->assertSee('<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=school-logo-1">', false)
-            ->assertSee('<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png?v=school-logo-1">', false)
-            ->assertSee('<link rel="manifest" href="/manifest.webmanifest?v=school-logo-1">', false)
+            ->assertSee('<link rel="icon" type="image/x-icon" sizes="32x32" href="/favicon.ico?v=school-logo-3">', false)
+            ->assertSee('<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple_touch_icon.png?v=school-logo-3">', false)
+            ->assertSee('<link rel="manifest" href="/manifest.webmanifest?v=school-logo-2">', false)
             ->assertDontSee('Laravel</title>', false);
 
         $this->assertFileExists(public_path('images/logo-sekolah.png'));
@@ -57,7 +56,7 @@ class DashboardTest extends TestCase
         $this->assertSame('/', $manifest['start_url']);
         $this->assertSame('/', $manifest['scope']);
         $serviceWorker = file_get_contents(public_path('sw.js'));
-        $this->assertStringContainsString('student-app-shell-v2', $serviceWorker);
+        $this->assertStringContainsString("const PREVIOUS_CACHE_NAME = 'student-app-shell-v2';", $serviceWorker);
         $this->assertStringNotContainsString('APP_SHELL', $serviceWorker);
         $this->assertStringNotContainsString('caches.match', $serviceWorker);
         $pwaRegistration = file_get_contents(resource_path('js/lib/register-student-pwa.ts'));
@@ -85,6 +84,7 @@ class DashboardTest extends TestCase
     {
         Role::create(['name' => 'Siswa']);
         Storage::fake('public');
+        Http::fake();
         $user = User::factory()->create();
         $user->assignRole('Siswa');
         $student = Student::factory()->create([
@@ -105,12 +105,21 @@ class DashboardTest extends TestCase
                 ->missing('student.photo_path'));
     }
 
-    public function test_student_dashboard_defers_external_news_from_initial_shell(): void
+    public function test_student_dashboard_includes_external_news_in_initial_response(): void
     {
         Role::create(['name' => 'Siswa']);
         $user = User::factory()->create();
         $user->assignRole('Siswa');
-        Http::fake();
+        Cache::forget('student-app:school-news');
+        Http::fake([
+            'https://smpn17denpasar.sch.id/api/public/berita' => Http::response([
+                'data' => [[
+                    'id' => 1,
+                    'title' => 'Berita sekolah',
+                    'url' => 'https://smpn17denpasar.sch.id/berita/1',
+                ]],
+            ]),
+        ]);
 
         $response = $this->actingAs($user)
             ->withHeaders([
@@ -123,9 +132,8 @@ class DashboardTest extends TestCase
         $response->assertOk()
             ->assertHeader('X-Inertia', 'true')
             ->assertJsonPath('component', 'student-app/dashboard')
-            ->assertJsonMissingPath('props.news')
-            ->assertJsonPath('deferredProps.default', ['news']);
-        Http::assertNothingSent();
+            ->assertJsonPath('props.news.0.title', 'Berita sekolah');
+        Http::assertSentCount(1);
     }
 
     public function test_student_dashboard_news_request_preserves_normalization_and_cache(): void
@@ -133,6 +141,7 @@ class DashboardTest extends TestCase
         Role::create(['name' => 'Siswa']);
         $user = User::factory()->create();
         $user->assignRole('Siswa');
+        Cache::forget('student-app:school-news');
         Http::fake([
             'https://smpn17denpasar.sch.id/api/public/berita' => Http::response([
                 'data' => [[
@@ -145,27 +154,15 @@ class DashboardTest extends TestCase
             ]),
         ]);
 
-        $initialResponse = $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->withHeaders([
                 'X-Inertia' => 'true',
                 'X-Requested-With' => 'XMLHttpRequest',
                 'X-Inertia-Version' => hash_file('xxh128', public_path('build/manifest.json')),
             ])
             ->get(route('student-app.dashboard'));
-        $initialResponse->assertOk();
 
-        $deferredResponse = $this->actingAs($user)
-            ->withHeaders([
-                'X-Inertia' => 'true',
-                'X-Requested-With' => 'XMLHttpRequest',
-                'X-Inertia-Version' => hash_file('xxh128', public_path('build/manifest.json')),
-                'X-Inertia-Partial-Component' => 'student-app/dashboard',
-                'X-Inertia-Partial-Data' => 'news',
-                'X-Inertia-Deferred' => 'true',
-            ])
-            ->get(route('student-app.dashboard'));
-
-        $deferredResponse->assertOk()
+        $response->assertOk()
             ->assertJsonPath('props.news.0.title', 'Berita sekolah')
             ->assertJsonPath(
                 'props.news.0.imageUrl',
