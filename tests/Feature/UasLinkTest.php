@@ -47,9 +47,9 @@ class UasLinkTest extends TestCase
         $this->assertStringContainsString('SecondaryPageShell title="Ujian" fallbackHref="/student"', $studentUasSource);
         $this->assertStringNotContainsString('id="student-uas-heading"', $studentUasSource);
         $this->assertStringContainsString('role="tablist"', $studentUasSource);
-        $this->assertStringContainsString('Konfirmasi Mulai Ujian', $studentUasSource);
-        $this->assertStringContainsString('Setuju dan mulai', $studentUasSource);
-        $this->assertStringContainsString('Aktivitas halaman ujian dicatat', $studentUasSource);
+        $this->assertStringContainsString('<DialogTitle>Mulai ujian</DialogTitle>', $studentUasSource);
+        $this->assertStringContainsString("\n                                        Mulai\n", $studentUasSource);
+        $this->assertStringContainsString('Aktivitas halaman ujian dicatat untuk audit.', $studentUasSource);
         $this->assertStringContainsString('setSelectedExam(null)', $studentUasSource);
         $this->assertStringContainsString('href={`/student/uas/${selectedExam.id}/attempt`}', $studentUasSource);
 
@@ -67,7 +67,7 @@ class UasLinkTest extends TestCase
         $this->assertStringNotContainsString('window.prompt', $source);
         $this->assertStringContainsString('unlock-reason', $source);
         $this->assertStringContainsString('Alasan wajib diisi minimal 5 karakter.', $source);
-        $this->assertStringContainsString('Buka Percobaan', $source);
+        $this->assertStringContainsString('<DialogTitle>Buka ujian siswa</DialogTitle>', $source);
     }
 
     public function test_admin_monitoring_exposes_only_locked_three_or_four_attempts_with_pagination(): void
@@ -567,7 +567,7 @@ class UasLinkTest extends TestCase
 
     public function test_unauthenticated_and_non_student_users_cannot_access_student_uas_page(): void
     {
-        $this->get(route('student-app.uas'))->assertRedirect(route('login'));
+        $this->get(route('student-app.uas'))->assertRedirect('/');
 
         $teacher = User::factory()->create();
         $teacher->assignRole('Guru');

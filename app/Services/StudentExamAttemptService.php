@@ -11,23 +11,84 @@ use Illuminate\Validation\ValidationException;
 
 class StudentExamAttemptService
 {
-    public const INTERRUPTION_LIMIT = 3;
+    public const INTERRUPTION_LIMIT = 4;
 
-    public function start(Student $student, UasLink $uasLink): StudentExamAttempt
+    /** @return array{attempt: StudentExamAttempt, warning: bool, locked: bool} */
+    public function start(Student $student, UasLink $uasLink, bool $reopen = false, ?int $expectedCount = null): array
     {
-        return DB::transaction(function () use ($student, $uasLink): StudentExamAttempt {
-            $attempt = StudentExamAttempt::query()->firstOrCreate(
-                ['student_id' => $student->id, 'uas_link_id' => $uasLink->id],
-                ['status' => 'active', 'started_at' => now()],
-            );
+        return DB::transaction(function () use ($student, $uasLink, $reopen, $expectedCount): array {
+            Student::query()->lockForUpdate()->findOrFail($student->id);
+            $attempt = StudentExamAttempt::query()
+                ->where('student_id', $student->id)
+                ->where('uas_link_id', $uasLink->id)
+                ->lockForUpdate()
+                ->first();
 
-            if ($attempt->status === 'locked') {
-                throw ValidationException::withMessages([
-                    'attempt' => 'Percobaan ujian ini terkunci. Hubungi administrator untuk membuka kembali.',
+            if ($attempt === null) {
+                $attempt = StudentExamAttempt::query()->create([
+                    'student_id' => $student->id,
+                    'uas_link_id' => $uasLink->id,
+                    'status' => 'active',
+                    'started_at' => now(),
+                    'interruption_count' => 1,
                 ]);
+                $attempt->events()->create([
+                    'event_type' => 'exam_attempt_started',
+                    'occurred_at' => now(),
+                    'interruption_count' => 1,
+                ]);
+
+                return ['attempt' => $attempt, 'warning' => false, 'locked' => false];
             }
 
-            return $attempt;
+            if ($attempt->status === 'locked') {
+                return ['attempt' => $attempt, 'warning' => false, 'locked' => true];
+            }
+
+            if ($attempt->interruption_count === 0) {
+                $attempt->forceFill(['interruption_count' => 1])->save();
+                $attempt->events()->create([
+                    'event_type' => 'exam_attempt_started',
+                    'occurred_at' => now(),
+                    'interruption_count' => 1,
+                ]);
+
+                return ['attempt' => $attempt->fresh(), 'warning' => false, 'locked' => false];
+            }
+
+            if (! $reopen) {
+                return ['attempt' => $attempt, 'warning' => false, 'locked' => false];
+            }
+
+            if ($expectedCount !== null && $attempt->interruption_count !== $expectedCount) {
+                $locked = $attempt->interruption_count >= self::INTERRUPTION_LIMIT;
+
+                return [
+                    'attempt' => $attempt,
+                    'warning' => ! $locked && $attempt->interruption_count > 1,
+                    'locked' => $locked,
+                ];
+            }
+
+            $count = min($attempt->interruption_count + 1, self::INTERRUPTION_LIMIT);
+            $locked = $count >= self::INTERRUPTION_LIMIT;
+            $receivedAt = now();
+            $attempt->forceFill([
+                'interruption_count' => $count,
+                'status' => $locked ? 'locked' : 'active',
+                'locked_at' => $locked ? $receivedAt : null,
+            ])->save();
+            $attempt->events()->create([
+                'event_type' => 'exam_attempt_reopened',
+                'occurred_at' => $receivedAt,
+                'interruption_count' => $count,
+            ]);
+
+            return [
+                'attempt' => $attempt->fresh(),
+                'warning' => ! $locked,
+                'locked' => $locked,
+            ];
         });
     }
 
@@ -67,7 +128,7 @@ class StudentExamAttemptService
                 throw ValidationException::withMessages(['event' => 'Tidak ada gangguan halaman yang menunggu.']);
             }
 
-            $count++;
+            $count = min($count + 1, self::INTERRUPTION_LIMIT);
             $durationSeconds = max(
                 0,
                 (int) CarbonImmutable::parse((string) $lastEvent->occurred_at)->diffInSeconds($receivedAt),
@@ -89,6 +150,31 @@ class StudentExamAttemptService
                 'warning' => $count < self::INTERRUPTION_LIMIT,
                 'locked' => $count >= self::INTERRUPTION_LIMIT,
             ];
+        });
+    }
+
+    public function complete(StudentExamAttempt $attempt): StudentExamAttempt
+    {
+        return DB::transaction(function () use ($attempt): StudentExamAttempt {
+            $attempt = StudentExamAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+
+            if ($attempt->status !== 'active') {
+                return $attempt;
+            }
+
+            $completedAt = now();
+            $attempt->forceFill([
+                'status' => 'locked',
+                'interruption_count' => self::INTERRUPTION_LIMIT,
+                'locked_at' => $completedAt,
+            ])->save();
+            $attempt->events()->create([
+                'event_type' => 'exam_attempt_completed',
+                'occurred_at' => $completedAt,
+                'interruption_count' => self::INTERRUPTION_LIMIT,
+            ]);
+
+            return $attempt->fresh();
         });
     }
 

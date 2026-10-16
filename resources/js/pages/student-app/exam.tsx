@@ -2,9 +2,14 @@ import { Head } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
-import { formatWitaDateTime } from '@/lib/date-time';
-
-const INTERRUPTION_LIMIT = 3;
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 const FIRST_INTERRUPTION_WARNING =
     'Kamu telah keluar aplikasi, kamu tidak akan bisa mengikuti ujian jika tetap keluar dari aplikasi';
 const SECOND_INTERRUPTION_WARNING =
@@ -19,68 +24,14 @@ type Props = {
     formUrl: string | null;
     started: boolean;
     interruptionCount: number;
+    reopen: boolean;
 };
 
 type WakeLockSentinel = {
     release: () => Promise<void>;
     addEventListener: (type: 'release', listener: () => void) => void;
 };
-type ActivityStatus = 'HIDDEN' | 'VISIBLE' | 'SENDING' | 'SYNCED' | 'FAILED';
-type ActivityEntry = { status: ActivityStatus; at: string };
-const activityLogKey = 'student-exam-activity-log';
-const activityLogLimit = 30;
-const activityStatuses: readonly ActivityStatus[] = [
-    'HIDDEN',
-    'VISIBLE',
-    'SENDING',
-    'SYNCED',
-    'FAILED',
-];
 
-function isActivityEntry(value: unknown): value is ActivityEntry {
-    if (typeof value !== 'object' || value === null) {
-        return false;
-    }
-
-    const entry = value as Partial<ActivityEntry>;
-
-    return (
-        typeof entry.status === 'string' &&
-        activityStatuses.includes(entry.status as ActivityStatus) &&
-        typeof entry.at === 'string' &&
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(entry.at) &&
-        !Number.isNaN(Date.parse(entry.at))
-    );
-}
-
-function readActivityLog(): ActivityEntry[] {
-    try {
-        const stored = JSON.parse(
-            sessionStorage.getItem(activityLogKey) ?? '[]',
-        ) as unknown;
-
-        return Array.isArray(stored)
-            ? stored.filter(isActivityEntry).slice(-activityLogLimit)
-            : [];
-    } catch {
-        return [];
-    }
-}
-
-function appendActivityStatus(status: ActivityStatus): ActivityEntry[] {
-    const entries = [
-        ...readActivityLog(),
-        { status, at: new Date().toISOString() },
-    ].slice(-activityLogLimit);
-
-    try {
-        sessionStorage.setItem(activityLogKey, JSON.stringify(entries));
-    } catch {
-        // Diagnostics remain best-effort when session storage is unavailable.
-    }
-
-    return entries;
-}
 type WakeLockNavigator = Navigator & {
     wakeLock?: { request: (type: 'screen') => Promise<WakeLockSentinel> };
 };
@@ -94,20 +45,18 @@ export default function StudentExam({
     formUrl,
     started,
     interruptionCount: initialCount,
+    reopen,
 }: Props) {
     const [attemptId] = useState<number | null>(initialAttemptId);
     const [hasStarted] = useState(started);
-    const [count, setCount] = useState(initialCount);
     const [error, setError] = useState('');
+    const [completionError, setCompletionError] = useState('');
     const [wakeLockMessage, setWakeLockMessage] = useState('');
     const [warning, setWarning] = useState('');
-    const [activityLog, setActivityLog] = useState<ActivityEntry[]>(() =>
-        readActivityLog(),
-    );
-    const [syncStatus, setSyncStatus] = useState<ActivityStatus | 'READY'>(
-        'READY',
-    );
     const [isStarting, setIsStarting] = useState(false);
+    const [pendingOpen, setPendingOpen] = useState(false);
+    const [isCompletionOpen, setIsCompletionOpen] = useState(false);
+    const [isCompleting, setIsCompleting] = useState(false);
     const startRequested = useRef(false);
     const hiddenAt = useRef<number | null>(null);
     const wakeLock = useRef<WakeLockSentinel | null>(null);
@@ -149,15 +98,9 @@ export default function StudentExam({
                 return;
             }
 
-            const eventStatus =
-                eventType === 'exam_page_hidden' ? 'HIDDEN' : 'VISIBLE';
             setWarning('');
-            setSyncStatus(eventStatus);
-            setActivityLog(appendActivityStatus(eventStatus));
 
             try {
-                setSyncStatus('SENDING');
-                setActivityLog(appendActivityStatus('SENDING'));
                 const token = document.querySelector<HTMLMetaElement>(
                     'meta[name="csrf-token"]',
                 )?.content;
@@ -176,8 +119,6 @@ export default function StudentExam({
                 );
 
                 if (!response.ok && response.status !== 423) {
-                    setSyncStatus('FAILED');
-                    setActivityLog(appendActivityStatus('FAILED'));
                     setError(
                         `Server menolak pencatatan gangguan (HTTP ${response.status}). Status ujian akan diverifikasi ulang.`,
                     );
@@ -192,18 +133,11 @@ export default function StudentExam({
                     locked?: boolean;
                 };
 
-                if (result.interruptionCount !== undefined) {
-                    setCount(result.interruptionCount);
-                }
-
-                setSyncStatus('SYNCED');
-                setActivityLog(appendActivityStatus('SYNCED'));
-
                 if (result.warning && result.interruptionCount !== undefined) {
                     setWarning(
-                        result.interruptionCount === 1
+                        result.interruptionCount === 2
                             ? FIRST_INTERRUPTION_WARNING
-                            : result.interruptionCount === 2
+                            : result.interruptionCount === 3
                               ? SECOND_INTERRUPTION_WARNING
                               : '',
                     );
@@ -213,8 +147,6 @@ export default function StudentExam({
                     window.location.reload();
                 }
             } catch {
-                setSyncStatus('FAILED');
-                setActivityLog(appendActivityStatus('FAILED'));
                 setError(
                     'Tidak dapat menghubungi server untuk mencatat gangguan halaman. Periksa koneksi Anda lalu coba kembali.',
                 );
@@ -278,16 +210,21 @@ export default function StudentExam({
             const token = document.querySelector<HTMLMetaElement>(
                 'meta[name="csrf-token"]',
             )?.content;
-            const response = await fetch(`/student/uas/${linkId}/attempt`, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+            const response = await fetch(
+                `/student/uas/${linkId}/attempt${reopen ? '?reopen=1' : ''}`,
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                    },
+                    body: JSON.stringify({ expected_count: initialCount }),
                 },
-            });
+            );
 
-            if (!response.ok) {
+            if (!response.ok && response.status !== 423) {
                 setError(
                     `Server menolak permintaan memulai ujian (HTTP ${response.status}). Silakan coba lagi atau hubungi administrator jika masalah berlanjut.`,
                 );
@@ -295,7 +232,32 @@ export default function StudentExam({
                 return;
             }
 
-            window.location.reload();
+            const result = (await response.json()) as {
+                interruptionCount?: number;
+                warning?: boolean;
+                locked?: boolean;
+            };
+
+            if (result.locked || response.status === 423) {
+                window.location.reload();
+
+                return;
+            }
+
+            if (result.warning) {
+                setWarning(
+                    result.interruptionCount === 2
+                        ? FIRST_INTERRUPTION_WARNING
+                        : result.interruptionCount === 3
+                          ? SECOND_INTERRUPTION_WARNING
+                          : '',
+                );
+                setPendingOpen(true);
+
+                return;
+            }
+
+            window.location.replace(`/student/uas/${linkId}/attempt`);
         } catch {
             setError(
                 'Tidak dapat menghubungi server untuk memulai ujian. Periksa koneksi Anda lalu coba kembali.',
@@ -303,7 +265,58 @@ export default function StudentExam({
         } finally {
             setIsStarting(false);
         }
-    }, [isStarting, linkId]);
+    }, [initialCount, isStarting, linkId, reopen]);
+
+    const completeAttempt = useCallback(async () => {
+        if (!attemptId || isCompleting) {
+            return;
+        }
+
+        setIsCompleting(true);
+        setCompletionError('');
+
+        try {
+            const token = document.querySelector<HTMLMetaElement>(
+                'meta[name="csrf-token"]',
+            )?.content;
+            const response = await fetch(
+                `/student/uas/attempts/${attemptId}/complete`,
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                setCompletionError(
+                    `Server menolak penyelesaian ujian (HTTP ${response.status}). Silakan coba lagi.`,
+                );
+
+                return;
+            }
+
+            window.location.replace('/student/uas');
+        } catch {
+            setCompletionError(
+                'Tidak dapat menghubungi server untuk menyelesaikan ujian. Periksa koneksi Anda lalu coba lagi.',
+            );
+        } finally {
+            setIsCompleting(false);
+        }
+    }, [attemptId, isCompleting]);
+
+    const acknowledgeWarning = useCallback(() => {
+        setWarning('');
+
+        if (pendingOpen) {
+            setPendingOpen(false);
+            window.location.replace(`/student/uas/${linkId}/attempt`);
+        }
+    }, [linkId, pendingOpen]);
 
     useEffect(() => {
         if (hasStarted || startRequested.current) {
@@ -318,7 +331,7 @@ export default function StudentExam({
         <>
             <Head title={`${category} ${subjectCode ?? ''}`.trim()} />
             <SecondaryPageShell
-                title={`${category} ${subjectCode ?? ''} · ◉ ${count}/${INTERRUPTION_LIMIT} · ${syncStatus}`.trim()}
+                title={`${category} ${subjectCode ?? ''}`.trim()}
                 fallbackHref="/student/uas"
             >
                 <main
@@ -370,39 +383,20 @@ export default function StudentExam({
                                 referrerPolicy="no-referrer"
                                 allow="fullscreen"
                             />
-                            <details className="absolute right-2 bottom-2 max-w-[min(90vw,24rem)] rounded bg-background/90 p-2 text-xs shadow">
-                                <summary>
-                                    Diagnostik sesi ({activityLog.length})
-                                </summary>
-                                <ol className="mt-1 max-h-32 overflow-auto">
-                                    {activityLog.map((entry, index) => (
-                                        <li key={`${entry.at}-${index}`}>
-                                            <time dateTime={entry.at}>
-                                                {formatWitaDateTime(entry.at)}
-                                            </time>{' '}
-                                            · {entry.status}
-                                        </li>
-                                    ))}
-                                </ol>
-                                {error && (
-                                    <p
-                                        role="alert"
-                                        className="mt-2 text-destructive"
-                                    >
-                                        {error}
-                                    </p>
-                                )}
-                            </details>
+                            <div className="absolute right-2 bottom-2">
+                                <Button
+                                    type="button"
+                                    onClick={() => setIsCompletionOpen(true)}
+                                >
+                                    Selesai
+                                </Button>
+                            </div>
                         </div>
                     ) : (
                         <section
                             className="grid gap-2 p-4 text-sm"
                             aria-live="polite"
                         >
-                            <p>
-                                Gangguan halaman tercatat: {count} dari{' '}
-                                {INTERRUPTION_LIMIT}
-                            </p>
                             <p className="text-muted-foreground">
                                 {wakeLockMessage}
                             </p>
@@ -419,8 +413,87 @@ export default function StudentExam({
                                     {error}
                                 </p>
                             )}
+                            {hasStarted && (
+                                <Button
+                                    type="button"
+                                    onClick={() => setIsCompletionOpen(true)}
+                                >
+                                    Selesai
+                                </Button>
+                            )}
                         </section>
                     )}
+                    <Dialog
+                        open={isCompletionOpen}
+                        onOpenChange={(open) => {
+                            if (!isCompleting) {
+                                setIsCompletionOpen(open);
+                            }
+                        }}
+                    >
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Selesaikan ujian?</DialogTitle>
+                            </DialogHeader>
+                            <DialogDescription>
+                                Setelah diselesaikan, ujian ini akan dikunci dan
+                                tidak dapat dibuka kembali tanpa bantuan
+                                administrator.
+                            </DialogDescription>
+                            {completionError && (
+                                <p
+                                    role="alert"
+                                    className="text-sm text-destructive"
+                                >
+                                    {completionError}
+                                </p>
+                            )}
+                            <DialogFooter>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsCompletionOpen(false)}
+                                    disabled={isCompleting}
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={() => void completeAttempt()}
+                                    disabled={isCompleting}
+                                >
+                                    {isCompleting
+                                        ? 'Menyelesaikan...'
+                                        : 'Selesai'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    <Dialog
+                        open={warning !== ''}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                acknowledgeWarning();
+                            }
+                        }}
+                    >
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Peringatan ujian</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-3 text-sm">
+                                <DialogDescription>{warning}</DialogDescription>
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    type="button"
+                                    onClick={acknowledgeWarning}
+                                >
+                                    Mengerti
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </main>
             </SecondaryPageShell>
         </>

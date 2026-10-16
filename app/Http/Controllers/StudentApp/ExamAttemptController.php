@@ -26,6 +26,7 @@ class ExamAttemptController extends Controller
             ->where('uas_link_id', $uasLink->id)
             ->whereNotNull('started_at')
             ->first();
+        $reopen = $request->boolean('reopen');
 
         if ($attempt?->status === 'locked') {
             return Inertia::render('student-app/exam-locked', [
@@ -42,12 +43,13 @@ class ExamAttemptController extends Controller
 
         return Inertia::render('student-app/exam', [
             'attemptId' => $attempt?->id,
+            'reopen' => $reopen && $attempt !== null && $attempt->interruption_count > 0,
             'linkId' => $uasLink->id,
             'category' => $uasLink->category,
             'subject' => $uasLink->subject?->name,
             'subjectCode' => $uasLink->subject?->code,
-            'formUrl' => $attempt === null ? null : $uasLink->link,
-            'started' => $attempt !== null,
+            'formUrl' => $attempt !== null && $attempt->interruption_count > 0 && ! $reopen ? $uasLink->link : null,
+            'started' => $attempt !== null && $attempt->interruption_count > 0 && ! $reopen,
             'interruptionCount' => $attempt === null ? 0 : $attempt->interruption_count,
         ]);
     }
@@ -56,9 +58,31 @@ class ExamAttemptController extends Controller
     {
         $student = $request->user()->student;
         $this->ensureAvailableToStudent($student, $uasLink);
-        $attempt = $service->start($student, $uasLink);
+        $result = $service->start(
+            $student,
+            $uasLink,
+            $request->boolean('reopen'),
+            $request->has('expected_count') ? $request->integer('expected_count') : null,
+        );
 
-        return response()->json(['attemptId' => $attempt->id, 'status' => $attempt->status]);
+        return response()->json([
+            'attemptId' => $result['attempt']->id,
+            'status' => $result['attempt']->status,
+            'interruptionCount' => $result['attempt']->interruption_count,
+            'warning' => $result['warning'],
+            'locked' => $result['locked'],
+        ], $result['locked'] ? 423 : 200);
+    }
+
+    public function complete(Request $request, StudentExamAttempt $attempt, StudentExamAttemptService $service): JsonResponse
+    {
+        abort_unless($request->user()->student?->id === $attempt->student_id, 404);
+        $completedAttempt = $service->complete($attempt);
+
+        return response()->json([
+            'status' => $completedAttempt->status,
+            'interruptionCount' => $completedAttempt->interruption_count,
+        ]);
     }
 
     public function event(Request $request, StudentExamAttempt $attempt, StudentExamAttemptService $service): JsonResponse
@@ -81,8 +105,12 @@ class ExamAttemptController extends Controller
     {
         $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:1000']]);
         $service->unlock($attempt, $request->user()->id, $data['reason']);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Percobaan ujian berhasil dibuka kembali.',
+        ]);
 
-        return back()->with('success', 'Percobaan ujian berhasil dibuka kembali.');
+        return back();
     }
 
     private function ensureAvailableToStudent(?Student $student, UasLink $uasLink): void

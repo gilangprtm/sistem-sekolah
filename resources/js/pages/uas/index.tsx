@@ -356,7 +356,7 @@ export default function UasIndex({
                                     <TableHead>Tahun Ajaran</TableHead>
                                     <TableHead>Semester</TableHead>
                                     <TableHead>Google Form</TableHead>
-                                    <TableHead>Waktu Buka (WITA)</TableHead>
+                                    <TableHead>Waktu Ujian</TableHead>
                                     <TableHead className="text-right">
                                         Aksi
                                     </TableHead>
@@ -597,10 +597,10 @@ export default function UasIndex({
                 >
                     <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
                         <DialogHeader>
-                            <DialogTitle>Buka Percobaan Ujian</DialogTitle>
+                            <DialogTitle>Buka ujian siswa</DialogTitle>
                             <DialogDescription>
-                                Masukkan alasan wajib untuk membuka percobaan{' '}
-                                {unlockTarget?.student_name ?? 'siswa'}.
+                                Percobaan ujian siswa akan dibuka kembali.
+                                Masukkan alasan untuk melanjutkan.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-2">
@@ -689,9 +689,7 @@ export default function UasIndex({
                                     );
                                 }}
                             >
-                                {unlockProcessing
-                                    ? 'Membuka...'
-                                    : 'Buka Percobaan'}
+                                {unlockProcessing ? 'Membuka...' : 'Buka'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>

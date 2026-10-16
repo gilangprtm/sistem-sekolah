@@ -1,12 +1,13 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { ExternalLink, LockKeyhole } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -17,6 +18,7 @@ type UasLink = {
     subject: { code: string; name: string } | null;
     opens_at: string | null;
     available: boolean;
+    attempt: { interruption_count: number; status: string } | null;
 };
 type Props = {
     academicYear: { year: string } | null;
@@ -38,6 +40,46 @@ export default function StudentUas({
         useState<UasLink | null>(null);
     const [selectedExam, setSelectedExam] = useState<UasLink | null>(null);
     const isReady = status === 'ready';
+    const refreshInFlight = useRef(false);
+
+    useEffect(() => {
+        const refreshAttempts = () => {
+            if (
+                document.visibilityState !== 'visible' ||
+                refreshInFlight.current
+            ) {
+                return;
+            }
+
+            refreshInFlight.current = true;
+            router.reload({
+                only: [
+                    'academicYear',
+                    'academicPeriod',
+                    'links',
+                    'status',
+                    'utsLinks',
+                ],
+                onFinish: () => {
+                    refreshInFlight.current = false;
+                },
+            });
+        };
+        const stopListening = router.on('navigate', ({ detail }) => {
+            if (detail.page.component === 'student-app/uas') {
+                refreshAttempts();
+            }
+        });
+
+        window.addEventListener('pageshow', refreshAttempts);
+        window.addEventListener('focus', refreshAttempts);
+
+        return () => {
+            stopListening();
+            window.removeEventListener('pageshow', refreshAttempts);
+            window.removeEventListener('focus', refreshAttempts);
+        };
+    }, []);
 
     return (
         <>
@@ -131,18 +173,35 @@ export default function StudentUas({
                                                     </p>
                                                 </div>
                                                 {item.available ? (
-                                                    <Button
-                                                        type="button"
-                                                        className="min-h-11 shrink-0 gap-2"
-                                                        onClick={() =>
-                                                            setSelectedExam(
-                                                                item,
-                                                            )
-                                                        }
-                                                    >
-                                                        Buka Form
-                                                        <ExternalLink className="size-4" />
-                                                    </Button>
+                                                    item.attempt &&
+                                                    item.attempt
+                                                        .interruption_count >
+                                                        0 ? (
+                                                        <Button
+                                                            asChild
+                                                            className="min-h-11 shrink-0 gap-2"
+                                                        >
+                                                            <Link
+                                                                href={`/student/uas/${item.id}/attempt?reopen=1`}
+                                                            >
+                                                                Buka Form
+                                                                <ExternalLink className="size-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            type="button"
+                                                            className="min-h-11 shrink-0 gap-2"
+                                                            onClick={() =>
+                                                                setSelectedExam(
+                                                                    item,
+                                                                )
+                                                            }
+                                                        >
+                                                            Buka Form
+                                                            <ExternalLink className="size-4" />
+                                                        </Button>
+                                                    )
                                                 ) : (
                                                     <Button
                                                         type="button"
@@ -182,30 +241,31 @@ export default function StudentUas({
                 >
                     <DialogContent className="w-[calc(100%-2rem)] rounded-2xl sm:max-w-md">
                         <DialogHeader>
-                            <DialogTitle>Konfirmasi Mulai Ujian</DialogTitle>
+                            <DialogTitle>Mulai ujian</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-3 text-sm">
                             <DialogDescription>
                                 {selectedExam?.subject?.name ??
                                     'Mata Pelajaran'}
                             </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-3 text-sm">
                             <p>
-                                Setelah Anda setuju, percobaan ujian langsung
-                                dimulai dan formulir akan dibuka.
+                                Ujian{' '}
+                                {selectedExam?.subject?.name ??
+                                    'Mata Pelajaran'}{' '}
+                                akan dimulai saat Anda memilih Mulai.
                             </p>
                             <p>
-                                Aktivitas halaman ujian dicatat untuk keperluan
-                                audit. Jika halaman ujian disembunyikan lalu
-                                dibuka kembali sebanyak empat kali, percobaan
-                                akan terkunci dan Anda perlu menghubungi
-                                administrator.
+                                Aktivitas halaman ujian dicatat untuk audit.
+                                Jika halaman ujian disembunyikan lalu dibuka
+                                kembali empat kali, percobaan terkunci. Hubungi
+                                administrator untuk meminta bantuan.
                             </p>
                             <p className="text-muted-foreground">
                                 Catatan aktivitas tidak memastikan penyebab
                                 perpindahan halaman.
                             </p>
                         </div>
-                        <div className="flex justify-end gap-2">
+                        <DialogFooter>
                             <Button
                                 type="button"
                                 variant="outline"
@@ -218,11 +278,11 @@ export default function StudentUas({
                                     <Link
                                         href={`/student/uas/${selectedExam.id}/attempt`}
                                     >
-                                        Setuju dan mulai
+                                        Mulai
                                     </Link>
                                 </Button>
                             )}
-                        </div>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
 

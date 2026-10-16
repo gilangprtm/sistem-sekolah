@@ -19,6 +19,7 @@ Route::middleware(['auth', 'verified', 'role:Siswa'])
         Route::get('/uas/{uasLink}/open', [UasController::class, 'open'])->name('uas.open');
         Route::get('/uas/{uasLink}/attempt', [ExamAttemptController::class, 'show'])->name('uas.attempt');
         Route::post('/uas/{uasLink}/attempt', [ExamAttemptController::class, 'start'])->name('uas.attempt.start');
+        Route::post('/uas/attempts/{attempt}/complete', [ExamAttemptController::class, 'complete'])->name('uas.attempt.complete');
         Route::post('/uas/attempts/{attempt}/events', [ExamAttemptController::class, 'event'])->name('uas.attempt.event');
         Route::get('/chatbot', fn () => Inertia::render('student-app/chatbot'))->name('chatbot');
         Route::get('/kantin', KantinController::class)->name('kantin');

@@ -9,12 +9,7 @@ type Props = {
     interruptionCount: number;
 };
 
-export default function StudentExamLocked({
-    category,
-    subject,
-    subjectCode,
-    interruptionCount,
-}: Props) {
+export default function StudentExamLocked({ category, subjectCode }: Props) {
     return (
         <>
             <Head title={`${category} ${subjectCode ?? ''}`.trim()} />
@@ -34,10 +29,8 @@ export default function StudentExamLocked({
                         Percobaan ujian terkunci
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Percobaan {subject ?? 'ujian'} tercatat mengalami{' '}
-                        {interruptionCount} gangguan halaman. Hubungi
-                        administrator ujian untuk pemeriksaan dan pembukaan
-                        kembali.
+                        Hubungi administrator ujian untuk pemeriksaan dan
+                        pembukaan kembali.
                     </p>
                 </main>
             </SecondaryPageShell>

@@ -31,13 +31,23 @@ class UasController extends Controller
                 ->orderBy('category')
                 ->orderBy('subject_id')
                 ->get(['id', 'subject_id', 'category', 'link', 'opens_at'])
-                ->map(fn (UasLink $link): array => [
-                    'id' => $link->id,
-                    'category' => $link->category,
-                    'subject' => $link->subject?->only(['code', 'name']),
-                    'opens_at' => $link->opens_at === null ? null : CarbonImmutable::parse((string) $link->opens_at)->toIso8601String(),
-                    'available' => $link->opens_at === null || $now->greaterThanOrEqualTo($link->opens_at),
-                ])
+                ->map(function (UasLink $link) use ($student, $now): array {
+                    $attempt = $student === null
+                        ? null
+                        : StudentExamAttempt::query()
+                            ->where('student_id', $student->id)
+                            ->where('uas_link_id', $link->id)
+                            ->first(['interruption_count', 'status']);
+
+                    return [
+                        'id' => $link->id,
+                        'category' => $link->category,
+                        'subject' => $link->subject?->only(['code', 'name']),
+                        'opens_at' => $link->opens_at === null ? null : CarbonImmutable::parse((string) $link->opens_at)->toIso8601String(),
+                        'available' => $link->opens_at === null || $now->greaterThanOrEqualTo($link->opens_at),
+                        'attempt' => $attempt?->only(['interruption_count', 'status']),
+                    ];
+                })
                 ->values();
 
         return Inertia::render('student-app/uas', [
