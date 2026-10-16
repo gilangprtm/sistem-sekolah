@@ -1,10 +1,15 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowRight, BookOpen, GraduationCap, LogIn } from 'lucide-react';
+import { ArrowRight, Download, GraduationCap, LogIn } from 'lucide-react';
+import {
+    installStudentPwa,
+    useStudentPwaInstall,
+} from '@/hooks/use-student-pwa-install';
 import { dashboard, login } from '@/routes';
 import { register } from '@/routes';
 
 export default function Welcome() {
     const { auth } = usePage().props;
+    const { canInstall, isInstalled } = useStudentPwaInstall();
     const isAuthenticated = Boolean(auth.user);
 
     return (
@@ -120,13 +125,18 @@ export default function Welcome() {
                                     />
                                 </Link>
                             )}
-                            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/25 bg-black/10 px-6 text-sm text-white/80 backdrop-blur">
-                                <BookOpen
+                            <button
+                                type="button"
+                                disabled={!canInstall || isInstalled}
+                                onClick={() => void installStudentPwa()}
+                                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/25 bg-black/10 px-6 text-sm text-white/80 backdrop-blur transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <Download
                                     aria-hidden="true"
                                     className="size-5"
                                 />
-                                Belajar dan bertumbuh bersama
-                            </span>
+                                Unduh Portal Siswa
+                            </button>
                         </div>
                     </section>
                 </main>
