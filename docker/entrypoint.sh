@@ -36,7 +36,9 @@ if [ "$role" = "worker" ]; then
 fi
 
 su www-data -s /bin/sh -c "php artisan migrate --force --ansi"
-su www-data -s /bin/sh -c "php artisan storage:link --ansi"
+# Create the public symlink as root: the app user cannot write to public/.
+# The target stays on the persistent upload volume.
+php artisan storage:link --ansi
 su www-data -s /bin/sh -c "php artisan config:cache --ansi"
 
 php-fpm8.5 -D
