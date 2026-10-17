@@ -11,6 +11,7 @@ import type { ChangeEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import StudentPreferencesControl from '@/components/student-app/preferences-control';
 import { StudentCardVisual } from '@/components/student-card-visual';
 import { Button } from '@/components/ui/button';
 import {
@@ -209,16 +210,19 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                 className="space-y-5"
                 aria-labelledby="student-profile-heading"
             >
-                <div>
-                    <p className="text-sm text-muted-foreground">
-                        Akun dan data siswa
-                    </p>
-                    <h2
-                        id="student-profile-heading"
-                        className="text-2xl font-semibold tracking-tight"
-                    >
-                        Profil Siswa
-                    </h2>
+                <div className="flex items-end justify-between gap-3">
+                    <div>
+                        <p className="text-sm text-muted-foreground">
+                            Akun dan data siswa
+                        </p>
+                        <h2
+                            id="student-profile-heading"
+                            className="text-2xl font-semibold tracking-tight"
+                        >
+                            Profil Siswa
+                        </h2>
+                    </div>
+                    <StudentPreferencesControl />
                 </div>
 
                 <div className="flex flex-col items-center rounded-2xl border bg-card p-5 text-center">

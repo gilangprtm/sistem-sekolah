@@ -232,10 +232,26 @@ class StudentAppProfileTest extends TestCase
 
         $layoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
         $this->assertIsString($layoutSource);
+        $this->assertStringNotContainsString('StudentPreferencesControl', $layoutSource);
         $this->assertStringContainsString("currentPath === '/student/kantin'", $layoutSource);
         $this->assertStringContainsString('isSecondaryPage = isKantin || isUas || isExam', $layoutSource);
         $this->assertStringContainsString('!isSecondaryPage && (', $layoutSource);
         $this->assertStringContainsString("'flex-1 p-0'", $layoutSource);
+
+        $preferencesSource = file_get_contents(
+            resource_path('js/components/student-app/preferences-control.tsx'),
+        );
+        $this->assertIsString($preferencesSource);
+        $this->assertStringContainsString('Preferensi tampilan', $preferencesSource);
+        $this->assertStringContainsString('DialogContent', $preferencesSource);
+        $this->assertStringContainsString('Theme Preset', $preferencesSource);
+        $this->assertStringContainsString('Fonts', $preferencesSource);
+        $this->assertStringContainsString('Theme Mode', $preferencesSource);
+        $this->assertStringContainsString("'light', 'dark', 'system'", $preferencesSource);
+        $this->assertStringContainsString("setPreference('theme_mode', value", $preferencesSource);
+        $this->assertStringContainsString("setPreference('theme_preset', value", $preferencesSource);
+        $this->assertStringContainsString("setPreference('font', value", $preferencesSource);
+        $this->assertStringContainsString('min-h-11', $preferencesSource);
 
         $shellSource = file_get_contents(resource_path('js/components/student-app/secondary-page-shell.tsx'));
         $this->assertIsString($shellSource);
@@ -354,6 +370,7 @@ class StudentAppProfileTest extends TestCase
         $this->assertIsString($source);
         $this->assertIsString($visualSource);
         $this->assertStringContainsString('Ganti password', $source);
+        $this->assertStringContainsString('StudentPreferencesControl', $source);
         $this->assertStringContainsString('DialogContent', $source);
         $this->assertStringContainsString('action="/student/profile/password"', $source);
         $this->assertStringContainsString('name="current_password"', $source);
