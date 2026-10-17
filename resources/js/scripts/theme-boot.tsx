@@ -3,61 +3,60 @@
  * and sets data-* attributes on <html> before paint to prevent
  * flash of wrong theme/layout.
  */
+import { useLayoutEffect } from 'react';
+
 import { PREFERENCE_REGISTRY } from '@/lib/preferences/preferences-config';
 
-export function ThemeBootScript() {
-    const registry = JSON.stringify(PREFERENCE_REGISTRY);
+function readCookie(name: string): string | null {
+    const cookie = document.cookie
+        .split('; ')
+        .find((value) => value.startsWith(`${name}=`));
 
-    const code = `
-    (function () {
-      try {
-        var root = document.documentElement;
-        var REGISTRY = ${registry};
+    return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : null;
+}
 
-        function readCookie(name) {
-          var match = document.cookie.split("; ").find(function(c) {
-            return c.startsWith(name + "=");
-          });
-          return match ? decodeURIComponent(match.split("=")[1]) : null;
+function applyThemeBoot(): void {
+    try {
+        const root = document.documentElement;
+        const preferences: Record<string, string> = {};
+
+        for (const [key, definition] of Object.entries(PREFERENCE_REGISTRY)) {
+            const cookieValue =
+                definition.persistence === 'client-cookie' ||
+                definition.persistence === 'server-cookie'
+                    ? readCookie(key)
+                    : null;
+            const value =
+                cookieValue !== null &&
+                definition.values.includes(cookieValue as never)
+                    ? cookieValue
+                    : definition.defaultValue;
+
+            preferences[key] = value;
+            root.setAttribute(definition.attribute, value);
         }
 
-        function readPreference(key, definition) {
-          var mode = definition.persistence;
-          var value = null;
+        const mode = preferences.theme_mode;
+        const resolvedMode =
+            mode === 'system' && window.matchMedia
+                ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                    ? 'dark'
+                    : 'light'
+                : mode === 'dark'
+                  ? 'dark'
+                  : 'light';
 
-          if (!value && (mode === "client-cookie" || mode === "server-cookie")) {
-            value = readCookie(key);
-          }
-
-          return definition.values.indexOf(value) >= 0 ? value : definition.defaultValue;
-        }
-
-        var preferences = {};
-
-        Object.keys(REGISTRY).forEach(function(key) {
-          var definition = REGISTRY[key];
-          var value = readPreference(key, definition);
-
-          preferences[key] = value;
-          root.setAttribute(definition.attribute, value);
-        });
-
-        var mode = preferences.theme_mode;
-        var resolvedMode =
-          mode === "system" && window.matchMedia
-            ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-            : mode === "dark"
-              ? "dark"
-              : "light";
-
-        root.classList.toggle("dark", resolvedMode === "dark");
+        root.classList.toggle('dark', resolvedMode === 'dark');
         root.style.colorScheme = resolvedMode;
-      } catch (e) {
-        console.warn("ThemeBootScript error:", e);
-      }
-    })();
-  `;
+    } catch (error) {
+        console.warn('ThemeBootScript error:', error);
+    }
+}
 
-    /* biome-ignore lint/security/noDangerouslySetInnerHtml: required for pre-hydration boot script */
-    return <script dangerouslySetInnerHTML={{ __html: code }} />;
+export function ThemeBootScript() {
+    useLayoutEffect(() => {
+        applyThemeBoot();
+    }, []);
+
+    return null;
 }

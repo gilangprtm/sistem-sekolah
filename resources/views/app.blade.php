@@ -7,7 +7,7 @@
     data-sidebar-variant="{{ $page['props']['preferences']['sidebar_variant'] ?? 'sidebar' }}"
     data-sidebar-collapsible="{{ $page['props']['preferences']['sidebar_collapsible'] ?? 'icon' }}"
     data-font="{{ $page['props']['preferences']['font'] ?? 'inter' }}"
-    @class(['dark' => ($appearance ?? 'system') == 'dark'])
+    @class(['dark' => request()->cookie('theme_mode') === 'dark'])
     suppressHydrationWarning>
     <head>
         <meta charset="utf-8">

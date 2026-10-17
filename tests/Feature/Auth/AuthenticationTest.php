@@ -96,8 +96,20 @@ class AuthenticationTest extends TestCase
         $this->assertStringContainsString('Bagikan', $dashboardSource);
         $this->assertStringContainsString('beforeinstallprompt', $hookSource);
         $this->assertStringContainsString('appinstalled', $hookSource);
-        $this->assertStringContainsString('localStorage', $hookSource);
         $this->assertStringContainsString('preventDefault', $hookSource);
+    }
+
+    public function test_appearance_hook_uses_the_canonical_theme_mode_preference(): void
+    {
+        $hookSource = file_get_contents(resource_path('js/hooks/use-appearance.tsx'));
+        $appSource = file_get_contents(resource_path('js/app.tsx'));
+
+        $this->assertIsString($hookSource);
+        $this->assertIsString($appSource);
+        $this->assertStringContainsString('state.values.theme_mode', $hookSource);
+        $this->assertStringContainsString("setPreference('theme_mode', mode)", $hookSource);
+        $this->assertStringNotContainsString('localStorage', $hookSource);
+        $this->assertStringNotContainsString('initializeTheme', $appSource);
     }
 
     public function test_student_role_middleware_allows_student_app_route(): void
