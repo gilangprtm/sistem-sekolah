@@ -65,7 +65,6 @@
 @import '../styles/presets/tangerine.css';
 @import '../styles/presets/brutalist.css';
 @import '../styles/presets/soft-pop.css';
-@import '../styles/presets/notion.css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
