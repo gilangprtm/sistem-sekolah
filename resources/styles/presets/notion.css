@@ -80,13 +80,13 @@
 
 /* Typography and document rhythm */
 :root[data-theme-preset='notion'] body {
-    font-family: var(--font-sans);
+    font-family: 'NotionInter', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 16px;
     line-height: 1.5;
     letter-spacing: 0;
 }
 :root[data-theme-preset='notion'] :is(h1, h2, h3, h4, h5, h6, [data-slot='card-title']) {
-    font-family: var(--font-sans);
+    font-family: 'NotionInter', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     letter-spacing: 0;
     line-height: 1.25;
     font-weight: 700;
@@ -101,6 +101,12 @@
     color: var(--primary);
     text-decoration: underline;
 }
+
+/* Heading hierarchy scales down on narrow screens; component titles stay compact. */
+:root[data-theme-preset='notion'] h1 { font-size: clamp(1.75rem, 3vw, 2.625rem); }
+:root[data-theme-preset='notion'] h2 { font-size: clamp(1.5rem, 2.5vw, 2rem); }
+:root[data-theme-preset='notion'] h3 { font-size: clamp(1.125rem, 2vw, 1.375rem); }
+:root[data-theme-preset='notion'] :is([data-slot='card-content'], [data-slot='card-header']) { line-height: 1.5; }
 
 /* Standard Notion-like buttons; size variants stay compact unless explicitly default. */
 :root[data-theme-preset='notion'] [data-slot='button'] {
