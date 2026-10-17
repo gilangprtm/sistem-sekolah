@@ -34,6 +34,14 @@ export const THEME_PRESET_OPTIONS = [
         },
     },
     {
+        label: 'Notion',
+        value: 'notion',
+        primary: {
+            light: '#0075DE',
+            dark: '#62AEF0',
+        },
+    },
+    {
         label: 'Tangerine',
         value: 'tangerine',
         primary: {
