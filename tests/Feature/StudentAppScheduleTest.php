@@ -156,7 +156,9 @@ class StudentAppScheduleTest extends TestCase
         $this->assertStringContainsString('role="tab"', $source);
         $this->assertStringContainsString('aria-selected={isSelected}', $source);
         $this->assertStringContainsString('grid-cols-5', $source);
-        $this->assertStringContainsString('w-full grid-cols-5 items-stretch gap-1', $source);
+        $this->assertStringContainsString('w-full shrink-0 grid-cols-5 items-stretch gap-1', $source);
+        $this->assertStringContainsString('flex min-h-0 flex-1 flex-col gap-3', $source);
+        $this->assertStringContainsString('min-h-0 flex-1 overflow-auto overscroll-contain', $source);
         $this->assertStringNotContainsString('h-12 min-h-12', $source);
         $this->assertStringContainsString('rounded-lg border border-border bg-muted p-1', $source);
         $this->assertStringContainsString('min-h-10 w-full min-w-0', $source);
@@ -173,6 +175,10 @@ class StudentAppScheduleTest extends TestCase
         $this->assertStringContainsString('Waktu', $source);
         $this->assertStringNotContainsString('>Hari<', $source);
         $this->assertStringNotContainsString('>Kelas<', $source);
+
+        $layoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
+        $this->assertIsString($layoutSource);
+        $this->assertStringContainsString("isSchedule\n                              ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-5 pb-28'", $layoutSource);
 
         $this->assertDatabaseMissing('tr_curriculum_schedule_entries', [
             'rombel_id' => $otherRombel->id,

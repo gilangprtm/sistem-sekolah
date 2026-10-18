@@ -47,6 +47,8 @@ class UasLinkTest extends TestCase
         $this->assertStringContainsString('SecondaryPageShell title="Ujian" fallbackHref="/student"', $studentUasSource);
         $this->assertStringNotContainsString('id="student-uas-heading"', $studentUasSource);
         $this->assertStringContainsString('role="tablist"', $studentUasSource);
+        $this->assertStringContainsString('shrink-0 grid-cols-2 rounded-2xl bg-muted p-1', $studentUasSource);
+        $this->assertStringContainsString('min-h-0 flex-1 overflow-y-auto overscroll-contain', $studentUasSource);
         $this->assertStringContainsString('<DialogTitle>Mulai ujian</DialogTitle>', $studentUasSource);
         $this->assertStringContainsString("\n                                        Mulai\n", $studentUasSource);
         $this->assertStringContainsString('Aktivitas halaman ujian dicatat untuk audit.', $studentUasSource);
@@ -56,6 +58,7 @@ class UasLinkTest extends TestCase
         $studentLayoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
         $this->assertIsString($studentLayoutSource);
         $this->assertStringContainsString('isSecondaryPage = isKantin || isUas || isExam', $studentLayoutSource);
+        $this->assertStringContainsString('isKantin || isUas', $studentLayoutSource);
         $this->assertStringContainsString("category: 'UAS'", $source);
         $this->assertStringContainsString('academic_year_id', $source);
         $this->assertStringContainsString('DataTableEmptyState', $source);

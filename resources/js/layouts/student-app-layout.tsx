@@ -102,9 +102,13 @@ export default function StudentAppLayout({
 
                 <main
                     className={
-                        isSecondaryPage
-                            ? 'flex-1 p-0'
-                            : 'flex-1 px-4 py-5 pb-28'
+                        isKantin || isUas
+                            ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
+                            : isSchedule
+                              ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-5 pb-28'
+                              : isSecondaryPage
+                                ? 'flex-1 p-0'
+                                : 'flex-1 px-4 py-5 pb-28'
                     }
                 >
                     {children}

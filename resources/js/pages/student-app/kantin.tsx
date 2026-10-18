@@ -88,25 +88,48 @@ export default function StudentKantin({
             <Head title="Kantin" />
             <SecondaryPageShell title="Kantin" fallbackHref="/student">
                 <section
-                    className="space-y-5 px-4 py-5"
+                    className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
                     aria-labelledby="student-kantin-balance-heading"
                 >
                     <div
-                        className="rounded-2xl border bg-card p-5"
+                        className="relative isolate shrink-0 overflow-hidden rounded-2xl bg-primary p-5 text-primary-foreground shadow-md"
                         aria-labelledby="student-kantin-balance-heading"
                     >
-                        <p
-                            id="student-kantin-balance-heading"
-                            className="text-sm text-muted-foreground"
-                        >
-                            Saldo Kantin
-                        </p>
-                        <p className="mt-1 text-2xl font-bold text-primary">
-                            {currency(balance.saldo)}
-                        </p>
+                        <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -top-12 -right-8 size-40 rounded-full border border-primary-foreground/15"
+                        />
+                        <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -top-5 -right-1 size-28 rounded-full border border-primary-foreground/10"
+                        />
+                        <div className="relative flex min-h-28 flex-col justify-between">
+                            <div className="flex items-start justify-between gap-4">
+                                <p
+                                    id="student-kantin-balance-heading"
+                                    className="text-sm font-medium text-primary-foreground/75"
+                                >
+                                    Saldo Kantin
+                                </p>
+                                <span className="text-xs font-semibold tracking-[0.18em] text-primary-foreground/75">
+                                    SMPN 17
+                                </span>
+                            </div>
+                            <div>
+                                <p className="text-xs text-primary-foreground/70">
+                                    Saldo tersedia
+                                </p>
+                                <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
+                                    {currency(balance.saldo)}
+                                </p>
+                            </div>
+                            <p className="text-[10px] font-semibold tracking-[0.2em] text-primary-foreground/70">
+                                KARTU KANTIN SISWA
+                            </p>
+                        </div>
                     </div>
                     <div
-                        className="grid w-full grid-cols-2 rounded-2xl bg-muted p-1"
+                        className="grid w-full shrink-0 grid-cols-2 rounded-2xl bg-muted p-1"
                         role="tablist"
                         aria-label="Riwayat Kantin"
                     >
@@ -116,7 +139,7 @@ export default function StudentKantin({
                             id="purchases-tab"
                             aria-controls="purchases-panel"
                             aria-selected={activeTab === 'purchases'}
-                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm"
+                            className="min-h-11 rounded-xl px-2 text-xs font-semibold data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm sm:px-4 sm:text-sm"
                             data-active={activeTab === 'purchases'}
                             onClick={() => setActiveTab('purchases')}
                         >
@@ -128,7 +151,7 @@ export default function StudentKantin({
                             id="topups-tab"
                             aria-controls="topups-panel"
                             aria-selected={activeTab === 'topups'}
-                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm"
+                            className="min-h-11 rounded-xl px-2 text-xs font-semibold data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm sm:px-4 sm:text-sm"
                             data-active={activeTab === 'topups'}
                             onClick={() => setActiveTab('topups')}
                         >
@@ -138,7 +161,7 @@ export default function StudentKantin({
                     {activeTab === 'purchases' ? (
                         <section
                             id="purchases-panel"
-                            className="rounded-2xl border bg-card"
+                            className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-card"
                             role="tabpanel"
                             aria-labelledby="purchases-tab"
                         >
@@ -155,60 +178,64 @@ export default function StudentKantin({
                                     Belum ada riwayat pembelian.
                                 </p>
                             ) : (
-                                <InfiniteScroll
-                                    data="purchases"
-                                    onlyNext
-                                    loading={<HistoryLoading />}
-                                >
-                                    {purchases.data.map((purchase) => (
-                                        <article
-                                            key={purchase.id}
-                                            className="space-y-2 border-b p-4 text-sm last:border-b-0"
-                                        >
-                                            <div className="flex justify-between gap-3">
-                                                <span className="text-muted-foreground">
-                                                    {formatWitaDateTime(
-                                                        purchase.date,
+                                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                                    <InfiniteScroll
+                                        data="purchases"
+                                        onlyNext
+                                        loading={<HistoryLoading />}
+                                    >
+                                        {purchases.data.map((purchase) => (
+                                            <article
+                                                key={purchase.id}
+                                                className="space-y-2 border-b p-4 text-sm last:border-b-0"
+                                            >
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="text-muted-foreground">
+                                                        {formatWitaDateTime(
+                                                            purchase.date,
+                                                        )}
+                                                    </span>
+                                                    <strong>
+                                                        {currency(
+                                                            purchase.total,
+                                                        )}
+                                                    </strong>
+                                                </div>
+                                                <ul className="space-y-1 text-muted-foreground">
+                                                    {purchase.details.map(
+                                                        (detail, index) => (
+                                                            <li
+                                                                key={`${purchase.id}-${index}`}
+                                                                className="flex justify-between gap-3"
+                                                            >
+                                                                <span>
+                                                                    {
+                                                                        detail.barang_name
+                                                                    }{' '}
+                                                                    ×{' '}
+                                                                    {
+                                                                        detail.quantity
+                                                                    }
+                                                                </span>
+                                                                <span>
+                                                                    {currency(
+                                                                        detail.subtotal,
+                                                                    )}
+                                                                </span>
+                                                            </li>
+                                                        ),
                                                     )}
-                                                </span>
-                                                <strong>
-                                                    {currency(purchase.total)}
-                                                </strong>
-                                            </div>
-                                            <ul className="space-y-1 text-muted-foreground">
-                                                {purchase.details.map(
-                                                    (detail, index) => (
-                                                        <li
-                                                            key={`${purchase.id}-${index}`}
-                                                            className="flex justify-between gap-3"
-                                                        >
-                                                            <span>
-                                                                {
-                                                                    detail.barang_name
-                                                                }{' '}
-                                                                ×{' '}
-                                                                {
-                                                                    detail.quantity
-                                                                }
-                                                            </span>
-                                                            <span>
-                                                                {currency(
-                                                                    detail.subtotal,
-                                                                )}
-                                                            </span>
-                                                        </li>
-                                                    ),
-                                                )}
-                                            </ul>
-                                        </article>
-                                    ))}
-                                </InfiniteScroll>
+                                                </ul>
+                                            </article>
+                                        ))}
+                                    </InfiniteScroll>
+                                </div>
                             )}
                         </section>
                     ) : (
                         <section
                             id="topups-panel"
-                            className="rounded-2xl border bg-card"
+                            className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-card"
                             role="tabpanel"
                             aria-labelledby="topups-tab"
                         >
@@ -225,33 +252,37 @@ export default function StudentKantin({
                                     Belum ada riwayat top up.
                                 </p>
                             ) : (
-                                <InfiniteScroll
-                                    data="topups"
-                                    onlyNext
-                                    loading={<HistoryLoading />}
-                                >
-                                    {topups.data.map((topup) => (
-                                        <article
-                                            key={topup.id}
-                                            className="flex justify-between gap-3 border-b p-4 text-sm last:border-b-0"
-                                        >
-                                            <div>
-                                                <p className="font-medium">
-                                                    {currency(topup.amount)}
-                                                </p>
-                                                <p className="text-muted-foreground">
-                                                    {formatWitaDateTime(
-                                                        topup.date,
+                                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                                    <InfiniteScroll
+                                        data="topups"
+                                        onlyNext
+                                        loading={<HistoryLoading />}
+                                    >
+                                        {topups.data.map((topup) => (
+                                            <article
+                                                key={topup.id}
+                                                className="flex justify-between gap-3 border-b p-4 text-sm last:border-b-0"
+                                            >
+                                                <div>
+                                                    <p className="font-medium">
+                                                        {currency(topup.amount)}
+                                                    </p>
+                                                    <p className="text-muted-foreground">
+                                                        {formatWitaDateTime(
+                                                            topup.date,
+                                                        )}
+                                                    </p>
+                                                </div>
+                                                <p className="text-right text-muted-foreground">
+                                                    Saldo{' '}
+                                                    {currency(
+                                                        topup.balance_after,
                                                     )}
                                                 </p>
-                                            </div>
-                                            <p className="text-right text-muted-foreground">
-                                                Saldo{' '}
-                                                {currency(topup.balance_after)}
-                                            </p>
-                                        </article>
-                                    ))}
-                                </InfiniteScroll>
+                                            </article>
+                                        ))}
+                                    </InfiniteScroll>
+                                </div>
                             )}
                         </section>
                     )}

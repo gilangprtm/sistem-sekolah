@@ -171,7 +171,9 @@ class StudentAppProfileTest extends TestCase
         $this->assertNotSame($student->id, $otherStudent->id);
 
         $source = file_get_contents(resource_path('js/pages/student-app/kantin.tsx'));
+        $layoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
         $this->assertIsString($source);
+        $this->assertIsString($layoutSource);
         $this->assertStringContainsString('role="tablist"', $source);
         $this->assertStringContainsString('aria-label="Riwayat Kantin"', $source);
         $this->assertStringContainsString('id="student-kantin-balance-heading"', $source);
@@ -185,6 +187,10 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringContainsString('data="topups"', $source);
         $this->assertStringContainsString('onlyNext', $source);
         $this->assertStringContainsString('HistoryLoading', $source);
+        $this->assertStringContainsString('bg-primary', $source);
+        $this->assertStringContainsString('text-primary-foreground', $source);
+        $this->assertStringContainsString('min-h-0 flex-1 overflow-y-auto overscroll-contain', $source);
+        $this->assertStringContainsString("isKantin || isUas\n                            ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'", $layoutSource);
         $this->assertStringContainsString('formatWitaDateTime', $source);
         $this->assertStringNotContainsString('ShoppingBasket', $source);
         $this->assertStringNotContainsString('Portal Siswa', $source);

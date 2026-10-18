@@ -98,10 +98,10 @@ export default function StudentSchedule({
         <>
             <Head title="Jadwal Siswa" />
             <section
-                className="space-y-5"
+                className="flex min-h-0 flex-1 flex-col gap-5"
                 aria-labelledby="student-schedule-heading"
             >
-                <div>
+                <div className="shrink-0">
                     <p className="text-sm text-muted-foreground">
                         Agenda belajar
                     </p>
@@ -117,7 +117,7 @@ export default function StudentSchedule({
                     rombel &&
                     academicPeriod &&
                     academicYear && (
-                        <div className="rounded-2xl border bg-card p-4">
+                        <div className="shrink-0 rounded-2xl border bg-card p-4">
                             <div className="flex items-start gap-3">
                                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                                     <GraduationCap
@@ -141,9 +141,9 @@ export default function StudentSchedule({
                 {status !== 'ready' || !hasEntries ? (
                     <EmptySchedule message={message} />
                 ) : (
-                    <div className="space-y-3">
+                    <div className="flex min-h-0 flex-1 flex-col gap-3">
                         <div
-                            className="grid w-full grid-cols-5 items-stretch gap-1 rounded-lg border border-border bg-muted p-1"
+                            className="grid w-full shrink-0 grid-cols-5 items-stretch gap-1 rounded-lg border border-border bg-muted p-1"
                             role="tablist"
                             aria-label="Pilih hari jadwal"
                         >
@@ -175,7 +175,7 @@ export default function StudentSchedule({
                                 id={`schedule-panel-${selectedDay.key}`}
                                 role="tabpanel"
                                 aria-label={`Jadwal ${selectedDay.label}`}
-                                className="overflow-x-auto rounded-2xl border bg-card"
+                                className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-2xl border bg-card"
                             >
                                 <Table className="min-w-[520px] border-separate border-spacing-0">
                                     <caption className="sr-only">

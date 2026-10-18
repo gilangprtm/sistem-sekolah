@@ -86,17 +86,17 @@ export default function StudentUas({
             <Head title="Ujian" />
             <SecondaryPageShell title="Ujian" fallbackHref="/student">
                 <section
-                    className="space-y-4 px-4 py-5"
+                    className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
                     aria-label="Daftar ujian"
                 >
                     {academicYear && academicPeriod && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="shrink-0 text-sm text-muted-foreground">
                             {academicYear.year} · {academicPeriod.name}
                         </p>
                     )}
 
                     <div
-                        className="grid w-full grid-cols-2 rounded-2xl bg-muted p-1"
+                        className="grid w-full shrink-0 grid-cols-2 rounded-2xl bg-muted p-1"
                         role="tablist"
                         aria-label="Pilih jenis ujian"
                     >
@@ -140,7 +140,7 @@ export default function StudentUas({
                             <div
                                 key={category}
                                 id={`${category}-panel`}
-                                className="mt-4"
+                                className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
                                 role="tabpanel"
                                 aria-labelledby={`${category}-tab`}
                             >
