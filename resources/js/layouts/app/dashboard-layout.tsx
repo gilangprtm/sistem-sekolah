@@ -1,6 +1,4 @@
-import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
-import { siGithub } from 'simple-icons';
 
 import { useShallow } from 'zustand/react/shallow';
 
@@ -9,8 +7,6 @@ import { AppSidebar } from '@/components/dashboard/app-sidebar';
 import { LayoutControls } from '@/components/dashboard/layout-controls';
 import { SearchDialog } from '@/components/dashboard/search-dialog';
 import { ThemeSwitcher } from '@/components/dashboard/theme-switcher';
-import { SimpleIcon } from '@/components/simple-icon';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
     SidebarInset,
@@ -75,20 +71,6 @@ export default function DashboardLayout({
                         <div className="flex items-center gap-2">
                             <LayoutControls />
                             <ThemeSwitcher />
-                            <Button asChild size="icon">
-                                <Link
-                                    prefetch={false}
-                                    href="https://github.com/gilangprtm/sistem-sekolah"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    aria-label="Open GitHub repository"
-                                >
-                                    <SimpleIcon
-                                        icon={siGithub}
-                                        className="fill-primary-foreground"
-                                    />
-                                </Link>
-                            </Button>
                         </div>
                     </div>
                 </header>

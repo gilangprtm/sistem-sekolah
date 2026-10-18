@@ -5,7 +5,6 @@ import {
     CalendarDays,
     ClipboardList,
     DoorOpen,
-    FolderGit2,
     GraduationCap,
     LayoutDashboard,
     LayoutGrid,
@@ -32,8 +31,6 @@ import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 
-import { NavFooter } from './nav-footer';
-import type { NavFooterItem } from './nav-footer';
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
 
@@ -47,19 +44,6 @@ type PageProps = {
         roles?: string[];
     };
 };
-
-const footerNavItems: NavFooterItem[] = [
-    {
-        title: 'Repository',
-        url: 'https://github.com/gilangprtm/sistem-sekolah',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        url: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
 
 export function AppSidebar({
     variant = 'sidebar',
@@ -309,7 +293,6 @@ export function AppSidebar({
                 <NavMain items={navGroups} />
             </SidebarContent>
             <SidebarFooter>
-                <NavFooter items={footerNavItems} showSupportCard={false} />
                 <NavUser
                     user={{
                         name: auth?.user?.name ?? 'User',

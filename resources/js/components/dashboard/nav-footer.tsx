@@ -1,5 +1,4 @@
 import type { LucideIcon } from 'lucide-react';
-import { BookOpen, FolderGit2 } from 'lucide-react';
 import type { ComponentPropsWithoutRef } from 'react';
 
 import { SidebarSupportCard } from '@/components/dashboard/sidebar-support-card';
@@ -18,26 +17,13 @@ export type NavFooterItem = {
     icon?: LucideIcon | null;
 };
 
-export const defaultNavFooterItems: NavFooterItem[] = [
-    {
-        title: 'Repository',
-        url: 'https://github.com/gilangprtm/sistem-sekolah',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        url: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
-
 export function NavFooter({
-    items = defaultNavFooterItems,
+    items,
     className,
     showSupportCard = true,
     ...props
 }: ComponentPropsWithoutRef<typeof SidebarGroup> & {
-    items?: NavFooterItem[];
+    items: NavFooterItem[];
     showSupportCard?: boolean;
 }) {
     return (
