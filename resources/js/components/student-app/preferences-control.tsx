@@ -58,11 +58,11 @@ export default function StudentPreferencesControl() {
                 <Button
                     type="button"
                     variant="outline"
+                    size="icon"
                     aria-label="Preferensi tampilan"
-                    className="min-h-11"
+                    title="Preferensi tampilan"
                 >
                     <Settings aria-hidden="true" />
-                    Preferensi
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[85dvh] gap-3 overflow-y-auto p-3 sm:max-w-md [&_[data-slot=dialog-close]]:min-h-11 [&_[data-slot=dialog-close]]:min-w-11">

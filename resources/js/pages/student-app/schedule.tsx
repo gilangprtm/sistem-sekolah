@@ -119,7 +119,7 @@ export default function StudentSchedule({
                     academicYear && (
                         <div className="rounded-2xl border bg-card p-4">
                             <div className="flex items-start gap-3">
-                                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">
+                                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                                     <GraduationCap
                                         className="size-5"
                                         aria-hidden="true"
@@ -143,7 +143,7 @@ export default function StudentSchedule({
                 ) : (
                     <div className="space-y-3">
                         <div
-                            className="grid h-12 min-h-12 w-full grid-cols-5 items-stretch gap-1 overflow-hidden rounded-lg border border-border bg-muted p-1"
+                            className="grid w-full grid-cols-5 items-stretch gap-1 rounded-lg border border-border bg-muted p-1"
                             role="tablist"
                             aria-label="Pilih hari jadwal"
                         >
@@ -162,7 +162,7 @@ export default function StudentSchedule({
                                         onClick={() =>
                                             setSelectedDayKey(day.key)
                                         }
-                                        className={`h-full min-h-10 w-full min-w-0 rounded-md px-1 py-2 text-center text-sm leading-tight transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${isSelected ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'}`}
+                                        className={`min-h-10 w-full min-w-0 rounded-md px-1 py-2 text-center text-sm leading-tight transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${isSelected ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'}`}
                                     >
                                         {day.label}
                                     </button>
@@ -224,7 +224,7 @@ export default function StudentSchedule({
                                                             ? 'bg-muted/50'
                                                             : row.type ===
                                                                 'custom'
-                                                              ? 'bg-violet-50'
+                                                              ? 'bg-primary/5'
                                                               : undefined
                                                     }
                                                 >
@@ -263,7 +263,7 @@ export default function StudentSchedule({
                                                                             </p>
                                                                             {entry.subjectCode !==
                                                                                 entry.subjectName && (
-                                                                                <p className="text-xs text-violet-700">
+                                                                                <p className="text-xs text-primary">
                                                                                     {
                                                                                         entry.subjectCode
                                                                                     }

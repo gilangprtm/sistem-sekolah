@@ -64,11 +64,11 @@ export default function StudentAppLayout({
             <div className="student-app-scroll-container mx-auto flex h-dvh max-h-dvh min-h-dvh w-full max-w-lg flex-col overflow-y-auto bg-background shadow-sm">
                 {isNavigating && (
                     <div
-                        className="fixed inset-x-0 top-0 z-[60] mx-auto h-1 max-w-lg overflow-hidden bg-violet-100"
+                        className="fixed inset-x-0 top-0 z-[60] mx-auto h-1 max-w-lg overflow-hidden bg-primary/20"
                         role="status"
                         aria-label="Memuat halaman"
                     >
-                        <div className="h-full w-1/3 animate-[pulse_1.2s_ease-in-out_infinite] bg-violet-700" />
+                        <div className="h-full w-1/3 animate-[pulse_1.2s_ease-in-out_infinite] bg-primary" />
                     </div>
                 )}
                 {!isDashboard &&
@@ -80,7 +80,7 @@ export default function StudentAppLayout({
                             <Link
                                 href="/student"
                                 aria-label="Kembali ke beranda siswa"
-                                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-violet-700 focus-visible:outline-2 focus-visible:outline-offset-2"
+                                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:outline-2 focus-visible:outline-offset-2"
                             >
                                 <ArrowLeft
                                     className="size-5"
@@ -128,7 +128,7 @@ export default function StudentAppLayout({
                                     className={[
                                         'flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium',
                                         currentPath === href
-                                            ? 'text-violet-700'
+                                            ? 'text-primary'
                                             : 'text-muted-foreground',
                                     ].join(' ')}
                                 >

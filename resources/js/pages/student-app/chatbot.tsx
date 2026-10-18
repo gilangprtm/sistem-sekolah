@@ -93,7 +93,7 @@ export default function StudentChatbot() {
             <Head title="Chatbot" />
             <div className="flex min-h-[calc(100dvh-8rem)] flex-col gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-violet-100 text-violet-700">
+                    <div className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary">
                         <Bot className="size-6" aria-hidden="true" />
                     </div>
                     <div>
@@ -106,7 +106,7 @@ export default function StudentChatbot() {
 
                 <div className="flex-1 space-y-3 rounded-2xl border bg-background p-3 shadow-sm">
                     {history.length === 0 && (
-                        <div className="rounded-xl bg-violet-50 p-4 text-sm text-violet-900">
+                        <div className="rounded-xl bg-primary/10 p-4 text-sm text-foreground">
                             Halo! Saya siap membantu menjawab pertanyaan Anda.
                         </div>
                     )}
@@ -115,7 +115,7 @@ export default function StudentChatbot() {
                             key={`${item.role}-${index}`}
                             className={
                                 item.role === 'user'
-                                    ? 'ml-auto w-fit max-w-[88%] rounded-2xl bg-violet-700 p-3 text-sm text-white'
+                                    ? 'ml-auto w-fit max-w-[88%] rounded-2xl bg-primary p-3 text-sm text-primary-foreground'
                                     : 'mr-auto w-fit max-w-[88%] rounded-2xl bg-muted p-3 text-sm'
                             }
                         >

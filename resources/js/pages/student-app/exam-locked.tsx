@@ -22,7 +22,7 @@ export default function StudentExamLocked({ category, subjectCode }: Props) {
                         className="size-12 text-destructive"
                         aria-hidden="true"
                     />
-                    <p className="text-sm font-medium text-violet-700">
+                    <p className="text-sm font-medium text-primary">
                         {`${category} ${subjectCode ?? ''}`.trim()}
                     </p>
                     <h1 className="text-2xl font-bold">

@@ -106,7 +106,7 @@ export default function StudentUas({
                             id="uts-tab"
                             aria-controls="uts-panel"
                             aria-selected={activeTab === 'uts'}
-                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-violet-700 data-[active=true]:shadow-sm"
+                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm"
                             data-active={activeTab === 'uts'}
                             onClick={() => setActiveTab('uts')}
                         >
@@ -118,7 +118,7 @@ export default function StudentUas({
                             id="uas-tab"
                             aria-controls="uas-panel"
                             aria-selected={activeTab === 'uas'}
-                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-violet-700 data-[active=true]:shadow-sm"
+                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm"
                             data-active={activeTab === 'uas'}
                             onClick={() => setActiveTab('uas')}
                         >

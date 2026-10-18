@@ -1,9 +1,10 @@
-import { Form, Head, router } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import {
     CalendarDays,
     Camera,
     CreditCard,
     KeyRound,
+    LogOut,
     Mail,
     UserRound,
 } from 'lucide-react';
@@ -21,10 +22,12 @@ import {
     DialogDescription,
     DialogFooter,
     DialogHeader,
+    DialogTrigger,
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { logout } from '@/routes';
 
 type Student = {
     id: number;
@@ -120,6 +123,7 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
     const [photoError, setPhotoError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
     const [showStudentCard, setShowStudentCard] = useState(false);
     const resetPasswordForm = useRef<(() => void) | null>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
@@ -237,7 +241,7 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                             }
                         />
                     ) : (
-                        <div className="relative aspect-[2/3] w-32 overflow-hidden rounded-xl bg-violet-100 text-violet-700 shadow-sm sm:w-36">
+                        <div className="relative aspect-[2/3] w-32 overflow-hidden rounded-xl bg-primary/10 text-primary shadow-sm sm:w-36">
                             {displayedPhoto ? (
                                 <img
                                     src={displayedPhoto}
@@ -262,23 +266,17 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                             <Mail className="size-3.5" aria-hidden="true" />
                             {user.email}
                         </p>
-                        <div className="mt-3 flex flex-wrap justify-center gap-2">
+                        <div className="mt-3 flex flex-nowrap justify-center gap-1">
                             {student && (
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    size="sm"
+                                    size="default"
                                     aria-pressed={showStudentCard}
                                     aria-label={
-                                        showStudentCard
-                                            ? 'Foto Profile'
-                                            : 'Kartu Pelajar'
+                                        showStudentCard ? 'Foto' : 'Kartu'
                                     }
-                                    title={
-                                        showStudentCard
-                                            ? 'Foto Profile'
-                                            : 'Kartu Pelajar'
-                                    }
+                                    title={showStudentCard ? 'Foto' : 'Kartu'}
                                     onClick={() =>
                                         setShowStudentCard(
                                             (current) => !current,
@@ -289,23 +287,62 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                                         className="size-4"
                                         aria-hidden="true"
                                     />
-                                    {showStudentCard
-                                        ? 'Foto Profile'
-                                        : 'Kartu Pelajar'}
+                                    {showStudentCard ? 'Foto' : 'Kartu'}
                                 </Button>
                             )}
                             <Button
                                 type="button"
                                 variant="outline"
-                                size="sm"
+                                size="default"
                                 onClick={() => setPasswordDialogOpen(true)}
                             >
                                 <KeyRound
                                     className="size-4"
                                     aria-hidden="true"
                                 />
-                                Ganti password
+                                Ganti Password
                             </Button>
+                            <Dialog
+                                open={logoutDialogOpen}
+                                onOpenChange={setLogoutDialogOpen}
+                            >
+                                <DialogTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="default"
+                                    >
+                                        <LogOut aria-hidden="true" />
+                                        Keluar
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>
+                                            Keluar dari akun?
+                                        </DialogTitle>
+                                        <DialogDescription>
+                                            Anda perlu masuk kembali untuk
+                                            mengakses aplikasi.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                            >
+                                                Batal
+                                            </Button>
+                                        </DialogClose>
+                                        <Button variant="destructive" asChild>
+                                            <Link href={logout()} as="button">
+                                                Keluar
+                                            </Link>
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                     </div>
                 </div>
@@ -532,7 +569,7 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
 
                 <div className="flex items-start gap-3 rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
                     <CalendarDays
-                        className="mt-0.5 size-5 shrink-0 text-violet-700"
+                        className="mt-0.5 size-5 shrink-0 text-primary"
                         aria-hidden="true"
                     />
                     <p>

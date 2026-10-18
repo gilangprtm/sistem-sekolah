@@ -65,7 +65,7 @@ function NewsSection({ news }: { news: NewsItem[] }) {
                     href="https://smpn17denpasar.sch.id/berita"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs font-medium text-violet-600"
+                    className="flex items-center gap-1 text-xs font-medium text-primary"
                 >
                     Lihat semua <ArrowUpRight className="size-3.5" />
                 </a>
@@ -141,11 +141,11 @@ export default function StudentDashboard({ student, news }: Props) {
             <section className="space-y-6">
                 {showInstallPrompt && (
                     <div
-                        className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-violet-950 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-100"
+                        className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-foreground dark:border-primary/30 dark:bg-primary/10 dark:text-foreground"
                         role="status"
                     >
                         <div className="flex items-start gap-3">
-                            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-200 text-violet-800 dark:bg-violet-900 dark:text-violet-100">
+                            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/20 text-primary dark:bg-primary/20 dark:text-primary">
                                 {canInstall ? (
                                     <Download
                                         className="size-5"
@@ -163,12 +163,12 @@ export default function StudentDashboard({ student, news }: Props) {
                                     Pasang Portal Siswa
                                 </p>
                                 {canInstall ? (
-                                    <p className="mt-1 text-xs leading-5 text-violet-800 dark:text-violet-200">
+                                    <p className="mt-1 text-xs leading-5 text-foreground/80 dark:text-foreground/80">
                                         Akses lebih cepat dari layar utama
                                         perangkat.
                                     </p>
                                 ) : (
-                                    <p className="mt-1 text-xs leading-5 text-violet-800 dark:text-violet-200">
+                                    <p className="mt-1 text-xs leading-5 text-foreground/80 dark:text-foreground/80">
                                         Di Safari iPhone/iPad: ketuk Bagikan,
                                         lalu pilih Tambahkan ke Layar Utama.
                                     </p>
@@ -198,7 +198,7 @@ export default function StudentDashboard({ student, news }: Props) {
                             </div>
                             <button
                                 type="button"
-                                className="rounded-md p-1 text-violet-700 hover:bg-violet-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700 dark:text-violet-200 dark:hover:bg-violet-900"
+                                className="rounded-md p-1 text-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none dark:text-primary dark:hover:bg-primary/20"
                                 aria-label="Tutup petunjuk pemasangan aplikasi"
                                 onClick={dismissStudentPwaInstall}
                             >
@@ -208,28 +208,28 @@ export default function StudentDashboard({ student, news }: Props) {
                     </div>
                 )}
 
-                <div className="relative overflow-hidden rounded-3xl bg-violet-950 p-5 text-white shadow-sm">
+                <div className="relative overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground shadow-sm">
                     <img
                         src="/images/hero-background.png"
                         alt=""
                         className="absolute inset-0 size-full object-cover opacity-55"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-br from-violet-950/90 via-violet-900/70 to-fuchsia-900/65" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/80 to-primary/65" />
                     <div className="absolute -top-12 -right-10 size-40 rounded-full bg-white/10" />
-                    <div className="absolute right-12 -bottom-16 size-32 rounded-full bg-fuchsia-300/10" />
+                    <div className="absolute right-12 -bottom-16 size-32 rounded-full bg-primary-foreground/10" />
                     <div className="relative flex min-h-36 flex-col justify-end">
                         <img
                             src="/images/logo-sekolah.png"
                             alt=""
                             className="mb-4 size-12 object-contain"
                         />
-                        <p className="text-sm text-violet-100">
+                        <p className="text-sm text-primary-foreground/80">
                             Selamat datang, {firstName}
                         </p>
                         <h3 className="mt-1 text-xl font-semibold">
                             Portal Siswa SMPN 17 Denpasar
                         </h3>
-                        <p className="mt-1 text-xs text-violet-100">
+                        <p className="mt-1 text-xs text-primary-foreground/80">
                             Vidyayā Vindate Khīrtim
                         </p>
                     </div>
@@ -241,7 +241,7 @@ export default function StudentDashboard({ student, news }: Props) {
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
-                        {menuItems.map(({ label, icon: Icon }, index) => (
+                        {menuItems.map(({ label, icon: Icon }) => (
                             <Link
                                 key={label}
                                 href={
@@ -263,16 +263,7 @@ export default function StudentDashboard({ student, news }: Props) {
                                         : (event) => event.preventDefault()
                                 }
                             >
-                                <span
-                                    className={[
-                                        'grid size-10 place-items-center rounded-xl',
-                                        index % 3 === 0
-                                            ? 'bg-violet-100 text-violet-700'
-                                            : index % 3 === 1
-                                              ? 'bg-pink-100 text-pink-700'
-                                              : 'bg-sky-100 text-sky-700',
-                                    ].join(' ')}
-                                >
+                                <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
                                     <Icon className="size-5" />
                                 </span>
                                 <span className="text-xs font-medium">

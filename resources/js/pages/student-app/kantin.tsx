@@ -101,7 +101,7 @@ export default function StudentKantin({
                         >
                             Saldo Kantin
                         </p>
-                        <p className="mt-1 text-2xl font-bold text-violet-700">
+                        <p className="mt-1 text-2xl font-bold text-primary">
                             {currency(balance.saldo)}
                         </p>
                     </div>
@@ -116,7 +116,7 @@ export default function StudentKantin({
                             id="purchases-tab"
                             aria-controls="purchases-panel"
                             aria-selected={activeTab === 'purchases'}
-                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-violet-700 data-[active=true]:shadow-sm"
+                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm"
                             data-active={activeTab === 'purchases'}
                             onClick={() => setActiveTab('purchases')}
                         >
@@ -128,7 +128,7 @@ export default function StudentKantin({
                             id="topups-tab"
                             aria-controls="topups-panel"
                             aria-selected={activeTab === 'topups'}
-                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-violet-700 data-[active=true]:shadow-sm"
+                            className="min-h-11 rounded-xl px-4 text-sm font-semibold data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm"
                             data-active={activeTab === 'topups'}
                             onClick={() => setActiveTab('topups')}
                         >

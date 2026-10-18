@@ -156,9 +156,11 @@ class StudentAppScheduleTest extends TestCase
         $this->assertStringContainsString('role="tab"', $source);
         $this->assertStringContainsString('aria-selected={isSelected}', $source);
         $this->assertStringContainsString('grid-cols-5', $source);
-        $this->assertStringContainsString('h-12 min-h-12 w-full grid-cols-5 items-stretch gap-1', $source);
-        $this->assertStringContainsString('overflow-hidden rounded-lg border', $source);
-        $this->assertStringContainsString('h-full min-h-10 w-full min-w-0', $source);
+        $this->assertStringContainsString('w-full grid-cols-5 items-stretch gap-1', $source);
+        $this->assertStringNotContainsString('h-12 min-h-12', $source);
+        $this->assertStringContainsString('rounded-lg border border-border bg-muted p-1', $source);
+        $this->assertStringContainsString('min-h-10 w-full min-w-0', $source);
+        $this->assertStringNotContainsString('h-full min-h-10', $source);
         $this->assertStringContainsString('px-1 py-2 text-center', $source);
         $this->assertStringContainsString('w-32 min-w-32 border-r', $source);
         $this->assertStringContainsString('entry.subjectCode !==', $source);
