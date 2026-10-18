@@ -208,28 +208,26 @@ export default function StudentDashboard({ student, news }: Props) {
                     </div>
                 )}
 
-                <div className="relative overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground shadow-sm">
+                <div className="relative overflow-hidden rounded-3xl bg-slate-950 p-5 text-white shadow-sm">
                     <img
                         src="/images/hero-background.png"
                         alt=""
-                        className="absolute inset-0 size-full object-cover opacity-55"
+                        className="absolute inset-0 size-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/80 to-primary/65" />
-                    <div className="absolute -top-12 -right-10 size-40 rounded-full bg-white/10" />
-                    <div className="absolute right-12 -bottom-16 size-32 rounded-full bg-primary-foreground/10" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
                     <div className="relative flex min-h-36 flex-col justify-end">
                         <img
                             src="/images/logo-sekolah.png"
                             alt=""
                             className="mb-4 size-12 object-contain"
                         />
-                        <p className="text-sm text-primary-foreground/80">
+                        <p className="text-sm text-white/80">
                             Selamat datang, {firstName}
                         </p>
                         <h3 className="mt-1 text-xl font-semibold">
                             Portal Siswa SMPN 17 Denpasar
                         </h3>
-                        <p className="mt-1 text-xs text-primary-foreground/80">
+                        <p className="mt-1 text-xs text-white/80">
                             Vidyayā Vindate Khīrtim
                         </p>
                     </div>

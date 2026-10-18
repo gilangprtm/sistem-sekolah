@@ -71,13 +71,26 @@ class DashboardTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 
-    public function test_authenticated_users_can_visit_the_dashboard()
+    public function test_authenticated_users_can_visit_the_dashboard(): void
     {
+        Cache::forget('school-news');
+        Http::fake([
+            'https://smpn17denpasar.sch.id/api/public/berita' => Http::response([
+                'data' => [[
+                    'id' => 1,
+                    'title' => 'Pengumuman sekolah',
+                    'url' => 'https://smpn17denpasar.sch.id/berita/1',
+                ]],
+            ]),
+        ]);
         $user = User::factory()->create();
-        $this->actingAs($user);
 
-        $response = $this->get(route('dashboard'));
-        $response->assertOk();
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('dashboard')
+                ->where('news.0.title', 'Pengumuman sekolah'));
     }
 
     public function test_student_dashboard_exposes_safe_student_photo_url(): void
@@ -110,7 +123,7 @@ class DashboardTest extends TestCase
         Role::create(['name' => 'Siswa']);
         $user = User::factory()->create();
         $user->assignRole('Siswa');
-        Cache::forget('student-app:school-news');
+        Cache::forget('school-news');
         Http::fake([
             'https://smpn17denpasar.sch.id/api/public/berita' => Http::response([
                 'data' => [[
@@ -141,7 +154,7 @@ class DashboardTest extends TestCase
         Role::create(['name' => 'Siswa']);
         $user = User::factory()->create();
         $user->assignRole('Siswa');
-        Cache::forget('student-app:school-news');
+        Cache::forget('school-news');
         Http::fake([
             'https://smpn17denpasar.sch.id/api/public/berita' => Http::response([
                 'data' => [[
