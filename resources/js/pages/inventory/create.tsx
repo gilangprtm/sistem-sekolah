@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Check, ChevronsUpDown, ImagePlus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,7 @@ const initialForm = {
     satuan: '',
     harga: '',
     keterangan: '',
-    category_id: '',
+    inventory_category_id: '',
     inventory_type_id: '',
     asset_kind: 'tangible',
     tangible_asset_type_id: '',
@@ -79,6 +79,16 @@ export default function InventoryCreate({
     const [assetTypeOpen, setAssetTypeOpen] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
+    const [image, setImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!imagePreview) {
+            return;
+        }
+
+        return () => URL.revokeObjectURL(imagePreview);
+    }, [imagePreview]);
 
     const set = (field: string, value: string) =>
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -88,31 +98,29 @@ export default function InventoryCreate({
 
     const submit = () => {
         setProcessing(true);
-        router.post(
-            '/inventaris/inventory',
-            {
-                ...form,
-                harga: cleanHarga(form.harga),
-                category_name: categoryName || undefined,
-                inventory_type_name: inventoryTypeName || undefined,
-                tangible_asset_type_name:
-                    form.asset_kind === 'tangible'
-                        ? assetTypeName || undefined
-                        : undefined,
-                intangible_asset_type_name:
-                    form.asset_kind === 'intangible'
-                        ? assetTypeName || undefined
-                        : undefined,
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => setProcessing(false),
-                onError: (errs) => {
-                    setErrors(errs);
-                    setProcessing(false);
-                },
-            },
-        );
+        const payload = new FormData();
+        Object.entries({
+            ...form,
+            harga: cleanHarga(form.harga),
+            category_name: categoryName,
+            inventory_type_name: inventoryTypeName,
+            tangible_asset_type_name:
+                form.asset_kind === 'tangible' ? assetTypeName : '',
+            intangible_asset_type_name:
+                form.asset_kind === 'intangible' ? assetTypeName : '',
+        }).forEach(([key, value]) => payload.append(key, value));
+
+        if (image) {
+            payload.append('image', image);
+        }
+
+        router.post('/inventaris/inventory', payload, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => setErrors({}),
+            onError: (errs) => setErrors(errs),
+            onFinish: () => setProcessing(false),
+        });
     };
 
     return (
@@ -469,7 +477,7 @@ export default function InventoryCreate({
                                                                         category.name,
                                                                     );
                                                                     set(
-                                                                        'category_id',
+                                                                        'inventory_category_id',
                                                                         String(
                                                                             category.id,
                                                                         ),
@@ -498,7 +506,7 @@ export default function InventoryCreate({
                                     </Popover>
                                     <InputError
                                         message={
-                                            errors.category_id ||
+                                            errors.inventory_category_id ||
                                             errors.category_name
                                         }
                                     />
@@ -593,6 +601,83 @@ export default function InventoryCreate({
                                     <InputError
                                         message={errors.asal_perolehan}
                                     />
+                                </div>
+                            </div>
+                            <div className="grid min-w-0 gap-2">
+                                <Label htmlFor="inventory-image">
+                                    Gambar Inventaris
+                                </Label>
+                                <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-start">
+                                    <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg border bg-muted/40">
+                                        {imagePreview ? (
+                                            <img
+                                                src={imagePreview}
+                                                alt="Pratinjau gambar inventaris"
+                                                className="size-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-2 px-4 text-center text-muted-foreground">
+                                                <ImagePlus
+                                                    className="size-8"
+                                                    aria-hidden="true"
+                                                />
+                                                <span className="text-xs">
+                                                    Belum ada gambar dipilih
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="grid min-w-0 gap-2">
+                                        <Input
+                                            id="inventory-image"
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            aria-describedby="inventory-image-help inventory-image-error"
+                                            aria-invalid={Boolean(errors.image)}
+                                            onChange={(event) => {
+                                                const selectedImage =
+                                                    event.target.files?.[0] ??
+                                                    null;
+                                                setImage(selectedImage);
+                                                setImagePreview(
+                                                    selectedImage
+                                                        ? URL.createObjectURL(
+                                                              selectedImage,
+                                                          )
+                                                        : null,
+                                                );
+                                            }}
+                                        />
+                                        <p
+                                            id="inventory-image-help"
+                                            className="text-xs text-muted-foreground"
+                                        >
+                                            JPG, PNG, atau WebP. Maksimal 1 MB
+                                            (1024 KB).
+                                        </p>
+                                        {image && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="w-fit"
+                                                onClick={() => {
+                                                    setImage(null);
+                                                    setImagePreview(null);
+                                                }}
+                                            >
+                                                <X
+                                                    className="size-4"
+                                                    aria-hidden="true"
+                                                />
+                                                Hapus gambar pilihan
+                                            </Button>
+                                        )}
+                                        <InputError
+                                            id="inventory-image-error"
+                                            role="alert"
+                                            message={errors.image}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </section>

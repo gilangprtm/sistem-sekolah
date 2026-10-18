@@ -13,6 +13,10 @@ use App\Services\RegisterGeneratorService;
 use App\Support\RupiahAmount;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\File;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -225,7 +229,7 @@ class InventoryController extends Controller
             'filters' => $request->only(['search', 'tahun', 'kondisi', 'asal', 'satuan', 'category', 'inventory_type', 'asset_kind', 'tangible_asset_type', 'intangible_asset_type']),
 
             'filterOptions' => [
-                'tahun' => InventoryItem::query()->select('tahun_pembelian')->distinct()->orderBy('tahun_pembelian', 'desc')->pluck('tahun_pembelian'),
+                'tahun' => InventoryItem::query()->whereNotNull('tahun_pembelian')->select('tahun_pembelian')->distinct()->orderBy('tahun_pembelian', 'desc')->pluck('tahun_pembelian'),
                 'asal' => InventoryItem::query()->select('asal_perolehan')->distinct()->whereNotNull('asal_perolehan')->orderBy('asal_perolehan')->pluck('asal_perolehan'),
                 'satuan' => InventoryItem::query()->select('satuan')->distinct()->whereNotNull('satuan')->orderBy('satuan')->pluck('satuan'),
                 'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
@@ -281,6 +285,7 @@ class InventoryController extends Controller
             'intangible_asset_type_id' => ['nullable', 'integer', 'exists:m_inventory_intangible_asset_types,id'],
             'intangible_asset_type_name' => ['nullable', 'string', 'max:255'],
             'qty' => ['required', 'integer', 'min:1'],
+            'image' => ['nullable', File::image()->max(1024)],
         ]);
         $data['asset_kind'] = $data['asset_kind'] ?? 'tangible';
 
@@ -319,6 +324,13 @@ class InventoryController extends Controller
         }
 
         unset($data['category_name'], $data['inventory_type_name'], $data['tangible_asset_type_name'], $data['intangible_asset_type_name']);
+        $image = $data['image'] ?? null;
+        unset($data['image']);
+
+        if ($image instanceof UploadedFile) {
+            $data['image_path'] = $image->store('inventory/items', 'public');
+        }
+
         $this->registerGenerator->createItemWithUnits($data);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Inventaris berhasil ditambahkan.']);
@@ -329,6 +341,19 @@ class InventoryController extends Controller
     /**
      * Detail item + units.
      */
+    public function image(InventoryItem $item): HttpResponse
+    {
+        abort_unless($item->image_path !== null, 404);
+
+        $disk = Storage::disk('public');
+        abort_unless($disk->exists($item->image_path), 404);
+
+        return response($disk->get($item->image_path), 200, [
+            'Content-Type' => $disk->mimeType($item->image_path) ?: 'application/octet-stream',
+            'Cache-Control' => 'private, max-age=86400',
+        ]);
+    }
+
     public function show(InventoryItem $item): Response
     {
         $item->load('units.room', 'category', 'inventoryType', 'tangibleAssetType', 'intangibleAssetType');
@@ -336,8 +361,16 @@ class InventoryController extends Controller
         $item->setAttribute('qty', $item->units->count());
         $item->setAttribute('total', (float) $item->harga * $item->units->count());
 
+        $itemData = $item->toArray();
+        unset($itemData['image_path']);
+
         return Inertia::render('inventory/show', [
-            'item' => $item,
+            'item' => [
+                ...$itemData,
+                'image_url' => $item->image_path !== null
+                    ? route('inventory.image', $item, false).'?v='.$item->updated_at->getTimestamp()
+                    : null,
+            ],
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
             'rooms' => InventoryRoom::query()->orderBy('name')->get(['id', 'name']),
         ]);
@@ -351,16 +384,28 @@ class InventoryController extends Controller
         $data = $request->validate([
             'keterangan' => ['nullable', 'string'],
             'inventory_category_id' => ['nullable', 'integer', 'exists:m_inventory_categories,id'],
+            'image' => ['nullable', File::image()->max(1024)],
         ]);
 
         if (array_key_exists('inventory_category_id', $data) && ! $request->user()->can('inventory.category.assign')) {
             abort(403);
         }
 
-        // Hanya mutable field dan assignment kategori yang diupdate.
-        $item->update(array_intersect_key($data, array_flip(['keterangan', 'inventory_category_id'])));
+        $oldImagePath = $item->image_path;
+        $image = $data['image'] ?? null;
+        unset($data['image']);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Keterangan berhasil diperbarui.']);
+        if ($image instanceof UploadedFile) {
+            $data['image_path'] = $image->store('inventory/items', 'public');
+        }
+
+        $item->update(array_intersect_key($data, array_flip(['keterangan', 'inventory_category_id', 'image_path'])));
+
+        if (isset($data['image_path']) && $oldImagePath !== null) {
+            Storage::disk('public')->delete($oldImagePath);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Inventaris berhasil diperbarui.']);
 
         return back();
     }

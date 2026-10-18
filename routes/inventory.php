@@ -24,6 +24,7 @@ Route::middleware(['auth', 'verified', 'can:inventory.view'])
             ->middleware('can:inventory.dashboard.view')
             ->name('inventory.dashboard');
 
+        Route::get('/{item}/image', [InventoryController::class, 'image'])->name('inventory.image');
         Route::get('/{item}', [InventoryController::class, 'show'])->name('inventory.show');
         Route::patch('/{item}', [InventoryController::class, 'update'])
             ->middleware('can:inventory.unit.condition.update')

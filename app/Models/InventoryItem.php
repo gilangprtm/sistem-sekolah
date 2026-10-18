@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $satuan
  * @property string $harga
  * @property string|null $keterangan
+ * @property string|null $image_path
  * @property int|null $inventory_category_id
  * @property int|null $inventory_type_id
  * @property string $asset_kind
@@ -79,6 +80,7 @@ class InventoryItem extends Model
         'satuan',
         'harga',
         'keterangan',
+        'image_path',
         'inventory_category_id',
         'inventory_type_id',
         'asset_kind',

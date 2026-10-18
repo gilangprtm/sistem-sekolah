@@ -99,6 +99,20 @@ class InventoryListTest extends TestCase
             ->where('items.data.0.tahun_pembelian', 2024));
     }
 
+    public function test_year_filter_options_exclude_null_years(): void
+    {
+        $admin = $this->admin();
+        $this->makeItem(['kode_barang' => 'A.01.01', 'tahun_pembelian' => null]);
+        $this->makeItem(['kode_barang' => 'B.01.01', 'tahun_pembelian' => 2024]);
+
+        $response = $this->actingAs($admin)->get('/inventaris/inventory');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('inventory/index')
+            ->where('filterOptions.tahun', [2024]));
+    }
+
     public function test_filter_by_kondisi(): void
     {
         $admin = $this->admin();
