@@ -33,6 +33,22 @@ export const THEME_PRESET_OPTIONS = [
             dark: 'oklch(0.7830 0.0384 132.7370)',
         },
     },
+    {
+        label: 'Frostpurple',
+        value: 'frostpurple',
+        primary: {
+            light: 'oklch(0.8020 0.1021 296.1364)',
+            dark: 'oklch(0.6832 0.1769 246.9929)',
+        },
+    },
+    {
+        label: 'Pinkpastel',
+        value: 'pinkpastel',
+        primary: {
+            light: 'oklch(0.7192 0.1690 13.4280)',
+            dark: 'oklch(0.7192 0.1690 13.4280)',
+        },
+    },
 ] as const;
 
 export const THEME_PRESET_VALUES = THEME_PRESET_OPTIONS.map((p) => p.value);

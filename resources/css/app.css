@@ -64,6 +64,8 @@
 /* Theme preset styles */
 @import '../styles/presets/tangerine.css';
 @import '../styles/presets/sage-green.css';
+@import '../styles/presets/frostpurple.css';
+@import '../styles/presets/pinkpastel.css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
