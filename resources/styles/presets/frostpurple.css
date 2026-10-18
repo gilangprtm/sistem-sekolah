@@ -35,9 +35,6 @@
     --sidebar-accent-foreground: oklch(0 0 0);
     --sidebar-border: oklch(0.9262 0.0136 240.9625);
     --sidebar-ring: oklch(0.6946 0.172 245.0991);
-    --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
-    --font-serif: Georgia, serif;
-    --font-mono: Inter, ui-sans-serif, sans-serif, system-ui;
     --radius: 0.775rem;
     --shadow-x: 0px;
     --shadow-y: 2px;
@@ -95,9 +92,6 @@
     --sidebar-accent-foreground: oklch(0.6832 0.1769 246.9929);
     --sidebar-border: oklch(0.3807 0.0299 239.3127);
     --sidebar-ring: oklch(0.6946 0.172 245.0991);
-    --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
-    --font-serif: Georgia, serif;
-    --font-mono: Inter, ui-sans-serif, sans-serif, system-ui;
     --radius: 0.775rem;
     --shadow-x: 0px;
     --shadow-y: 2px;
