@@ -1,26 +1,14 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -103,6 +91,32 @@ export default function ManagementClass({
     const goToPage = (page: number) =>
         navigate({ ...filterParams(), page, per_page: classes.per_page });
 
+    const columns: DataTableColumn<ClassRow>[] = [
+        {
+            id: 'rombel',
+            header: 'Rombel',
+            cell: (item) => item.rombel.code,
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'grade',
+            header: 'Tingkat',
+            cell: (item) => item.rombel.grade_level,
+        },
+        {
+            id: 'students',
+            header: 'Jumlah Siswa',
+            cell: (item) => item.student_placements_count,
+        },
+        {
+            id: 'homeroom',
+            header: 'Wali Kelas',
+            cell: (item) =>
+                item.homeroom_assignments[0]?.teacher?.full_name ??
+                'Belum ditetapkan',
+        },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manajemen Kelas" />
@@ -172,128 +186,44 @@ export default function ManagementClass({
                     </div>
                 </div>
 
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {classes.total} baris
-                            dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                classes.data.length > 0 &&
-                                                selected.length ===
-                                                    classes.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? classes.data.map(
-                                                              (item) => item.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua kelas"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Rombel</TableHead>
-                                    <TableHead>Tingkat</TableHead>
-                                    <TableHead>Jumlah Siswa</TableHead>
-                                    <TableHead>Wali Kelas</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {classes.data.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    item.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  item.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      item.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih kelas ${item.rombel.name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {item.rombel.code}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.rombel.grade_level}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.student_placements_count}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.homeroom_assignments[0]
-                                                ?.teacher?.full_name ??
-                                                'Belum ditetapkan'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${item.rombel.name}`}
-                                            >
-                                                <DropdownMenuItem asChild>
-                                                    <Link
-                                                        href={`/kurikulum/management-class/manage?academic_year_id=${selectedYear?.id ?? ''}&rombel_id=${item.rombel_id}`}
-                                                    >
-                                                        Edit
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {classes.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={6}>
-                                        Belum ada data kelas.
-                                    </DataTableEmptyState>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={classes}
-                        noun="kelas"
-                        onPageChange={goToPage}
-                        onPerPageChange={(perPage) =>
+                <DataTableShell
+                    data={classes.data}
+                    columns={columns}
+                    getRowKey={(item) => item.id}
+                    emptyState="Belum ada data kelas."
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectAllLabel: 'Pilih semua kelas',
+                        getRowLabel: (item) =>
+                            `Pilih kelas ${item.rombel.name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    rowActions={{
+                        label: (item) => `Aksi ${item.rombel.name}`,
+                        render: (item) => (
+                            <DropdownMenuItem asChild>
+                                <Link
+                                    href={`/kurikulum/management-class/manage?academic_year_id=${selectedYear?.id ?? ''}&rombel_id=${item.rombel_id}`}
+                                >
+                                    Edit
+                                </Link>
+                            </DropdownMenuItem>
+                        ),
+                    }}
+                    pagination={{
+                        resource: classes,
+                        noun: 'kelas',
+                        onPageChange: goToPage,
+                        onPerPageChange: (perPage) =>
                             navigate({
                                 ...filterParams(),
                                 page: 1,
                                 per_page: perPage,
-                            })
-                        }
-                    />
-                </DataTableShell>
+                            }),
+                    }}
+                />
             </div>
         </AppLayout>
     );

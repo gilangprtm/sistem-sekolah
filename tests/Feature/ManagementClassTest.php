@@ -602,17 +602,17 @@ class ManagementClassTest extends TestCase
 
         $table = file_get_contents(resource_path('js/pages/management-class/index.tsx'));
         $this->assertIsString($table);
-        $this->assertStringContainsString('<TableHead className="text-right">', $table);
-        $this->assertStringContainsString('Aksi', $table);
+        $this->assertStringContainsString("import DataTableShell from '@/components/data-table/data-table-shell';", $table);
+        $this->assertStringContainsString('rowActions={{', $table);
+        $this->assertStringContainsString('selection={{', $table);
+        $this->assertStringContainsString('pagination={{', $table);
         $this->assertStringContainsString('Edit', $table);
         $this->assertStringContainsString('/kurikulum/management-class/manage?academic_year_id=', $table);
         $this->assertStringContainsString('rombel_id=${item.rombel_id}', $table);
-        $this->assertStringContainsString("import DataTableToolbar from '@/components/data-table/data-table-toolbar';", $table);
-        $this->assertStringContainsString("import { Checkbox } from '@/components/ui/checkbox';", $table);
-        $this->assertStringContainsString('<DataTableToolbar>', $table);
-        $this->assertStringContainsString('setSelected([])', $table);
-        $this->assertStringContainsString('aria-label="Pilih semua kelas"', $table);
+        $this->assertStringContainsString("selectAllLabel: 'Pilih semua kelas'", $table);
         $this->assertStringContainsString('Belum ada data kelas.', $table);
+        $this->assertStringNotContainsString("from '@/components/ui/table'", $table);
+        $this->assertStringNotContainsString("from '@/components/ui/checkbox'", $table);
     }
 
     public function test_management_class_mutations_require_curriculum_update_permission(): void

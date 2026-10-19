@@ -84,6 +84,21 @@ class RombelManagementTest extends TestCase
         $this->assertModelExists($rombel);
     }
 
+    public function test_rombel_list_defaults_to_ten_rows_per_page(): void
+    {
+        $admin = $this->admin();
+        Rombel::factory()->count(11)->create();
+
+        $this->actingAs($admin)
+            ->get('/kurikulum/rombels')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('rombels/index')
+                ->where('rombels.per_page', 10)
+                ->where('rombels.total', 11)
+                ->has('rombels.data', 10));
+    }
+
     public function test_rombel_list_search_status_pagination_and_non_admin_authorization(): void
     {
         $admin = $this->admin();
@@ -100,10 +115,13 @@ class RombelManagementTest extends TestCase
 
         $source = file_get_contents(resource_path('js/pages/rombels/index.tsx'));
         $this->assertIsString($source);
-        $this->assertStringContainsString("import { Checkbox } from '@/components/ui/checkbox';", $source);
-        $this->assertStringContainsString("import DataTableToolbar from '@/components/data-table/data-table-toolbar';", $source);
-        $this->assertStringContainsString('aria-label="Pilih semua rombel"', $source);
-        $this->assertStringContainsString('Hapus pilihan', $source);
-        $this->assertStringContainsString('colSpan={6}', $source);
+        $this->assertStringContainsString("import DataTableShell from '@/components/data-table/data-table-shell';", $source);
+        $this->assertStringContainsString('selection={{', $source);
+        $this->assertStringContainsString('rowActions={{', $source);
+        $this->assertStringContainsString('pagination={{', $source);
+        $this->assertStringContainsString("selectAllLabel: 'Pilih semua rombel'", $source);
+        $this->assertStringContainsString('Tidak ada data rombel.', $source);
+        $this->assertStringNotContainsString("from '@/components/ui/table'", $source);
+        $this->assertStringNotContainsString("from '@/components/ui/checkbox'", $source);
     }
 }

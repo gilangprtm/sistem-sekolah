@@ -1,16 +1,12 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -22,14 +18,6 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -105,6 +93,26 @@ export default function RombelsIndex({
         setErrors({});
         setOpen(true);
     };
+    const columns: DataTableColumn<Rombel>[] = [
+        {
+            id: 'code',
+            header: 'Kode',
+            cell: (rombel) => rombel.code,
+            cellClassName: 'font-medium',
+        },
+        { id: 'name', header: 'Nama', cell: (rombel) => rombel.name },
+        {
+            id: 'grade',
+            header: 'Tingkat',
+            cell: (rombel) => rombel.grade_level,
+        },
+        {
+            id: 'status',
+            header: 'Status',
+            cell: (rombel) => (rombel.status === 'active' ? 'Aktif' : 'Arsip'),
+        },
+    ];
+
     const submit = () => {
         const options = {
             preserveScroll: true,
@@ -201,152 +209,65 @@ export default function RombelsIndex({
                         </div>
                     </div>
                 </div>
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {rombels.total} baris
-                            dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                rombels.data.length > 0 &&
-                                                selected.length ===
-                                                    rombels.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? rombels.data.map(
-                                                              (rombel) =>
-                                                                  rombel.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua rombel"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Kode</TableHead>
-                                    <TableHead>Nama</TableHead>
-                                    <TableHead>Tingkat</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rombels.data.map((rombel) => (
-                                    <TableRow key={rombel.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    rombel.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  rombel.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      rombel.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih rombel ${rombel.name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {rombel.code}
-                                        </TableCell>
-                                        <TableCell>{rombel.name}</TableCell>
-                                        <TableCell>
-                                            {rombel.grade_level}
-                                        </TableCell>
-                                        <TableCell>
-                                            {rombel.status === 'active'
-                                                ? 'Aktif'
-                                                : 'Arsip'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${rombel.name}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    onClick={() =>
-                                                        openEdit(rombel)
-                                                    }
-                                                >
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                {rombel.status === 'active' && (
-                                                    <DropdownMenuItem
-                                                        variant="destructive"
-                                                        onClick={() =>
-                                                            confirm(
-                                                                `Arsipkan rombel "${rombel.name}"?`,
-                                                            ) &&
-                                                            router.post(
-                                                                `/kurikulum/rombels/${rombel.id}/archive`,
-                                                                {},
-                                                                {
-                                                                    preserveScroll: true,
-                                                                },
-                                                            )
-                                                        }
-                                                    >
-                                                        Arsipkan
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {rombels.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={6}>
-                                        Tidak ada data rombel.
-                                    </DataTableEmptyState>
+                <DataTableShell
+                    data={rombels.data}
+                    columns={columns}
+                    getRowKey={(rombel) => rombel.id}
+                    emptyState="Tidak ada data rombel."
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectAllLabel: 'Pilih semua rombel',
+                        getRowLabel: (rombel) => `Pilih rombel ${rombel.name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    rowActions={{
+                        label: (rombel) => `Aksi ${rombel.name}`,
+                        render: (rombel) => (
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() => openEdit(rombel)}
+                                >
+                                    Edit
+                                </DropdownMenuItem>
+                                {rombel.status === 'active' && (
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() =>
+                                            confirm(
+                                                `Arsipkan rombel "${rombel.name}"?`,
+                                            ) &&
+                                            router.post(
+                                                `/kurikulum/rombels/${rombel.id}/archive`,
+                                                {},
+                                                { preserveScroll: true },
+                                            )
+                                        }
+                                    >
+                                        Arsipkan
+                                    </DropdownMenuItem>
                                 )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={rombels}
-                        noun="rombel"
-                        onPageChange={(page) =>
+                            </>
+                        ),
+                    }}
+                    pagination={{
+                        resource: rombels,
+                        noun: 'rombel',
+                        onPageChange: (page) =>
                             navigate({
                                 ...params(),
                                 page,
                                 per_page: rombels.per_page,
-                            })
-                        }
-                        onPerPageChange={(perPage) =>
+                            }),
+                        onPerPageChange: (perPage) =>
                             navigate({
                                 ...params(),
                                 page: 1,
                                 per_page: perPage,
-                            })
-                        }
-                    />
-                </DataTableShell>
+                            }),
+                    }}
+                />
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent>
                         <DialogHeader>

@@ -1,9 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
@@ -17,14 +16,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -91,6 +82,25 @@ export default function AcademicPeriodRombelsIndex({
         setOpen(true);
     };
 
+    const columns: DataTableColumn<Usage>[] = [
+        {
+            id: 'code',
+            header: 'Kode',
+            cell: (usage) => usage.rombel.code,
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'name',
+            header: 'Nama Rombel',
+            cell: (usage) => usage.rombel.name,
+        },
+        {
+            id: 'grade',
+            header: 'Tingkat',
+            cell: (usage) => usage.rombel.grade_level,
+        },
+    ];
+
     const submit = () => {
         router.post(
             '/kurikulum/academic-period-rombels',
@@ -145,69 +155,38 @@ export default function AcademicPeriodRombelsIndex({
                         emptyMessage="Semester aktif tidak ditemukan."
                     />
                 </div>
-                <DataTableShell>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Kode</TableHead>
-                                    <TableHead>Nama Rombel</TableHead>
-                                    <TableHead>Tingkat</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {usages.map((usage) => (
-                                    <TableRow key={usage.id}>
-                                        <TableCell className="font-medium">
-                                            {usage.rombel.code}
-                                        </TableCell>
-                                        <TableCell>
-                                            {usage.rombel.name}
-                                        </TableCell>
-                                        <TableCell>
-                                            {usage.rombel.grade_level}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${usage.rombel.name}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    variant="destructive"
-                                                    onClick={() => {
-                                                        if (
-                                                            confirm(
-                                                                `Lepas penggunaan ${usage.rombel.name}?`,
-                                                            )
-                                                        ) {
-                                                            router.delete(
-                                                                `/kurikulum/academic-period-rombels/${usage.id}`,
-                                                                {
-                                                                    preserveScroll: true,
-                                                                },
-                                                            );
-                                                        }
-                                                    }}
-                                                >
-                                                    Lepas penggunaan
-                                                </DropdownMenuItem>
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {usages.length === 0 && (
-                                    <DataTableEmptyState colSpan={4}>
-                                        {selectedPeriod
-                                            ? 'Belum ada rombel pada semester ini.'
-                                            : 'Belum ada semester aktif.'}
-                                    </DataTableEmptyState>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </DataTableShell>
+                <DataTableShell
+                    data={usages}
+                    columns={columns}
+                    getRowKey={(usage) => usage.id}
+                    emptyState={
+                        selectedPeriod
+                            ? 'Belum ada rombel pada semester ini.'
+                            : 'Belum ada semester aktif.'
+                    }
+                    rowActions={{
+                        label: (usage) => `Aksi ${usage.rombel.name}`,
+                        render: (usage) => (
+                            <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => {
+                                    if (
+                                        confirm(
+                                            `Lepas penggunaan ${usage.rombel.name}?`,
+                                        )
+                                    ) {
+                                        router.delete(
+                                            `/kurikulum/academic-period-rombels/${usage.id}`,
+                                            { preserveScroll: true },
+                                        );
+                                    }
+                                }}
+                            >
+                                Lepas penggunaan
+                            </DropdownMenuItem>
+                        ),
+                    }}
+                />
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent>
                         <DialogHeader>

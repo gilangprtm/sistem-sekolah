@@ -1,16 +1,12 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -22,14 +18,6 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -132,6 +120,39 @@ export default function SubjectsIndex({
         }
     };
 
+    const columns: DataTableColumn<Subject>[] = [
+        {
+            id: 'code',
+            header: 'Kode',
+            cell: (subject) => subject.code,
+            cellClassName: 'font-medium',
+        },
+        { id: 'name', header: 'Nama', cell: (subject) => subject.name },
+        {
+            id: 'status',
+            header: 'Status',
+            cell: (subject) =>
+                subject.status === 'active' ? 'Aktif' : 'Arsip',
+        },
+        {
+            id: 'jp-per-class',
+            header: 'JP per Kelas',
+            cell: (subject) => subject.jp_per_class,
+        },
+        {
+            id: 'color',
+            header: 'Warna',
+            cell: (subject) => (
+                <span
+                    className="inline-flex size-6 rounded border border-black/10"
+                    style={{ backgroundColor: subject.color }}
+                    title={subject.color}
+                    aria-label={`Warna ${subject.color}`}
+                />
+            ),
+        },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Mata Pelajaran" />
@@ -214,155 +235,56 @@ export default function SubjectsIndex({
                         </div>
                     </div>
                 </div>
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {subjects.total} baris
-                            dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                subjects.data.length > 0 &&
-                                                selected.length ===
-                                                    subjects.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? subjects.data.map(
-                                                              (item) => item.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua mata pelajaran"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Kode</TableHead>
-                                    <TableHead>Nama</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>JP per Kelas</TableHead>
-                                    <TableHead>Warna</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {subjects.data.map((subject) => (
-                                    <TableRow key={subject.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    subject.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  subject.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      subject.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${subject.name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {subject.code}
-                                        </TableCell>
-                                        <TableCell>{subject.name}</TableCell>
-                                        <TableCell>
-                                            {subject.status === 'active'
-                                                ? 'Aktif'
-                                                : 'Arsip'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {subject.jp_per_class}
-                                        </TableCell>
-                                        <TableCell>
-                                            <span
-                                                className="inline-flex size-6 rounded border border-black/10"
-                                                style={{
-                                                    backgroundColor:
-                                                        subject.color,
-                                                }}
-                                                title={subject.color}
-                                                aria-label={`Warna ${subject.color}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${subject.name}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    onClick={() =>
-                                                        openEdit(subject)
-                                                    }
-                                                >
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                {subject.status ===
-                                                    'active' && (
-                                                    <DropdownMenuItem
-                                                        variant="destructive"
-                                                        onClick={() =>
-                                                            archive(subject)
-                                                        }
-                                                    >
-                                                        Arsipkan
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {subjects.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={7}>
-                                        Tidak ada data mata pelajaran.
-                                    </DataTableEmptyState>
+                <DataTableShell
+                    data={subjects.data}
+                    columns={columns}
+                    getRowKey={(subject) => subject.id}
+                    emptyState="Tidak ada data mata pelajaran."
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectAllLabel: 'Pilih semua mata pelajaran',
+                        getRowLabel: (subject) => `Pilih ${subject.name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    rowActions={{
+                        label: (subject) => `Aksi ${subject.name}`,
+                        render: (subject) => (
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() => openEdit(subject)}
+                                >
+                                    Edit
+                                </DropdownMenuItem>
+                                {subject.status === 'active' && (
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => archive(subject)}
+                                    >
+                                        Arsipkan
+                                    </DropdownMenuItem>
                                 )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={subjects}
-                        noun="mata pelajaran"
-                        onPageChange={(page) =>
+                            </>
+                        ),
+                    }}
+                    pagination={{
+                        resource: subjects,
+                        noun: 'mata pelajaran',
+                        onPageChange: (page) =>
                             navigate({
                                 ...filterParams(),
                                 page,
                                 per_page: subjects.per_page,
-                            })
-                        }
-                        onPerPageChange={(perPage) =>
+                            }),
+                        onPerPageChange: (perPage) =>
                             navigate({
                                 ...filterParams(),
                                 page: 1,
                                 per_page: perPage,
-                            })
-                        }
-                    />
-                </DataTableShell>
+                            }),
+                    }}
+                />
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent>
                         <DialogHeader>

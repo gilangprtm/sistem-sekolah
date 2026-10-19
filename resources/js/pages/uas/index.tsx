@@ -1,16 +1,12 @@
 import { Head, router } from '@inertiajs/react';
 import { ExternalLink, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -22,14 +18,6 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -157,6 +145,58 @@ export default function UasIndex({
         setErrors({});
         setOpen(true);
     };
+    const columns: DataTableColumn<UasLink>[] = [
+        { id: 'category', header: 'Kategori', cell: (item) => item.category },
+        {
+            id: 'subject',
+            header: 'Mata Pelajaran',
+            cell: (item) => (
+                <>
+                    <span className="font-medium">{item.subject.name}</span>
+                    <span className="ml-2 text-muted-foreground">
+                        {item.subject.code}
+                    </span>
+                </>
+            ),
+        },
+        {
+            id: 'academic-year',
+            header: 'Tahun Ajaran',
+            cell: (item) => item.academic_year,
+        },
+        {
+            id: 'academic-period',
+            header: 'Semester',
+            cell: (item) => item.academic_period,
+        },
+        {
+            id: 'link',
+            header: 'Google Form',
+            cell: (item) => (
+                <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary underline"
+                >
+                    Buka Form <ExternalLink className="size-3" />
+                </a>
+            ),
+        },
+        {
+            id: 'opens-at',
+            header: 'Waktu Ujian',
+            cell: (item) => item.opens_at ?? 'Langsung tersedia',
+        },
+    ];
+    const monitoringColumns: DataTableColumn<MonitoringAttempt>[] = [
+        {
+            id: 'student-name',
+            header: 'Nama Siswa',
+            cell: (attempt) => attempt.student_name ?? 'Siswa',
+        },
+    ];
+
     const submit = () => {
         setProcessing(true);
         const data = {
@@ -314,179 +354,72 @@ export default function UasIndex({
                         </div>
                     </div>
                 </div>
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {links.total} baris dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                links.data.length > 0 &&
-                                                selected.length ===
-                                                    links.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? links.data.map(
-                                                              (item) => item.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua link UAS"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Kategori</TableHead>
-                                    <TableHead>Mata Pelajaran</TableHead>
-                                    <TableHead>Tahun Ajaran</TableHead>
-                                    <TableHead>Semester</TableHead>
-                                    <TableHead>Google Form</TableHead>
-                                    <TableHead>Waktu Ujian</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {links.data.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    item.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  item.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      item.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${item.category} ${item.subject.name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell>{item.category}</TableCell>
-                                        <TableCell>
-                                            <span className="font-medium">
-                                                {item.subject.name}
-                                            </span>
-                                            <span className="ml-2 text-muted-foreground">
-                                                {item.subject.code}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.academic_year}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.academic_period}
-                                        </TableCell>
-                                        <TableCell>
-                                            <a
-                                                href={item.link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 text-primary underline"
-                                            >
-                                                Buka Form{' '}
-                                                <ExternalLink className="size-3" />
-                                            </a>
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.opens_at ??
-                                                'Langsung tersedia'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${item.category} ${item.subject.name}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    onClick={() =>
-                                                        openEdit(item)
-                                                    }
-                                                >
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() => {
-                                                        setMonitorTarget(item);
-                                                        setMonitoringVisible(
-                                                            true,
-                                                        );
-                                                        navigate({
-                                                            ...filterParams(),
-                                                            page: links.current_page,
-                                                            per_page:
-                                                                links.per_page,
-                                                            monitor_uas_link_id:
-                                                                item.id,
-                                                            monitor_page: 1,
-                                                        });
-                                                    }}
-                                                >
-                                                    Monitoring
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="text-destructive focus:text-destructive"
-                                                    onClick={() =>
-                                                        setDeleteTarget(item)
-                                                    }
-                                                >
-                                                    <Trash2 />
-                                                    Hapus
-                                                </DropdownMenuItem>
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {links.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={8}>
-                                        Belum ada data {activeCategory}.
-                                    </DataTableEmptyState>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={links}
-                        noun={`data ${activeCategory}`}
-                        onPageChange={(page) =>
+                <DataTableShell
+                    data={links.data}
+                    columns={columns}
+                    getRowKey={(item) => item.id}
+                    emptyState={`Belum ada data ${activeCategory}.`}
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectAllLabel: 'Pilih semua link UAS',
+                        getRowLabel: (item) =>
+                            `Pilih ${item.category} ${item.subject.name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    rowActions={{
+                        label: (item) =>
+                            `Aksi ${item.category} ${item.subject.name}`,
+                        render: (item) => (
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() => openEdit(item)}
+                                >
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setMonitorTarget(item);
+                                        setMonitoringVisible(true);
+                                        navigate({
+                                            ...filterParams(),
+                                            page: links.current_page,
+                                            per_page: links.per_page,
+                                            monitor_uas_link_id: item.id,
+                                            monitor_page: 1,
+                                        });
+                                    }}
+                                >
+                                    Monitoring
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => setDeleteTarget(item)}
+                                >
+                                    <Trash2 />
+                                    Hapus
+                                </DropdownMenuItem>
+                            </>
+                        ),
+                    }}
+                    pagination={{
+                        resource: links,
+                        noun: `data ${activeCategory}`,
+                        onPageChange: (page) =>
                             navigate({
                                 ...filterParams(),
                                 page,
                                 per_page: links.per_page,
-                            })
-                        }
-                        onPerPageChange={(perPage) =>
+                            }),
+                        onPerPageChange: (perPage) =>
                             navigate({
                                 ...filterParams(),
                                 page: 1,
                                 per_page: perPage,
-                            })
-                        }
-                    />
-                </DataTableShell>
+                            }),
+                    }}
+                />
                 <Dialog
                     open={monitoringVisible}
                     onOpenChange={(isOpen) => {
@@ -511,78 +444,59 @@ export default function UasIndex({
                                 .
                             </DialogDescription>
                         </DialogHeader>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Nama Siswa</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {monitoring?.attempts.data.map((attempt) => (
-                                    <TableRow key={attempt.id}>
-                                        <TableCell>
-                                            {attempt.student_name ?? 'Siswa'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => {
-                                                    setUnlockTarget(attempt);
-                                                    setUnlockReason('');
-                                                    setUnlockError('');
-                                                }}
-                                            >
-                                                Buka
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {(!monitoring ||
-                                    monitoring.attempts.data.length === 0) && (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={2}
-                                            className="text-center text-muted-foreground"
-                                        >
-                                            Tidak ada siswa terkunci.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                        {monitoring && (
-                            <DataTablePagination
-                                resource={monitoring.attempts}
-                                noun="siswa terkunci"
-                                onPageChange={(monitorPage) =>
-                                    navigate({
-                                        ...filterParams(),
-                                        page: links.current_page,
-                                        per_page: links.per_page,
-                                        monitor_uas_link_id:
-                                            monitoring.uas_link_id,
-                                        monitor_page: monitorPage,
-                                        monitor_per_page:
-                                            monitoring.attempts.per_page,
-                                    })
-                                }
-                                onPerPageChange={(monitorPerPage) =>
-                                    navigate({
-                                        ...filterParams(),
-                                        page: links.current_page,
-                                        per_page: links.per_page,
-                                        monitor_uas_link_id:
-                                            monitoring.uas_link_id,
-                                        monitor_page: 1,
-                                        monitor_per_page: monitorPerPage,
-                                    })
-                                }
-                            />
-                        )}
+                        <DataTableShell
+                            data={monitoring?.attempts.data ?? []}
+                            columns={monitoringColumns}
+                            getRowKey={(attempt) => attempt.id}
+                            emptyState="Tidak ada siswa terkunci."
+                            rowActions={{
+                                variant: 'custom',
+                                render: (attempt) => (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                            setUnlockTarget(attempt);
+                                            setUnlockReason('');
+                                            setUnlockError('');
+                                        }}
+                                    >
+                                        Buka
+                                    </Button>
+                                ),
+                            }}
+                            pagination={
+                                monitoring
+                                    ? {
+                                          resource: monitoring.attempts,
+                                          noun: 'siswa terkunci',
+                                          onPageChange: (monitorPage) =>
+                                              navigate({
+                                                  ...filterParams(),
+                                                  page: links.current_page,
+                                                  per_page: links.per_page,
+                                                  monitor_uas_link_id:
+                                                      monitoring.uas_link_id,
+                                                  monitor_page: monitorPage,
+                                                  monitor_per_page:
+                                                      monitoring.attempts
+                                                          .per_page,
+                                              }),
+                                          onPerPageChange: (monitorPerPage) =>
+                                              navigate({
+                                                  ...filterParams(),
+                                                  page: links.current_page,
+                                                  per_page: links.per_page,
+                                                  monitor_uas_link_id:
+                                                      monitoring.uas_link_id,
+                                                  monitor_page: 1,
+                                                  monitor_per_page:
+                                                      monitorPerPage,
+                                              }),
+                                      }
+                                    : undefined
+                            }
+                        />
                     </DialogContent>
                 </Dialog>
                 <Dialog

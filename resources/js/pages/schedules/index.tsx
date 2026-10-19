@@ -259,20 +259,7 @@ export default function JadwalPelajaranIndex({
                     </Button>
                 </div>
 
-                <div className="grid gap-2 rounded-xl border p-4 sm:max-w-xl">
-                    <label className="text-sm font-medium">Jenjang</label>
-                    <Tabs value={grade} onValueChange={selectGrade}>
-                        <TabsList className="w-full" aria-label="Pilih jenjang">
-                            {['VII', 'VIII', 'IX'].map((item) => (
-                                <TabsTrigger key={item} value={item}>
-                                    {item}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
-                </div>
-
-                <div className="grid gap-2 rounded-xl border p-4 sm:max-w-xl">
+                <div className="grid gap-2 sm:max-w-xl">
                     <label
                         htmlFor="schedule-period"
                         className="text-sm font-medium"
@@ -290,6 +277,23 @@ export default function JadwalPelajaranIndex({
                         searchPlaceholder="Cari semester..."
                         emptyMessage="Semester aktif tidak ditemukan."
                     />
+                </div>
+
+                <div className="grid gap-2 sm:max-w-xl">
+                    <label className="text-sm font-medium">Jenjang</label>
+                    <Tabs value={grade} onValueChange={selectGrade}>
+                        <TabsList
+                            variant="line"
+                            className="h-11 w-full justify-start overflow-x-auto overflow-y-hidden"
+                            aria-label="Pilih jenjang"
+                        >
+                            {['VII', 'VIII', 'IX'].map((item) => (
+                                <TabsTrigger key={item} value={item}>
+                                    {item}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
                 </div>
 
                 <DataTableShell>

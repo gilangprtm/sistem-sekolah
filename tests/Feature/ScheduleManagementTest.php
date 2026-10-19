@@ -52,6 +52,53 @@ class ScheduleManagementTest extends TestCase
         ]);
     }
 
+    public function test_schedule_viewer_shows_only_active_periods_and_uses_full_width_line_tabs(): void
+    {
+        $activePeriod = $this->activePeriod();
+        $inactiveYear = AcademicYear::query()->create([
+            'year' => '2025/2026',
+            'status' => 'inactive',
+        ]);
+        $inactiveYear->periods()->create([
+            'code' => 'genap',
+            'name' => 'Semester Genap',
+            'status' => 'active',
+        ]);
+        $inactivePeriodYear = AcademicYear::query()->create([
+            'year' => '2024/2025',
+            'status' => 'active',
+        ]);
+        $inactivePeriodYear->periods()->create([
+            'code' => 'ganjil',
+            'name' => 'Semester Ganjil',
+            'status' => 'inactive',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get('/kurikulum/schedule')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('schedules/index')
+                ->has('periods', 1)
+                ->where('periods.0.id', $activePeriod->id));
+
+        $source = file_get_contents(resource_path('js/pages/schedules/index.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString('variant="line"', $source);
+        $this->assertStringContainsString(
+            'className="h-11 w-full justify-start overflow-x-auto overflow-y-hidden"',
+            $source,
+        );
+        $this->assertStringNotContainsString(
+            'grid gap-2 rounded-xl border p-4 sm:max-w-xl',
+            $source,
+        );
+        $this->assertLessThan(
+            strpos($source, '<TabsList'),
+            strpos($source, '<SearchableCombobox'),
+        );
+    }
+
     public function test_super_admin_can_view_read_only_schedule_for_all_weekdays(): void
     {
         $period = $this->activePeriod();

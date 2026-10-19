@@ -1,16 +1,12 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -29,14 +25,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -271,6 +259,87 @@ export default function AcademicYearsIndex({
         }
     };
 
+    const columns: DataTableColumn<Year>[] = [
+        {
+            id: 'year',
+            header: 'Tahun Ajaran',
+            cell: (item) => item.year,
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'status',
+            header: 'Status',
+            cell: (item) =>
+                item.status === 'active' ? 'Aktif' : 'Tidak aktif',
+        },
+        {
+            id: 'start-date',
+            header: 'Mulai',
+            cell: (item) => item.start_date ?? '-',
+        },
+        {
+            id: 'end-date',
+            header: 'Selesai',
+            cell: (item) => item.end_date ?? '-',
+        },
+        {
+            id: 'periods',
+            header: 'Semester',
+            cell: (item) => (
+                <div className="grid min-w-72 gap-2">
+                    {item.periods.map((semester) => (
+                        <div
+                            key={semester.id}
+                            className="flex flex-wrap items-center gap-2"
+                        >
+                            <span className="font-medium">{semester.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                                {semester.status === 'active'
+                                    ? 'Aktif'
+                                    : 'Tidak aktif'}{' '}
+                                · {semester.start_date ?? '-'} —{' '}
+                                {semester.end_date ?? '-'}
+                            </span>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openPeriodEdit(item, semester)}
+                            >
+                                Ubah
+                            </Button>
+                        </div>
+                    ))}
+                    <div className="flex flex-wrap gap-2">
+                        {!item.periods.some(
+                            (semester) => semester.code === 'ganjil',
+                        ) && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openNewPeriod(item.id, 'ganjil')}
+                            >
+                                <Plus />
+                                Tambah Ganjil
+                            </Button>
+                        )}
+                        {!item.periods.some(
+                            (semester) => semester.code === 'genap',
+                        ) && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openNewPeriod(item.id, 'genap')}
+                            >
+                                <Plus />
+                                Tambah Genap
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            ),
+        },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Tahun Ajaran & Semester" />
@@ -332,208 +401,43 @@ export default function AcademicYearsIndex({
                     </div>
                 </div>
 
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {years.total} baris dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                years.data.length > 0 &&
-                                                selected.length ===
-                                                    years.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? years.data.map(
-                                                              (item) => item.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua Tahun Ajaran"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Tahun Ajaran</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Mulai</TableHead>
-                                    <TableHead>Selesai</TableHead>
-                                    <TableHead>Semester</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {years.data.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="w-12">
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    item.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  item.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      item.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih Tahun Ajaran ${item.year}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {item.year}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.status === 'active'
-                                                ? 'Aktif'
-                                                : 'Tidak aktif'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.start_date ?? '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.end_date ?? '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="grid min-w-72 gap-2">
-                                                {item.periods.map(
-                                                    (semester) => (
-                                                        <div
-                                                            key={semester.id}
-                                                            className="flex flex-wrap items-center gap-2"
-                                                        >
-                                                            <span className="font-medium">
-                                                                {semester.name}
-                                                            </span>
-                                                            <span className="text-xs text-muted-foreground">
-                                                                {semester.status ===
-                                                                'active'
-                                                                    ? 'Aktif'
-                                                                    : 'Tidak aktif'}{' '}
-                                                                ·{' '}
-                                                                {semester.start_date ??
-                                                                    '-'}{' '}
-                                                                —{' '}
-                                                                {semester.end_date ??
-                                                                    '-'}
-                                                            </span>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() =>
-                                                                    openPeriodEdit(
-                                                                        item,
-                                                                        semester,
-                                                                    )
-                                                                }
-                                                            >
-                                                                Ubah
-                                                            </Button>
-                                                        </div>
-                                                    ),
-                                                )}
-                                                <div className="flex flex-wrap gap-2">
-                                                    {!item.periods.some(
-                                                        (semester) =>
-                                                            semester.code ===
-                                                            'ganjil',
-                                                    ) && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() =>
-                                                                openNewPeriod(
-                                                                    item.id,
-                                                                    'ganjil',
-                                                                )
-                                                            }
-                                                        >
-                                                            <Plus />
-                                                            Tambah Ganjil
-                                                        </Button>
-                                                    )}
-                                                    {!item.periods.some(
-                                                        (semester) =>
-                                                            semester.code ===
-                                                            'genap',
-                                                    ) && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() =>
-                                                                openNewPeriod(
-                                                                    item.id,
-                                                                    'genap',
-                                                                )
-                                                            }
-                                                        >
-                                                            <Plus />
-                                                            Tambah Genap
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi Tahun Ajaran ${item.year}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    onClick={() =>
-                                                        openYearEdit(item)
-                                                    }
-                                                >
-                                                    Ubah Tahun Ajaran
-                                                </DropdownMenuItem>
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {years.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={7}>
-                                        Tidak ada data Tahun Ajaran.
-                                    </DataTableEmptyState>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={years}
-                        noun="Tahun Ajaran"
-                        onPageChange={goToPage}
-                        onPerPageChange={(perPage) =>
+                <DataTableShell
+                    data={years.data}
+                    columns={columns}
+                    getRowKey={(item) => item.id}
+                    emptyState="Tidak ada data Tahun Ajaran."
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectedCount: selected.length,
+                        selectAllLabel: 'Pilih semua Tahun Ajaran',
+                        getRowLabel: (item) =>
+                            `Pilih Tahun Ajaran ${item.year}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    rowActions={{
+                        label: (item) => `Aksi Tahun Ajaran ${item.year}`,
+                        render: (item) => (
+                            <DropdownMenuItem
+                                onClick={() => openYearEdit(item)}
+                            >
+                                Ubah Tahun Ajaran
+                            </DropdownMenuItem>
+                        ),
+                    }}
+                    pagination={{
+                        resource: years,
+                        noun: 'Tahun Ajaran',
+                        onPageChange: goToPage,
+                        onPerPageChange: (perPage) =>
                             navigate({
                                 ...filterParams(),
                                 page: 1,
                                 per_page: perPage,
-                            })
-                        }
-                    />
-                </DataTableShell>
+                            }),
+                    }}
+                />
 
                 <Dialog open={yearDialogOpen} onOpenChange={closeYearDialog}>
                     <DialogContent className="sm:max-w-lg">

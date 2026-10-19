@@ -17,7 +17,7 @@ class RombelController extends Controller
     {
         $search = $request->string('search')->trim()->toString();
         $status = $request->string('status')->toString();
-        $perPage = min(max($request->integer('per_page', 25), 1), 50);
+        $perPage = min(max($request->integer('per_page', 10), 1), 50);
         $rombels = Rombel::query()
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('code', 'like', "%{$search}%")->orWhere('name', 'like', "%{$search}%")))
             ->when($status !== '', fn ($query) => $query->where('status', $status))

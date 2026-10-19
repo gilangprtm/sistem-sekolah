@@ -1,19 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    AlertCircle,
-    ArrowLeft,
-    Plus,
-    Search,
-    Trash2,
-    UsersRound,
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, Plus, Search, UsersRound } from 'lucide-react';
 import { useState } from 'react';
+import DataTableShell from '@/components/data-table/data-table-shell';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -24,14 +18,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -123,7 +109,7 @@ export default function ManagementClassManage({
     const selectedRombelAlreadyRegistered = registeredRombelIds.includes(
         Number(rombelId),
     );
-    const lookupStudents = (page = 1) => {
+    const lookupStudents = (page = 1, perPage = studentLookup.per_page) => {
         router.get(
             '/kurikulum/management-class/manage',
             {
@@ -131,7 +117,7 @@ export default function ManagementClassManage({
                 rombel_id: rombelId ? Number(rombelId) : undefined,
                 lookup_search: lookupSearch.trim() || undefined,
                 lookup_page: page,
-                lookup_per_page: studentLookup.per_page,
+                lookup_per_page: perPage,
             },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -142,11 +128,8 @@ export default function ManagementClassManage({
         setLookupOpen(true);
     };
 
-    const toggleStudent = (
-        student: Student,
-        checked: boolean | 'indeterminate',
-    ) => {
-        if (checked === true) {
+    const toggleStudent = (student: Student, checked: boolean) => {
+        if (checked) {
             setSelectedStudentDetails((current) => ({
                 ...current,
                 [student.id]: student,
@@ -154,7 +137,7 @@ export default function ManagementClassManage({
         }
 
         setLookupSelectedIds((current) =>
-            checked === true
+            checked
                 ? current.includes(student.id)
                     ? current
                     : [...current, student.id]
@@ -178,6 +161,35 @@ export default function ManagementClassManage({
             return next;
         });
     };
+
+    const selectedStudentColumns: DataTableColumn<Student>[] = [
+        {
+            id: 'nis',
+            header: 'NIS',
+            cell: (student) => student.nis ?? '-',
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'name',
+            header: 'Nama Siswa',
+            cell: (student) => student.full_name,
+            cellClassName: 'font-medium',
+        },
+    ];
+    const lookupColumns: DataTableColumn<Student>[] = [
+        {
+            id: 'nis',
+            header: 'NIS',
+            cell: (student) => student.nis ?? '-',
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'name',
+            header: 'Nama Siswa',
+            cell: (student) => student.full_name,
+            cellClassName: 'font-medium',
+        },
+    ];
 
     const submit = () => {
         if (!selectedYear || !rombelId) {
@@ -337,60 +349,34 @@ export default function ManagementClassManage({
                             </Button>
                         </div>
                         <InputError message={errors.student_ids} />
-                        <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                            <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead>NIS</TableHead>
-                                        <TableHead>Nama Siswa</TableHead>
-                                        <TableHead className="text-right">
-                                            Aksi
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {selectedStudentRows.map((student) => (
-                                        <TableRow key={student.id}>
-                                            <TableCell className="font-mono text-xs">
-                                                {student.nis ?? '-'}
-                                            </TableCell>
-                                            <TableCell className="font-medium">
-                                                {student.full_name}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon-sm"
-                                                    className="text-destructive"
-                                                    onClick={() =>
-                                                        removeStudent(
-                                                            student.id,
-                                                        )
-                                                    }
-                                                    aria-label={`Hapus ${student.full_name} dari kelas`}
-                                                >
-                                                    <Trash2 />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {selectedStudentRows.length === 0 && (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={3}
-                                                className="py-8 text-center text-muted-foreground"
-                                            >
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <UsersRound className="h-8 w-8 text-muted-foreground/50" />
-                                                    Belum ada siswa ditambahkan.
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <DataTableShell
+                            data={selectedStudentRows}
+                            columns={selectedStudentColumns}
+                            getRowKey={(student) => student.id}
+                            emptyState={
+                                <div className="flex flex-col items-center gap-2">
+                                    <UsersRound className="h-8 w-8 text-muted-foreground/50" />
+                                    Belum ada siswa ditambahkan.
+                                </div>
+                            }
+                            rowActions={{
+                                variant: 'custom',
+                                render: (student) => (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-destructive"
+                                        onClick={() =>
+                                            removeStudent(student.id)
+                                        }
+                                        aria-label={`Hapus ${student.full_name} dari kelas`}
+                                    >
+                                        Hapus
+                                    </Button>
+                                ),
+                            }}
+                        />
                     </section>
 
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -450,98 +436,64 @@ export default function ManagementClassManage({
                                 Cari
                             </Button>
                         </div>
-                        <div className="max-h-[55vh] overflow-auto rounded-xl border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-12">
-                                            Pilih
-                                        </TableHead>
-                                        <TableHead>NIS</TableHead>
-                                        <TableHead>Nama Siswa</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {studentLookup.data.map((student) => (
-                                        <TableRow key={student.id}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={lookupSelectedIds.includes(
-                                                        student.id,
-                                                    )}
-                                                    onCheckedChange={(
-                                                        checked,
-                                                    ) =>
-                                                        toggleStudent(
-                                                            student,
-                                                            checked,
-                                                        )
-                                                    }
-                                                    aria-label={`Pilih ${student.full_name}`}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="font-mono text-xs">
-                                                {student.nis ?? '-'}
-                                            </TableCell>
-                                            <TableCell className="font-medium">
-                                                {student.full_name}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {studentLookup.data.length === 0 && (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={3}
-                                                className="py-8 text-center text-muted-foreground"
-                                            >
-                                                Siswa tidak ditemukan.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span>
-                            Menampilkan {studentLookup.data.length} dari{' '}
-                            {studentLookup.total} siswa.
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={studentLookup.current_page <= 1}
-                                onClick={() =>
-                                    lookupStudents(
-                                        studentLookup.current_page - 1,
-                                    )
-                                }
-                            >
-                                Sebelumnya
-                            </Button>
-                            <span>
-                                Halaman {studentLookup.current_page} /{' '}
-                                {studentLookup.last_page}
-                            </span>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                    studentLookup.current_page >=
-                                    studentLookup.last_page
-                                }
-                                onClick={() =>
-                                    lookupStudents(
-                                        studentLookup.current_page + 1,
-                                    )
-                                }
-                            >
-                                Berikutnya
-                            </Button>
-                        </div>
+                        <DataTableShell
+                            data={studentLookup.data}
+                            columns={lookupColumns}
+                            getRowKey={(student) => student.id}
+                            emptyState="Siswa tidak ditemukan."
+                            className="max-h-[55vh] overflow-auto"
+                            selection={{
+                                selectedKeys: lookupSelectedIds,
+                                onSelectionChange: setLookupSelectedIds,
+                                onRowSelectionChange: toggleStudent,
+                                onSelectAll: (checked, rows) => {
+                                    rows.forEach((student) => {
+                                        if (checked) {
+                                            setSelectedStudentDetails(
+                                                (current) => ({
+                                                    ...current,
+                                                    [student.id]: student,
+                                                }),
+                                            );
+                                        }
+                                    });
+                                    setLookupSelectedIds((current) =>
+                                        checked
+                                            ? Array.from(
+                                                  new Set([
+                                                      ...current,
+                                                      ...rows.map(
+                                                          (student) =>
+                                                              student.id,
+                                                      ),
+                                                  ]),
+                                              )
+                                            : current.filter(
+                                                  (id) =>
+                                                      !rows.some(
+                                                          (student) =>
+                                                              student.id === id,
+                                                      ),
+                                              ),
+                                    );
+                                },
+                                selectedCount: lookupSelectedIds.length,
+                                selectAllLabel:
+                                    'Pilih semua siswa di halaman ini',
+                                getRowLabel: (student) =>
+                                    `Pilih ${student.full_name}`,
+                                selectedCountLabel: (count, total) =>
+                                    `${count} dari ${total} siswa dipilih.`,
+                                clearSelectionLabel: 'Hapus semua pilihan',
+                            }}
+                            pagination={{
+                                resource: studentLookup,
+                                noun: 'siswa',
+                                onPageChange: lookupStudents,
+                                onPerPageChange: (perPage) =>
+                                    lookupStudents(1, perPage),
+                            }}
+                        />
                     </div>
                     <DialogFooter>
                         <Button

@@ -30,8 +30,9 @@ class UasLinkTest extends TestCase
 
         $this->assertIsString($source);
         $this->assertStringContainsString("import DataTableShell from '@/components/data-table/data-table-shell';", $source);
-        $this->assertStringContainsString("import DataTablePagination from '@/components/data-table/data-table-pagination';", $source);
-        $this->assertStringContainsString("import DataTableToolbar from '@/components/data-table/data-table-toolbar';", $source);
+        $this->assertStringContainsString('selection={{', $source);
+        $this->assertStringContainsString('rowActions={{', $source);
+        $this->assertStringContainsString('pagination={{', $source);
         $this->assertStringContainsString("import SearchableCombobox from '@/components/searchable-combobox';", $source);
         $this->assertStringContainsString('Hapus data {deleteTarget?.category}?', $source);
         $this->assertStringContainsString('Data {deleteTarget?.category} untuk', $source);
@@ -61,7 +62,9 @@ class UasLinkTest extends TestCase
         $this->assertStringContainsString('isKantin || isUas', $studentLayoutSource);
         $this->assertStringContainsString("category: 'UAS'", $source);
         $this->assertStringContainsString('academic_year_id', $source);
-        $this->assertStringContainsString('DataTableEmptyState', $source);
+        $this->assertStringContainsString('DataTableShell', $source);
+        $this->assertStringNotContainsString("from '@/components/ui/table'", $source);
+        $this->assertStringNotContainsString("from '@/components/ui/checkbox'", $source);
         $this->assertStringContainsString('DropdownMenuItem', $source);
         $this->assertStringContainsString('Monitoring', $source);
         $this->assertStringContainsString('monitor_uas_link_id', $source);

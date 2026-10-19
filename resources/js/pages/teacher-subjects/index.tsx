@@ -1,16 +1,12 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -22,14 +18,6 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -92,6 +80,26 @@ export default function TeacherSubjectsIndex({
             });
         }
     };
+
+    const columns: DataTableColumn<Relation>[] = [
+        {
+            id: 'code',
+            header: 'Kode',
+            cell: (relation) => relation.code,
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'teacher',
+            header: 'Guru',
+            cell: (relation) => relation.teacher.full_name,
+        },
+        {
+            id: 'subject',
+            header: 'Mata Pelajaran',
+            cell: (relation) =>
+                `${relation.subject.code} — ${relation.subject.name}`,
+        },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -168,126 +176,42 @@ export default function TeacherSubjectsIndex({
                         </Button>
                     </div>
                 </div>
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {teacherSubjects.total} baris
-                            dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                teacherSubjects.data.length >
-                                                    0 &&
-                                                selected.length ===
-                                                    teacherSubjects.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? teacherSubjects.data.map(
-                                                              (item) => item.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua relasi"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Kode</TableHead>
-                                    <TableHead>Guru</TableHead>
-                                    <TableHead>Mata Pelajaran</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {teacherSubjects.data.map((relation) => (
-                                    <TableRow key={relation.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    relation.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  relation.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      relation.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${relation.code}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {relation.code}
-                                        </TableCell>
-                                        <TableCell>
-                                            {relation.teacher.full_name}
-                                        </TableCell>
-                                        <TableCell>
-                                            {relation.subject.code} —{' '}
-                                            {relation.subject.name}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${relation.code}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    variant="destructive"
-                                                    onClick={() =>
-                                                        remove(relation)
-                                                    }
-                                                >
-                                                    Hapus Relasi
-                                                </DropdownMenuItem>
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {teacherSubjects.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={5}>
-                                        Belum ada relasi Guru Mata Pelajaran.
-                                    </DataTableEmptyState>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={teacherSubjects}
-                        noun="relasi"
-                        onPageChange={(page) =>
+                <DataTableShell
+                    data={teacherSubjects.data}
+                    columns={columns}
+                    getRowKey={(relation) => relation.id}
+                    emptyState="Belum ada relasi Guru Mata Pelajaran."
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectAllLabel: 'Pilih semua relasi',
+                        getRowLabel: (relation) => `Pilih ${relation.code}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    rowActions={{
+                        label: (relation) => `Aksi ${relation.code}`,
+                        render: (relation) => (
+                            <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => remove(relation)}
+                            >
+                                Hapus Relasi
+                            </DropdownMenuItem>
+                        ),
+                    }}
+                    pagination={{
+                        resource: teacherSubjects,
+                        noun: 'relasi',
+                        onPageChange: (page) =>
                             navigate({
                                 page,
                                 per_page: teacherSubjects.per_page,
-                            })
-                        }
-                        onPerPageChange={(perPage) =>
-                            navigate({ page: 1, per_page: perPage })
-                        }
-                    />
-                </DataTableShell>
+                            }),
+                        onPerPageChange: (perPage) =>
+                            navigate({ page: 1, per_page: perPage }),
+                    }}
+                />
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent>
                         <DialogHeader>
