@@ -1,11 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Download, Plus, Search, Upload } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
@@ -23,14 +20,6 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { Auth, BreadcrumbItem } from '@/types';
 
@@ -241,6 +230,30 @@ export default function UsersIndex({
         navigate({ ...filterParams(), page, per_page: users.per_page });
     };
 
+    const columns: DataTableColumn<UserItem>[] = [
+        {
+            id: 'name',
+            header: 'Nama',
+            cell: (user) => user.name,
+            cellClassName: 'font-medium',
+        },
+        { id: 'email', header: 'Email', cell: (user) => user.email },
+        {
+            id: 'roles',
+            header: 'Role',
+            cell: (user) =>
+                user.roles.length === 0
+                    ? '-'
+                    : user.roles.map((item) => item.name).join(', '),
+        },
+        {
+            id: 'status',
+            header: 'Status',
+            cell: (user) =>
+                user.email_verified_at ? 'Verified' : 'Unverified',
+        },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Users" />
@@ -334,140 +347,57 @@ export default function UsersIndex({
                     </div>
                 </div>
 
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {users.total} baris dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table className="min-w-[640px] **:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                users.data.length > 0 &&
-                                                selected.length ===
-                                                    users.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? users.data.map(
-                                                              (user) => user.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua user"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Nama</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {users.data.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell className="w-12">
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    user.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  user.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      user.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${user.name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {user.name}
-                                        </TableCell>
-                                        <TableCell>{user.email}</TableCell>
-                                        <TableCell>
-                                            {user.roles.length === 0
-                                                ? '-'
-                                                : user.roles
-                                                      .map((item) => item.name)
-                                                      .join(', ')}
-                                        </TableCell>
-                                        <TableCell>
-                                            {user.email_verified_at
-                                                ? 'Verified'
-                                                : 'Unverified'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${user.name}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    onClick={() =>
-                                                        openEdit(user)
-                                                    }
-                                                >
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                {user.id !== auth.user?.id && (
-                                                    <DropdownMenuItem
-                                                        variant="destructive"
-                                                        onClick={() =>
-                                                            remove(user)
-                                                        }
-                                                    >
-                                                        Hapus
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {users.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={6}>
-                                        Tidak ada data user.
-                                    </DataTableEmptyState>
+                <DataTableShell
+                    data={users.data}
+                    columns={columns}
+                    getRowKey={(user) => user.id}
+                    emptyState="Tidak ada data user."
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectedCount: selected.length,
+                        selectAllLabel: 'Pilih semua user',
+                        getRowLabel: (user) => `Pilih ${user.name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                        onSelectAll: (checked, rows) =>
+                            setSelected(
+                                checked ? rows.map((user) => user.id) : [],
+                            ),
+                    }}
+                    rowActions={{
+                        label: (user) => `Aksi ${user.name}`,
+                        render: (user) => (
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() => openEdit(user)}
+                                >
+                                    Edit
+                                </DropdownMenuItem>
+                                {user.id !== auth.user?.id && (
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => remove(user)}
+                                    >
+                                        Hapus
+                                    </DropdownMenuItem>
                                 )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={users}
-                        noun="user"
-                        onPageChange={goToPage}
-                        onPerPageChange={(perPage) =>
+                            </>
+                        ),
+                    }}
+                    pagination={{
+                        resource: users,
+                        noun: 'user',
+                        onPageChange: goToPage,
+                        onPerPageChange: (perPage) =>
                             navigate({
                                 ...filterParams(),
                                 page: 1,
                                 per_page: perPage,
-                            })
-                        }
-                    />
-                </DataTableShell>
-
+                            }),
+                    }}
+                    tableClassName="min-w-[640px]"
+                />
                 <Dialog
                     open={importOpen}
                     onOpenChange={(open) => {

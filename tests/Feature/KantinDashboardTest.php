@@ -62,10 +62,13 @@ class KantinDashboardTest extends TestCase
                 ->where('summary.transactions', 1)
                 ->where('summary.buyers', 1)
                 ->where('summary.itemsSold', 2)
-                ->where('transactions.0.full_name', 'Pembeli Satu')
-                ->where('transactions.0.created_at', Carbon::now()->subHour()->utc()->toRfc3339String())
-                ->where('topBuyers.0.total', 12000)
-                ->where('topItems.0.quantity', 2));
+                ->where('transactions.data.0.full_name', 'Pembeli Satu')
+                ->where('transactions.data.0.created_at', Carbon::now()->subHour()->utc()->toRfc3339String())
+                ->where('topBuyers.data.0.total', 12000)
+                ->where('topItems.data.0.quantity', 2)
+                ->where('transactions.current_page', 1)
+                ->where('topBuyers.current_page', 1)
+                ->where('topItems.current_page', 1));
 
         Carbon::setTestNow();
     }
@@ -121,11 +124,59 @@ class KantinDashboardTest extends TestCase
                 ->where('summary.transactions', 1)
                 ->where('summary.buyers', 1)
                 ->where('summary.itemsSold', 3)
-                ->where('transactions.0.id', $currentYearSale)
-                ->where('topBuyers.0.total', 15000)
-                ->where('topItems.0.quantity', 3));
+                ->where('transactions.data.0.id', $currentYearSale)
+                ->where('topBuyers.data.0.total', 15000)
+                ->where('topItems.data.0.quantity', 3));
 
         Carbon::setTestNow();
+    }
+
+    public function test_dashboard_lists_have_independent_selection_pagination_resources(): void
+    {
+        $role = Role::create(['name' => 'Kantin Dashboard Pagination Tester '.uniqid()]);
+        $role->syncPermissions(['kantin.dashboard.view']);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        for ($index = 1; $index <= 6; $index++) {
+            $student = Student::factory()->create([
+                'full_name' => sprintf('Pembeli %02d', $index),
+            ]);
+            $category = KantinCategory::factory()->create();
+            $product = KantinBarang::factory()->create([
+                'kantin_kategori_id' => $category->id,
+                'name' => sprintf('Barang %02d', $index),
+            ]);
+            $sale = DB::table('tr_kantin_penjualan')->insertGetId([
+                'student_id' => $student->id,
+                'total' => '1000.00',
+                'created_at' => now()->subMinutes($index),
+                'updated_at' => now()->subMinutes($index),
+            ]);
+            DB::table('tr_kantin_penjualan_detail')->insert([
+                'penjualan_id' => $sale,
+                'kantin_barang_id' => $product->id,
+                'quantity' => 1,
+                'harga' => '1000.00',
+                'subtotal' => '1000.00',
+                'created_at' => now()->subMinutes($index),
+                'updated_at' => now()->subMinutes($index),
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->get('/kantin/dashboard?period=all&per_page=2&transaction_page=2&buyer_page=3&item_page=2')
+            ->assertInertia(fn ($page) => $page
+                ->where('transactions.current_page', 2)
+                ->where('transactions.per_page', 2)
+                ->where('transactions.total', 6)
+                ->where('transactions.data.0.full_name', 'Pembeli 03')
+                ->where('topBuyers.current_page', 3)
+                ->where('topBuyers.total', 6)
+                ->where('topBuyers.data.0.full_name', 'Pembeli 05')
+                ->where('topItems.current_page', 2)
+                ->where('topItems.total', 6)
+                ->where('topItems.data.0.name', 'Barang 03'));
     }
 
     public function test_invalid_dashboard_period_falls_back_to_today(): void
@@ -150,15 +201,26 @@ class KantinDashboardTest extends TestCase
 
         $this->assertIsString($source);
         $this->assertIsString($sidebar);
-        $this->assertStringContainsString('Transaksi Siswa Belanja', $source);
+        $this->assertStringContainsString('Transaksi Siswa', $source);
         $this->assertStringContainsString('Top Pembeli', $source);
         $this->assertStringContainsString('Top Barang', $source);
+        $this->assertStringContainsString('variant="line"', $source);
+        $this->assertSame(3, substr_count($source, '<TabsTrigger'));
+        $this->assertSame(3, substr_count($source, '<TabsContent'));
         $this->assertStringContainsString("label: 'Hari Ini'", $source);
         $this->assertStringContainsString("label: 'Minggu Ini'", $source);
         $this->assertStringContainsString("label: 'Bulan Ini'", $source);
         $this->assertStringContainsString("label: 'Tahun Ini'", $source);
         $this->assertStringContainsString("label: 'All Transaksi'", $source);
         $this->assertStringContainsString('formatWitaDateTime', $source);
+        $this->assertStringContainsString("import DataTableShell from '@/components/data-table/data-table-shell';", $source);
+        $this->assertSame(3, substr_count($source, '<DataTableShell'));
+        $this->assertSame(3, substr_count($source, 'selection={{'));
+        $this->assertSame(3, substr_count($source, 'pagination={{'));
+        $this->assertStringContainsString('transaction_page', $source);
+        $this->assertStringContainsString('buyer_page', $source);
+        $this->assertStringContainsString('item_page', $source);
+        $this->assertStringNotContainsString("from '@/components/ui/table'", $source);
         $this->assertStringContainsString("title: 'Dashboard Kantin'", $sidebar);
     }
 }

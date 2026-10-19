@@ -20,6 +20,7 @@ class KantinDashboardController extends Controller
 
         $period = $request->string('period')->trim()->toString();
         $period = in_array($period, self::PERIODS, true) ? $period : 'today';
+        $perPage = min(max($request->integer('per_page', 10), 1), 50);
         $now = Carbon::now();
         $periodStart = match ($period) {
             'today' => $now->copy()->startOfDay(),
@@ -50,16 +51,16 @@ class KantinDashboardController extends Controller
             ->select('sales.id', 'sales.total', 'sales.created_at', 'students.full_name', 'students.nis', 'students.nisn')
             ->orderByDesc('sales.created_at')
             ->orderByDesc('sales.id')
-            ->limit(10)
-            ->get()
-            ->map(static fn (object $transaction): array => [
+            ->paginate($perPage, ['*'], 'transaction_page')
+            ->through(static fn (object $transaction): array => [
                 'id' => (int) $transaction->id,
                 'total' => (string) $transaction->total,
                 'created_at' => Carbon::parse((string) $transaction->created_at)->utc()->toRfc3339String(),
                 'full_name' => (string) $transaction->full_name,
                 'nis' => $transaction->nis,
                 'nisn' => $transaction->nisn,
-            ]);
+            ])
+            ->withQueryString();
 
         $topBuyers = (clone $sales)
             ->join('m_students as students', 'students.id', '=', 'sales.student_id')
@@ -69,8 +70,8 @@ class KantinDashboardController extends Controller
             ->orderByDesc('total')
             ->orderBy('students.full_name')
             ->orderBy('students.id')
-            ->limit(10)
-            ->get();
+            ->paginate($perPage, ['*'], 'buyer_page')
+            ->withQueryString();
 
         $topItems = DB::table('tr_kantin_penjualan_detail as details')
             ->join('tr_kantin_penjualan as sales', 'sales.id', '=', 'details.penjualan_id')
@@ -84,8 +85,8 @@ class KantinDashboardController extends Controller
             ->orderByDesc('quantity')
             ->orderBy('products.name')
             ->orderBy('products.id')
-            ->limit(10)
-            ->get();
+            ->paginate($perPage, ['*'], 'item_page')
+            ->withQueryString();
 
         return Inertia::render('kantin/dashboard', [
             'period' => $period,

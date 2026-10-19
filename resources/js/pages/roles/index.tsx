@@ -1,11 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
@@ -22,14 +19,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+
 import AppLayout from '@/layouts/app-layout';
 import type { Auth, BreadcrumbItem } from '@/types';
 
@@ -222,6 +212,44 @@ export default function RolesIndex({
         navigate({ ...filterParams(), page, per_page: roles.per_page });
     };
 
+    const columns: DataTableColumn<RoleItem>[] = [
+        {
+            id: 'role',
+            header: 'Role',
+            cell: (role) => role.name,
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'users',
+            header: 'Jumlah User',
+            cell: (role) => role.users_count,
+        },
+        {
+            id: 'permissions',
+            header: 'Permissions',
+            cell: (role) =>
+                role.permissions.length === 0 ? (
+                    '-'
+                ) : (
+                    <span className="flex flex-wrap gap-1">
+                        {role.permissions.slice(0, 4).map((permission) => (
+                            <span
+                                key={permission.id}
+                                className="rounded bg-muted px-1.5 py-0.5 text-xs"
+                            >
+                                {permission.name}
+                            </span>
+                        ))}
+                        {role.permissions.length > 4 && (
+                            <span className="text-xs text-muted-foreground">
+                                +{role.permissions.length - 4}
+                            </span>
+                        )}
+                    </span>
+                ),
+        },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Roles" />
@@ -283,160 +311,56 @@ export default function RolesIndex({
                     </div>
                 </div>
 
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {roles.total} baris dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                roles.data.length > 0 &&
-                                                selected.length ===
-                                                    roles.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? roles.data.map(
-                                                              (role) => role.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua role"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Jumlah User</TableHead>
-                                    <TableHead>Permissions</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {roles.data.map((role) => (
-                                    <TableRow key={role.id}>
-                                        <TableCell className="w-12">
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    role.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  role.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      role.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${role.name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {role.name}
-                                        </TableCell>
-                                        <TableCell>
-                                            {role.users_count}
-                                        </TableCell>
-                                        <TableCell>
-                                            {role.permissions.length === 0 ? (
-                                                '-'
-                                            ) : (
-                                                <span className="flex flex-wrap gap-1">
-                                                    {role.permissions
-                                                        .slice(0, 4)
-                                                        .map((permission) => (
-                                                            <span
-                                                                key={
-                                                                    permission.id
-                                                                }
-                                                                className="rounded bg-muted px-1.5 py-0.5 text-xs"
-                                                            >
-                                                                {
-                                                                    permission.name
-                                                                }
-                                                            </span>
-                                                        ))}
-                                                    {role.permissions.length >
-                                                        4 && (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            +
-                                                            {role.permissions
-                                                                .length - 4}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${role.name}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    onClick={() =>
-                                                        openEdit(role)
-                                                    }
-                                                >
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                {role.name !==
-                                                    'Super Admin' && (
-                                                    <DropdownMenuItem
-                                                        variant="destructive"
-                                                        onClick={() =>
-                                                            remove(role)
-                                                        }
-                                                    >
-                                                        Hapus
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {roles.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={5}>
-                                        Tidak ada data role.
-                                    </DataTableEmptyState>
+                <DataTableShell
+                    data={roles.data}
+                    columns={columns}
+                    getRowKey={(role) => role.id}
+                    emptyState="Tidak ada data role."
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectedCount: selected.length,
+                        selectAllLabel: 'Pilih semua role',
+                        getRowLabel: (role) => `Pilih ${role.name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                        onSelectAll: (checked, rows) =>
+                            setSelected(
+                                checked ? rows.map((role) => role.id) : [],
+                            ),
+                    }}
+                    rowActions={{
+                        label: (role) => `Aksi ${role.name}`,
+                        render: (role) => (
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() => openEdit(role)}
+                                >
+                                    Edit
+                                </DropdownMenuItem>
+                                {role.name !== 'Super Admin' && (
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => remove(role)}
+                                    >
+                                        Hapus
+                                    </DropdownMenuItem>
                                 )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={roles}
-                        noun="role"
-                        onPageChange={goToPage}
-                        onPerPageChange={(perPage) =>
+                            </>
+                        ),
+                    }}
+                    pagination={{
+                        resource: roles,
+                        noun: 'role',
+                        onPageChange: goToPage,
+                        onPerPageChange: (perPage) =>
                             navigate({
                                 ...filterParams(),
                                 page: 1,
                                 per_page: perPage,
-                            })
-                        }
-                    />
-                </DataTableShell>
-
+                            }),
+                    }}
+                />
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogContent className="max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
