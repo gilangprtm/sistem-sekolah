@@ -118,6 +118,12 @@ const searchItems: SearchItem[] = [
         icon: CreditCard,
     },
     {
+        id: 'teacher-homeroom',
+        group: 'Guru',
+        label: 'Wali Kelas',
+        url: '/guru/wali-kelas',
+    },
+    {
         id: 'students',
         group: 'Administrasi',
         label: 'Siswa',
@@ -205,6 +211,10 @@ export function SearchDialog() {
 
         if (item.id === 'teachers') {
             return can('teacher.view');
+        }
+
+        if (item.id === 'teacher-homeroom') {
+            return can('teacher.homeroom.view');
         }
 
         if (item.id === 'academic-years') {

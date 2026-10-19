@@ -459,7 +459,10 @@ export default function InventoryIndex({
                     </div>
                 </div>
                 <Tabs value={view} onValueChange={changeView}>
-                    <TabsList>
+                    <TabsList
+                        variant="line"
+                        className="h-11 w-full justify-start overflow-x-auto overflow-y-hidden"
+                    >
                         <TabsTrigger value="assets">Aset</TabsTrigger>
                         <TabsTrigger value="registers">Register</TabsTrigger>
                     </TabsList>

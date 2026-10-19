@@ -50,6 +50,17 @@ class InventoryListTest extends TestCase
             ->has('items.data', 2));
     }
 
+    public function test_inventory_view_switcher_uses_line_tabs(): void
+    {
+        $page = file_get_contents(resource_path('js/pages/inventory/index.tsx'));
+
+        $this->assertIsString($page);
+        $this->assertStringContainsString('variant="line"', $page);
+        $this->assertStringContainsString('className="h-11 w-full justify-start overflow-x-auto overflow-y-hidden"', $page);
+        $this->assertStringContainsString('<TabsTrigger value="assets">Aset</TabsTrigger>', $page);
+        $this->assertStringContainsString('<TabsTrigger value="registers">Register</TabsTrigger>', $page);
+    }
+
     public function test_legacy_inventory_url_redirects_to_canonical_url_and_preserves_query(): void
     {
         $response = $this->actingAs($this->admin())

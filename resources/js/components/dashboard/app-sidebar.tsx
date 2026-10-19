@@ -9,6 +9,7 @@ import {
     LayoutDashboard,
     LayoutGrid,
     Lock,
+    NotebookTabs,
     PackageSearch,
     School,
     UserRound,
@@ -83,10 +84,20 @@ export function AppSidebar({
     ];
     const inventoryItems: NavMainItem[] = [];
     const adminItems: NavMainItem[] = [];
+    const teacherItems: NavMainItem[] = [];
     const curriculumItems: NavMainItem[] = [];
     const examItems: NavMainItem[] = [];
     const studentAffairsItems: NavMainItem[] = [];
     const canteenItems: NavMainItem[] = [];
+
+    if (can('teacher.homeroom.view')) {
+        teacherItems.push({
+            id: 'teacher-homeroom',
+            title: 'Wali Kelas',
+            url: '/guru/wali-kelas',
+            icon: NotebookTabs,
+        });
+    }
 
     if (can('student.card.view')) {
         studentAffairsItems.push({
@@ -255,17 +266,20 @@ export function AppSidebar({
         ...(curriculumItems.length > 0
             ? [{ id: 3, label: 'Kurikulum', items: curriculumItems }]
             : []),
+        ...(teacherItems.length > 0
+            ? [{ id: 4, label: 'Guru', items: teacherItems }]
+            : []),
         ...(studentAffairsItems.length > 0
-            ? [{ id: 4, label: 'Kesiswaan', items: studentAffairsItems }]
+            ? [{ id: 5, label: 'Kesiswaan', items: studentAffairsItems }]
             : []),
         ...(canteenItems.length > 0
-            ? [{ id: 5, label: 'Kantin', items: canteenItems }]
+            ? [{ id: 6, label: 'Kantin', items: canteenItems }]
             : []),
         ...(examItems.length > 0
-            ? [{ id: 6, label: 'Ujian', items: examItems }]
+            ? [{ id: 7, label: 'Ujian', items: examItems }]
             : []),
         ...(adminItems.length > 0
-            ? [{ id: 7, label: 'Administrasi', items: adminItems }]
+            ? [{ id: 8, label: 'Administrasi', items: adminItems }]
             : []),
     ];
 
