@@ -41,6 +41,25 @@ class ApiAuthTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_login_is_rate_limited_across_emails_from_the_same_ip(): void
+    {
+        foreach (range(1, 20) as $attempt) {
+            $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.30'])
+                ->postJson('/api/v1/auth/login', [
+                    'email' => "unknown{$attempt}@example.com",
+                    'password' => 'wrong-password',
+                ])
+                ->assertUnprocessable();
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.30'])
+            ->postJson('/api/v1/auth/login', [
+                'email' => 'another-user@example.com',
+                'password' => 'wrong-password',
+            ])
+            ->assertTooManyRequests();
+    }
+
     public function test_me_requires_token(): void
     {
         $this->getJson('/api/v1/auth/me')->assertUnauthorized();

@@ -4,7 +4,6 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -20,17 +19,14 @@ class AuthenticationTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_login_and_register_use_the_school_hero_background(): void
+    public function test_login_uses_the_school_hero_background(): void
     {
         $loginSource = file_get_contents(resource_path('js/pages/auth/login.tsx'));
-        $registerSource = file_get_contents(resource_path('js/pages/auth/register.tsx'));
         $layoutSource = file_get_contents(resource_path('js/layouts/auth/auth-simple-layout.tsx'));
 
         $this->assertIsString($loginSource);
-        $this->assertIsString($registerSource);
         $this->assertIsString($layoutSource);
         $this->assertStringContainsString('heroBackground: true', $loginSource);
-        $this->assertStringContainsString('heroBackground: true', $registerSource);
         $this->assertStringContainsString(
             "url('/images/hero-background.png')",
             $layoutSource,
@@ -180,17 +176,55 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_users_are_rate_limited()
+    public function test_users_are_rate_limited_by_credentials_and_ip(): void
     {
         $user = User::factory()->create();
 
-        RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
+        foreach (range(1, 5) as $attempt) {
+            $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])
+                ->post(route('login.store'), [
+                    'email' => $user->email,
+                    'password' => 'wrong-password',
+                ])
+                ->assertSessionHasErrors('email');
+        }
 
-        $response = $this->post(route('login.store'), [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ]);
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])
+            ->post(route('login.store'), [
+                'email' => $user->email,
+                'password' => 'wrong-password',
+            ])
+            ->assertTooManyRequests();
+    }
 
-        $response->assertTooManyRequests();
+    public function test_login_attempts_are_rate_limited_across_emails_from_the_same_ip(): void
+    {
+        foreach (range(1, 20) as $attempt) {
+            $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.20'])
+                ->post(route('login.store'), [
+                    'email' => "unknown{$attempt}@example.com",
+                    'password' => 'wrong-password',
+                ])
+                ->assertSessionHasErrors('email');
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.20'])
+            ->post(route('login.store'), [
+                'email' => 'another-user@example.com',
+                'password' => 'wrong-password',
+            ])
+            ->assertTooManyRequests();
+    }
+
+    public function test_passkey_authentication_routes_are_not_available(): void
+    {
+        $this->get('/passkeys/login/options')->assertNotFound();
+        $this->post('/passkeys/login')->assertNotFound();
+        $this->get('/passkeys/confirm/options')->assertNotFound();
+        $this->post('/passkeys/confirm')->assertNotFound();
+        $this->get('/user/passkeys/options')->assertNotFound();
+        $this->post('/user/passkeys')->assertNotFound();
+        $this->delete('/user/passkeys/1')->assertNotFound();
+        $this->get('/.well-known/passkey-endpoints')->assertNotFound();
     }
 }

@@ -5,7 +5,6 @@ import {
     useStudentPwaInstall,
 } from '@/hooks/use-student-pwa-install';
 import { dashboard, login } from '@/routes';
-import { register } from '@/routes';
 
 export default function Welcome() {
     const { auth } = usePage().props;
@@ -72,12 +71,6 @@ export default function Welcome() {
                                         className="size-4"
                                     />
                                     Masuk
-                                </Link>
-                                <Link
-                                    href={register()}
-                                    className="inline-flex min-h-10 items-center rounded-full bg-white px-4 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:outline-none"
-                                >
-                                    Daftar
                                 </Link>
                             </>
                         )}
