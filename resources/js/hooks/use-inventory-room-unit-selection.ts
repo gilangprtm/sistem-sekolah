@@ -45,13 +45,13 @@ export function useInventoryRoomUnitSelection({
     const [currentLookupSearch, setCurrentLookupSearch] =
         useState(lookupSearch);
     const [selectedPage, setSelectedPage] = useState(1);
+    const [selectedPerPage, setSelectedPerPage] = useState(10);
 
     const selectedUnitRows = useMemo(
         () =>
             selectedUnits.map((id) => selectedUnitDetails[id]).filter(Boolean),
         [selectedUnitDetails, selectedUnits],
     );
-    const selectedPerPage = 10;
     const selectedLastPage = Math.max(
         1,
         Math.ceil(selectedUnitRows.length / selectedPerPage),
@@ -60,19 +60,25 @@ export function useInventoryRoomUnitSelection({
         (selectedPage - 1) * selectedPerPage,
         selectedPage * selectedPerPage,
     );
+    const selectedPaginator = {
+        current_page: selectedPage,
+        last_page: selectedLastPage,
+        per_page: selectedPerPage,
+        total: selectedUnitRows.length,
+    };
 
     const openLookup = () => {
         setLookupSelectedUnits(selectedUnits);
         setLookupOpen(true);
     };
 
-    const loadLookupPage = (page: number) => {
+    const loadLookupPage = (page: number, perPage = lookupUnits.per_page) => {
         router.get(
             lookupUrl,
             {
                 lookup_search: currentLookupSearch || undefined,
                 lookup_page: page,
-                lookup_per_page: lookupUnits.per_page,
+                lookup_per_page: perPage,
             },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -84,11 +90,22 @@ export function useInventoryRoomUnitSelection({
         setLookupOpen(false);
     };
 
-    const toggleLookupUnit = (
-        unitId: number,
-        checked: boolean | 'indeterminate',
+    const setLookupSelection = (
+        unitIds: number[],
+        units: InventoryRoomUnit[] = [],
     ) => {
-        if (checked === true) {
+        setLookupSelectedUnits(unitIds);
+
+        if (units.length > 0) {
+            setSelectedUnitDetails((current) => ({
+                ...current,
+                ...Object.fromEntries(units.map((unit) => [unit.id, unit])),
+            }));
+        }
+    };
+
+    const toggleLookupUnit = (unitId: number, checked: boolean) => {
+        if (checked) {
             const unit = lookupUnits.data.find(
                 (candidate) => candidate.id === unitId,
             );
@@ -101,12 +118,12 @@ export function useInventoryRoomUnitSelection({
             }
         }
 
-        setLookupSelectedUnits((current) =>
-            checked === true
-                ? current.includes(unitId)
-                    ? current
-                    : [...current, unitId]
-                : current.filter((id) => id !== unitId),
+        setLookupSelection(
+            checked
+                ? lookupSelectedUnits.includes(unitId)
+                    ? lookupSelectedUnits
+                    : [...lookupSelectedUnits, unitId]
+                : lookupSelectedUnits.filter((id) => id !== unitId),
         );
     };
 
@@ -126,6 +143,8 @@ export function useInventoryRoomUnitSelection({
         lookupOpen,
         lookupSelectedUnits,
         paginatedSelectedUnitRows,
+        selectedPaginator,
+        selectedPerPage,
         selectedLastPage,
         selectedPage,
         selectedUnitRows,
@@ -133,6 +152,8 @@ export function useInventoryRoomUnitSelection({
         setCurrentLookupSearch,
         setLookupOpen,
         setSelectedPage,
+        setSelectedPerPage,
+        setLookupSelection,
         loadLookupPage,
         openLookup,
         confirmLookup,

@@ -61,6 +61,27 @@ class InventoryListTest extends TestCase
         $this->assertStringContainsString('<TabsTrigger value="registers">Register</TabsTrigger>', $page);
     }
 
+    public function test_asset_and_register_lists_use_the_generic_data_table_shell(): void
+    {
+        $page = file_get_contents(resource_path('js/pages/inventory/index.tsx'));
+
+        $this->assertIsString($page);
+        $this->assertStringContainsString("import DataTableShell from '@/components/data-table/data-table-shell';", $page);
+        $this->assertSame(2, substr_count($page, '<DataTableShell'));
+        $this->assertStringContainsString('columns={itemColumns}', $page);
+        $this->assertStringContainsString('columns={registerColumns}', $page);
+        $this->assertStringContainsString("selectAllLabel: 'Pilih semua inventaris'", $page);
+        $this->assertStringContainsString("selectAllLabel: 'Pilih semua register'", $page);
+        $this->assertStringContainsString('selectedKeys: selectedRegisters', $page);
+        $this->assertStringContainsString('rowActions={{', $page);
+        $registerTab = substr($page, strpos($page, '<TabsContent value="registers">'));
+        $this->assertIsString($registerTab);
+        $this->assertStringNotContainsString('rowActions={{', $registerTab);
+        $this->assertSame(2, substr_count($page, 'pagination={{'));
+        $this->assertStringNotContainsString("from '@/components/ui/table'", $page);
+        $this->assertStringNotContainsString("from '@/components/ui/pagination'", $page);
+    }
+
     public function test_legacy_inventory_url_redirects_to_canonical_url_and_preserves_query(): void
     {
         $response = $this->actingAs($this->admin())

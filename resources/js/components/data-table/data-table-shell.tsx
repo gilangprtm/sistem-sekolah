@@ -36,12 +36,20 @@ export type DataTableSelection<Row, RowKey extends string | number> = {
     selectAllLabel: string;
     getRowLabel: (row: Row) => string;
     selectedCountLabel?: (count: number, total: number) => ReactNode;
+    selectedCount?: number;
     clearSelectionLabel?: string;
+    onClearSelection?: () => void;
+    onRowSelectionChange?: (row: Row, checked: boolean) => void;
+    onSelectAll?: (checked: boolean, rows: Row[]) => void;
 };
 
 export type DataTableRowAction<Row> = {
-    label: (row: Row) => string;
+    label?: (row: Row) => string;
     render: (row: Row) => ReactNode;
+    variant?: 'menu' | 'custom';
+    header?: ReactNode;
+    headerClassName?: string;
+    cellClassName?: string;
 };
 
 type DataTablePaginationOptions = {
@@ -109,8 +117,9 @@ export default function DataTableShell<
         data.every((row) => selection.selectedKeys.includes(getRowKey(row))),
     );
     const selectedCount = hasSelection
-        ? data.filter((row) => selection.selectedKeys.includes(getRowKey(row)))
-              .length
+        ? (selection.selectedCount ??
+          data.filter((row) => selection.selectedKeys.includes(getRowKey(row)))
+              .length)
         : 0;
     const totalRows = pagination?.resource.total ?? data.length;
     const columnCount =
@@ -142,7 +151,11 @@ export default function DataTableShell<
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => selection.onSelectionChange([])}
+                            onClick={() =>
+                                selection.onClearSelection
+                                    ? selection.onClearSelection()
+                                    : selection.onSelectionChange([])
+                            }
                             disabled={selectedCount === 0}
                         >
                             {selection.clearSelectionLabel ?? 'Hapus pilihan'}
@@ -159,11 +172,16 @@ export default function DataTableShell<
                                     <Checkbox
                                         checked={allSelected}
                                         onCheckedChange={(checked) =>
-                                            selection.onSelectionChange(
-                                                checked
-                                                    ? data.map(getRowKey)
-                                                    : [],
-                                            )
+                                            selection.onSelectAll
+                                                ? selection.onSelectAll(
+                                                      checked === true,
+                                                      data,
+                                                  )
+                                                : selection.onSelectionChange(
+                                                      checked
+                                                          ? data.map(getRowKey)
+                                                          : [],
+                                                  )
                                         }
                                         aria-label={selection.selectAllLabel}
                                     />
@@ -178,8 +196,13 @@ export default function DataTableShell<
                                 </TableHead>
                             ))}
                             {rowActions && (
-                                <TableHead className="text-right">
-                                    Aksi
+                                <TableHead
+                                    className={cn(
+                                        'text-right',
+                                        rowActions.headerClassName,
+                                    )}
+                                >
+                                    {rowActions.header ?? 'Aksi'}
                                 </TableHead>
                             )}
                         </TableRow>
@@ -197,20 +220,25 @@ export default function DataTableShell<
                                                     key,
                                                 )}
                                                 onCheckedChange={(checked) =>
-                                                    selection.onSelectionChange(
-                                                        checked
-                                                            ? [
-                                                                  ...selection.selectedKeys,
-                                                                  key,
-                                                              ]
-                                                            : selection.selectedKeys.filter(
-                                                                  (
-                                                                      selectedKey,
-                                                                  ) =>
-                                                                      selectedKey !==
-                                                                      key,
-                                                              ),
-                                                    )
+                                                    selection.onRowSelectionChange
+                                                        ? selection.onRowSelectionChange(
+                                                              row,
+                                                              checked === true,
+                                                          )
+                                                        : selection.onSelectionChange(
+                                                              checked
+                                                                  ? [
+                                                                        ...selection.selectedKeys,
+                                                                        key,
+                                                                    ]
+                                                                  : selection.selectedKeys.filter(
+                                                                        (
+                                                                            selectedKey,
+                                                                        ) =>
+                                                                            selectedKey !==
+                                                                            key,
+                                                                    ),
+                                                          )
                                                 }
                                                 aria-label={selection.getRowLabel(
                                                     row,
@@ -227,12 +255,25 @@ export default function DataTableShell<
                                         </TableCell>
                                     ))}
                                     {rowActions && (
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={rowActions.label(row)}
-                                            >
-                                                {rowActions.render(row)}
-                                            </DataTableRowActions>
+                                        <TableCell
+                                            className={cn(
+                                                'text-right',
+                                                rowActions.cellClassName,
+                                            )}
+                                        >
+                                            {rowActions.variant === 'custom' ? (
+                                                rowActions.render(row)
+                                            ) : (
+                                                <DataTableRowActions
+                                                    label={
+                                                        rowActions.label?.(
+                                                            row,
+                                                        ) ?? 'Buka menu aksi'
+                                                    }
+                                                >
+                                                    {rowActions.render(row)}
+                                                </DataTableRowActions>
+                                            )}
                                         </TableCell>
                                     )}
                                 </TableRow>

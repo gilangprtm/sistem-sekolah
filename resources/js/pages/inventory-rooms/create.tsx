@@ -1,10 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, PackageSearch, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, PackageSearch, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
+import DataTableShell from '@/components/data-table/data-table-shell';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -15,14 +16,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useInventoryRoomUnitSelection } from '@/hooks/use-inventory-room-unit-selection';
 import AppLayout from '@/layouts/app-layout';
@@ -77,9 +70,7 @@ export default function InventoryRoomsCreate({
         lookupOpen,
         lookupSelectedUnits,
         paginatedSelectedUnitRows,
-        selectedLastPage,
-        selectedPage,
-        selectedUnitRows,
+        selectedPaginator,
         selectedUnits,
         setCurrentLookupSearch,
         setLookupOpen,
@@ -89,12 +80,88 @@ export default function InventoryRoomsCreate({
         confirmLookup,
         removeSelectedUnit,
         toggleLookupUnit,
+        setLookupSelection,
+        setSelectedPerPage,
     } = useInventoryRoomUnitSelection({
         lookupUnits,
         lookupSearch: lookupFilters.search,
         lookupUrl: '/inventaris/inventory-rooms/create',
     });
     const visibleUnits = lookupUnits.data;
+    const selectedUnitColumns: DataTableColumn<Unit>[] = [
+        {
+            id: 'code',
+            header: 'Kode Register',
+            cell: (unit) => unit.display_code,
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'item',
+            header: 'Nama/Jenis',
+            cell: (unit) => (
+                <>
+                    <div>{unit.item_name}</div>
+                    {unit.item_brand && (
+                        <div className="text-xs font-normal text-muted-foreground">
+                            {unit.item_brand}
+                        </div>
+                    )}
+                </>
+            ),
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'condition',
+            header: 'Kondisi',
+            cell: (unit) =>
+                `${unit.condition} — ${conditionLabels[unit.condition] ?? unit.condition}`,
+        },
+        {
+            id: 'room',
+            header: 'Ruangan Saat Ini',
+            cell: (unit) =>
+                unit.room === null
+                    ? 'Belum ditempatkan'
+                    : `${unit.room.name} (${unit.room.code})`,
+        },
+    ];
+    const lookupColumns: DataTableColumn<Unit>[] = [
+        {
+            id: 'code',
+            header: 'Kode Register',
+            cell: (unit) => unit.display_code,
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'item',
+            header: 'Nama/Jenis',
+            cell: (unit) => (
+                <>
+                    <div>{unit.item_name}</div>
+                    {unit.item_brand && (
+                        <div className="text-xs font-normal text-muted-foreground">
+                            {unit.item_brand}
+                        </div>
+                    )}
+                </>
+            ),
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'condition',
+            header: 'Kondisi',
+            cell: (unit) =>
+                `${unit.condition} — ${conditionLabels[unit.condition] ?? unit.condition}`,
+        },
+        {
+            id: 'room',
+            header: 'Ruangan Saat Ini',
+            cell: (unit) =>
+                unit.room === null
+                    ? 'Belum ditempatkan'
+                    : `${unit.room.name} (${unit.room.code})`,
+        },
+    ];
 
     const submit = () => {
         setProcessing(true);
@@ -111,42 +178,6 @@ export default function InventoryRoomsCreate({
             },
         );
     };
-
-    const unitCells = (unit: Unit, lookup = false) => (
-        <>
-            {lookup && (
-                <TableCell>
-                    <Checkbox
-                        checked={lookupSelectedUnits.includes(unit.id)}
-                        onCheckedChange={(checked) =>
-                            toggleLookupUnit(unit.id, checked)
-                        }
-                        aria-label={`Pilih ${unit.display_code}`}
-                    />
-                </TableCell>
-            )}
-            <TableCell className="font-mono text-xs">
-                {unit.display_code}
-            </TableCell>
-            <TableCell className="font-medium">
-                <div>{unit.item_name}</div>
-                {unit.item_brand && (
-                    <div className="text-xs font-normal text-muted-foreground">
-                        {unit.item_brand}
-                    </div>
-                )}
-            </TableCell>
-            <TableCell>
-                {unit.condition} —{' '}
-                {conditionLabels[unit.condition] ?? unit.condition}
-            </TableCell>
-            <TableCell>
-                {unit.room === null
-                    ? 'Belum ditempatkan'
-                    : `${unit.room.name} (${unit.room.code})`}
-            </TableCell>
-        </>
-    );
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -231,92 +262,45 @@ export default function InventoryRoomsCreate({
                             </Button>
                         </div>
                         <InputError message={errors.unit_ids} />
-                        <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                            <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead>Kode Register</TableHead>
-                                        <TableHead>Nama/Jenis</TableHead>
-                                        <TableHead>Kondisi</TableHead>
-                                        <TableHead>Ruangan Saat Ini</TableHead>
-                                        <TableHead className="text-right">
-                                            Aksi
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {paginatedSelectedUnitRows.map((unit) => (
-                                        <TableRow key={unit.id}>
-                                            {unitCells(unit)}
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon-sm"
-                                                    className="text-destructive"
-                                                    onClick={() =>
-                                                        removeSelectedUnit(
-                                                            unit.id,
-                                                        )
-                                                    }
-                                                    aria-label={`Hapus ${unit.display_code} dari pilihan`}
-                                                >
-                                                    <Trash2 />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {selectedUnitRows.length === 0 && (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={5}
-                                                className="py-8 text-center text-muted-foreground"
-                                            >
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
-                                                    Belum ada register dipilih.
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                        {selectedUnitRows.length > 0 && (
-                            <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                <span>
-                                    Halaman {selectedPage} dari{' '}
-                                    {selectedLastPage} ·{' '}
-                                    {selectedUnitRows.length} register
-                                </span>
-                                <div className="flex gap-2">
+                        <DataTableShell
+                            data={paginatedSelectedUnitRows}
+                            columns={selectedUnitColumns}
+                            getRowKey={(unit) => unit.id}
+                            rowActions={{
+                                variant: 'custom',
+                                cellClassName: 'text-center',
+                                render: (unit) => (
                                     <Button
                                         type="button"
-                                        variant="outline"
+                                        variant="ghost"
                                         size="sm"
+                                        className="text-destructive"
                                         onClick={() =>
-                                            setSelectedPage((page) => page - 1)
+                                            removeSelectedUnit(unit.id)
                                         }
-                                        disabled={selectedPage <= 1}
+                                        aria-label={`Hapus ${unit.display_code} dari pilihan`}
                                     >
-                                        Sebelumnya
+                                        Hapus
                                     </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() =>
-                                            setSelectedPage((page) => page + 1)
-                                        }
-                                        disabled={
-                                            selectedPage >= selectedLastPage
-                                        }
-                                    >
-                                        Berikutnya
-                                    </Button>
+                                ),
+                            }}
+                            emptyState={
+                                <div className="flex flex-col items-center gap-2">
+                                    <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
+                                    Belum ada register dipilih.
                                 </div>
-                            </div>
-                        )}
+                            }
+                            tableClassName="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4"
+                            pagination={{
+                                resource: selectedPaginator,
+                                onPageChange: setSelectedPage,
+                                onPerPageChange: (perPage) => {
+                                    setSelectedPerPage(perPage);
+                                    setSelectedPage(1);
+                                },
+                                noun: 'register',
+                            }}
+                        />
                     </section>
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         <Button asChild variant="outline">
@@ -331,7 +315,7 @@ export default function InventoryRoomsCreate({
                 </div>
             </div>
             <Dialog open={lookupOpen} onOpenChange={setLookupOpen}>
-                <DialogContent className="max-w-5xl">
+                <DialogContent className="w-[calc(100%-2rem)] max-w-none sm:max-w-none xl:max-w-[90vw] 2xl:max-w-[1600px]">
                     <DialogHeader>
                         <DialogTitle>Tambah Register</DialogTitle>
                         <DialogDescription>
@@ -368,76 +352,56 @@ export default function InventoryRoomsCreate({
                                 Cari
                             </Button>
                         </div>
-                        <div className="max-h-[55vh] overflow-auto rounded-xl border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-12">
-                                            Pilih
-                                        </TableHead>
-                                        <TableHead>Kode Register</TableHead>
-                                        <TableHead>Nama/Jenis</TableHead>
-                                        <TableHead>Kondisi</TableHead>
-                                        <TableHead>Ruangan Saat Ini</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {visibleUnits.map((unit) => (
-                                        <TableRow key={unit.id}>
-                                            {unitCells(unit, true)}
-                                        </TableRow>
-                                    ))}
-                                    {visibleUnits.length === 0 && (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={5}
-                                                className="py-8 text-center text-muted-foreground"
-                                            >
-                                                Register tidak ditemukan.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                            <span>
-                                Halaman {lookupUnits.current_page} dari{' '}
-                                {lookupUnits.last_page} · {lookupUnits.total}{' '}
-                                register
-                            </span>
-                            <div className="flex gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        loadLookupPage(
-                                            lookupUnits.current_page - 1,
-                                        )
-                                    }
-                                    disabled={lookupUnits.current_page <= 1}
-                                >
-                                    Sebelumnya
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        loadLookupPage(
-                                            lookupUnits.current_page + 1,
-                                        )
-                                    }
-                                    disabled={
-                                        lookupUnits.current_page >=
-                                        lookupUnits.last_page
-                                    }
-                                >
-                                    Berikutnya
-                                </Button>
-                            </div>
-                        </div>
+                        <DataTableShell
+                            data={visibleUnits}
+                            columns={lookupColumns}
+                            getRowKey={(unit) => unit.id}
+                            emptyState="Register tidak ditemukan."
+                            className="max-h-[55vh] overflow-auto"
+                            tableClassName="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4"
+                            selection={{
+                                selectedKeys: lookupSelectedUnits,
+                                onSelectionChange: setLookupSelection,
+                                onRowSelectionChange: (unit, checked) =>
+                                    toggleLookupUnit(unit.id, checked),
+                                onSelectAll: (checked, rows) =>
+                                    setLookupSelection(
+                                        checked
+                                            ? Array.from(
+                                                  new Set([
+                                                      ...lookupSelectedUnits,
+                                                      ...rows.map(
+                                                          (unit) => unit.id,
+                                                      ),
+                                                  ]),
+                                              )
+                                            : lookupSelectedUnits.filter(
+                                                  (id) =>
+                                                      !rows.some(
+                                                          (unit) =>
+                                                              unit.id === id,
+                                                      ),
+                                              ),
+                                        rows,
+                                    ),
+                                onClearSelection: () => setLookupSelection([]),
+                                selectedCount: lookupSelectedUnits.length,
+                                selectAllLabel:
+                                    'Pilih semua register di halaman',
+                                getRowLabel: (unit) =>
+                                    `Pilih ${unit.display_code}`,
+                                selectedCountLabel: (count, total) =>
+                                    `${count} dari ${total} register dipilih.`,
+                                clearSelectionLabel: 'Hapus semua pilihan',
+                            }}
+                            pagination={{
+                                resource: lookupUnits,
+                                onPageChange: loadLookupPage,
+                                onPerPageChange: (perPage) =>
+                                    loadLookupPage(1, perPage),
+                                noun: 'register',
+                            }}
+                        />
                     </div>
                     <DialogFooter>
                         <Button

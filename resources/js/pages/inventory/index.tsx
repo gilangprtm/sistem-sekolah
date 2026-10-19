@@ -1,18 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    ChevronsLeft,
-    ChevronsRight,
-    Download,
-    MoreHorizontal,
-    PackageSearch,
-    Plus,
-    Search,
-} from 'lucide-react';
+import { Download, PackageSearch, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
+import DataTableShell from '@/components/data-table/data-table-shell';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuItem,
@@ -21,30 +14,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { formatRupiah } from '@/lib/utils';
@@ -151,22 +120,6 @@ function FilterCombobox({
     );
 }
 
-function getPageNumbers(currentPage: number, pageCount: number) {
-    if (pageCount <= 3) {
-        return Array.from({ length: pageCount }, (_, i) => i + 1);
-    }
-
-    if (currentPage <= 2) {
-        return [1, 2, 3];
-    }
-
-    if (currentPage >= pageCount - 1) {
-        return [pageCount - 2, pageCount - 1, pageCount];
-    }
-
-    return [currentPage - 1, currentPage, currentPage + 1];
-}
-
 export default function InventoryIndex({
     view,
     items,
@@ -175,6 +128,7 @@ export default function InventoryIndex({
     filterOptions,
 }: Props) {
     const [selected, setSelected] = useState<number[]>([]);
+    const [selectedRegisters, setSelectedRegisters] = useState<number[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
     const [tahun, setTahun] = useState(filters.tahun ?? '');
     const [kondisi, setKondisi] = useState(filters.kondisi ?? '');
@@ -186,7 +140,123 @@ export default function InventoryIndex({
     );
 
     const categories = filterOptions.categories;
-    const pageNumbers = getPageNumbers(items.current_page, items.last_page);
+    const itemColumns: DataTableColumn<Item>[] = [
+        {
+            id: 'code',
+            header: 'Kode Barang',
+            cell: (item) => item.kode_barang,
+            headerClassName: 'whitespace-nowrap',
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'register',
+            header: 'Register',
+            cell: (item) => item.register_range,
+            headerClassName: 'whitespace-nowrap',
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'name',
+            header: 'Nama/Jenis',
+            cell: (item) => item.nama_jenis_barang,
+            headerClassName: 'whitespace-nowrap',
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'brand',
+            header: 'Merk/Type',
+            cell: (item) => item.merk_type ?? '-',
+            headerClassName: 'whitespace-nowrap',
+        },
+        {
+            id: 'year',
+            header: 'Tahun',
+            cell: (item) => item.tahun_pembelian ?? '-',
+        },
+        {
+            id: 'category',
+            header: 'Kategori',
+            cell: (item) => item.category?.name ?? 'Tanpa kategori',
+        },
+        {
+            id: 'type',
+            header: 'Jenis',
+            cell: (item) => item.inventoryType?.name ?? '-',
+        },
+        {
+            id: 'quantity',
+            header: 'Qty',
+            cell: (item) => item.qty,
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+        },
+        {
+            id: 'price',
+            header: 'Harga',
+            cell: (item) => formatRupiah(Number(item.harga)),
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+        },
+        {
+            id: 'total',
+            header: 'Total',
+            cell: (item) => formatRupiah(item.total),
+            headerClassName: 'text-right',
+            cellClassName: 'text-right font-medium',
+        },
+    ];
+    const registerColumns: DataTableColumn<Register>[] = [
+        {
+            id: 'full-code',
+            header: 'Kode Lengkap',
+            cell: (register) => register.display_code,
+            headerClassName: 'whitespace-nowrap',
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'item-code',
+            header: 'Kode Aset',
+            cell: (register) => register.item.kode_barang,
+            headerClassName: 'whitespace-nowrap',
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'register',
+            header: 'Register',
+            cell: (register) => register.register,
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'name',
+            header: 'Nama Aset',
+            cell: (register) => register.item.nama_jenis_barang,
+            headerClassName: 'whitespace-nowrap',
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'brand',
+            header: 'Merk/Type',
+            cell: (register) => register.item.merk_type ?? '-',
+            headerClassName: 'whitespace-nowrap',
+        },
+        {
+            id: 'year',
+            header: 'Tahun',
+            cell: (register) => register.item.tahun_pembelian ?? '-',
+        },
+        {
+            id: 'price',
+            header: 'Harga per Unit',
+            cell: (register) => formatRupiah(Number(register.item.harga)),
+            headerClassName: 'text-right whitespace-nowrap',
+            cellClassName: 'text-right',
+        },
+        {
+            id: 'condition',
+            header: 'Kondisi',
+            cell: (register) => register.condition,
+        },
+    ];
 
     const filterParams = (): Record<string, string> => {
         const params: Record<string, string> = {};
@@ -223,6 +293,8 @@ export default function InventoryIndex({
     };
 
     const applyFilters = () => {
+        setSelected([]);
+        setSelectedRegisters([]);
         router.get(
             '/inventaris/inventory',
             {
@@ -246,6 +318,8 @@ export default function InventoryIndex({
         setSatuan('');
         setCategory('');
         setInventoryType('');
+        setSelected([]);
+        setSelectedRegisters([]);
         router.get(
             '/inventaris/inventory',
             {
@@ -261,6 +335,7 @@ export default function InventoryIndex({
     };
 
     const goToPage = (page: number) => {
+        setSelected([]);
         router.get(
             '/inventaris/inventory',
             {
@@ -274,6 +349,8 @@ export default function InventoryIndex({
     };
 
     const changeView = (nextView: string) => {
+        setSelected([]);
+        setSelectedRegisters([]);
         router.get(
             '/inventaris/inventory',
             {
@@ -289,6 +366,7 @@ export default function InventoryIndex({
     };
 
     const goToRegisterPage = (page: number) => {
+        setSelectedRegisters([]);
         router.get(
             '/inventaris/inventory',
             {
@@ -467,656 +545,104 @@ export default function InventoryIndex({
                         <TabsTrigger value="registers">Register</TabsTrigger>
                     </TabsList>
                     <TabsContent value="assets">
-                        <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                            <div className="flex flex-col gap-3 border-b px-4 py-4 md:flex-row md:items-center md:justify-between">
-                                <div className="text-sm text-muted-foreground">
-                                    {selected.length} dari {items.total} baris
-                                    dipilih.
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setSelected([])}
-                                    disabled={!selected.length}
-                                >
-                                    Hapus pilihan
-                                </Button>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent">
-                                            <TableHead className="w-12">
-                                                <Checkbox
-                                                    checked={
-                                                        items.data.length > 0 &&
-                                                        selected.length ===
-                                                            items.data.length
-                                                    }
-                                                    onCheckedChange={(
-                                                        checked,
-                                                    ) =>
-                                                        setSelected(
-                                                            checked
-                                                                ? items.data.map(
-                                                                      (item) =>
-                                                                          item.id,
-                                                                  )
-                                                                : [],
-                                                        )
-                                                    }
-                                                    aria-label="Pilih semua inventaris"
-                                                />
-                                            </TableHead>
-                                            <TableHead>Kode Barang</TableHead>
-                                            <TableHead>Register</TableHead>
-                                            <TableHead>Nama/Jenis</TableHead>
-                                            <TableHead>Merk/Type</TableHead>
-                                            <TableHead>Tahun</TableHead>
-                                            <TableHead>Kategori</TableHead>
-                                            <TableHead>Jenis</TableHead>
-                                            <TableHead className="text-right">
-                                                Qty
-                                            </TableHead>
-                                            <TableHead className="text-right">
-                                                Harga
-                                            </TableHead>
-                                            <TableHead className="text-right">
-                                                Total
-                                            </TableHead>
-                                            <TableHead className="text-right">
-                                                Aksi
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {items.data.map((item) => (
-                                            <TableRow key={item.id}>
-                                                <TableCell className="w-12">
-                                                    <Checkbox
-                                                        checked={selected.includes(
-                                                            item.id,
-                                                        )}
-                                                        onCheckedChange={(
-                                                            checked,
-                                                        ) =>
-                                                            setSelected(
-                                                                (current) =>
-                                                                    checked
-                                                                        ? [
-                                                                              ...current,
-                                                                              item.id,
-                                                                          ]
-                                                                        : current.filter(
-                                                                              (
-                                                                                  id,
-                                                                              ) =>
-                                                                                  id !==
-                                                                                  item.id,
-                                                                          ),
-                                                            )
-                                                        }
-                                                        aria-label={`Pilih ${item.kode_barang}`}
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs">
-                                                    {item.kode_barang}
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs">
-                                                    {item.register_range}
-                                                </TableCell>
-                                                <TableCell className="font-medium">
-                                                    {item.nama_jenis_barang}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {item.merk_type ?? '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {item.tahun_pembelian ??
-                                                        '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {item.category?.name ??
-                                                        'Tanpa kategori'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {item.inventoryType?.name ??
-                                                        '-'}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {item.qty}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {formatRupiah(
-                                                        Number(item.harga),
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium">
-                                                    {formatRupiah(item.total)}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger
-                                                            asChild
-                                                        >
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon-sm"
-                                                                className="text-muted-foreground"
-                                                                aria-label={`Aksi ${item.kode_barang}`}
-                                                            >
-                                                                <MoreHorizontal />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem
-                                                                asChild
-                                                            >
-                                                                <Link
-                                                                    href={`/inventaris/inventory/${item.id}`}
-                                                                >
-                                                                    Lihat detail
-                                                                </Link>
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {items.data.length === 0 && (
-                                            <TableRow>
-                                                <TableCell
-                                                    colSpan={12}
-                                                    className="text-center text-muted-foreground"
-                                                >
-                                                    <div className="flex flex-col items-center gap-2 py-8">
-                                                        <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
-                                                        Tidak ada data
-                                                        inventaris.
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
-                                <div className="text-sm text-muted-foreground">
-                                    {selected.length} dari {items.total} baris
-                                    dipilih.
-                                </div>
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-muted-foreground">
-                                            Baris per halaman
-                                        </span>
-                                        <Select
-                                            value={`${items.per_page}`}
-                                            onValueChange={(value) =>
-                                                router.get(
-                                                    '/inventaris/inventory',
-                                                    {
-                                                        ...filters,
-                                                        view: 'assets',
-                                                        per_page: value,
-                                                        page: 1,
-                                                        register_page:
-                                                            registers.current_page,
-                                                        register_per_page:
-                                                            registers.per_page,
-                                                    },
-                                                    { preserveState: true },
-                                                )
-                                            }
+                        <DataTableShell
+                            data={items.data}
+                            columns={itemColumns}
+                            getRowKey={(item) => item.id}
+                            emptyState={
+                                <>
+                                    <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
+                                    Tidak ada data inventaris.
+                                </>
+                            }
+                            selection={{
+                                selectedKeys: selected,
+                                onSelectionChange: setSelected,
+                                selectAllLabel: 'Pilih semua inventaris',
+                                getRowLabel: (item) =>
+                                    `Pilih ${item.kode_barang}`,
+                                selectedCountLabel: (count, total) =>
+                                    `${count} dari ${total} baris dipilih.`,
+                            }}
+                            rowActions={{
+                                label: (item) => `Aksi ${item.kode_barang}`,
+                                render: (item) => (
+                                    <DropdownMenuItem asChild>
+                                        <Link
+                                            href={`/inventaris/inventory/${item.id}`}
                                         >
-                                            <SelectTrigger className="h-8 w-18">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {[10, 20, 30, 40, 50].map(
-                                                    (size) => (
-                                                        <SelectItem
-                                                            key={size}
-                                                            value={`${size}`}
-                                                        >
-                                                            {size}
-                                                        </SelectItem>
-                                                    ),
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="text-sm font-medium text-muted-foreground">
-                                        Halaman {items.current_page} dari{' '}
-                                        {items.last_page}
-                                    </div>
-                                    {items.last_page > 1 && (
-                                        <Pagination className="mx-0 w-auto justify-start sm:justify-end">
-                                            <PaginationContent className="gap-1">
-                                                <PaginationItem className="hidden lg:block">
-                                                    <PaginationLink
-                                                        href="#"
-                                                        aria-label="Halaman pertama"
-                                                        aria-disabled={
-                                                            items.current_page ===
-                                                            1
-                                                        }
-                                                        className={
-                                                            items.current_page ===
-                                                            1
-                                                                ? 'pointer-events-none opacity-50'
-                                                                : undefined
-                                                        }
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-
-                                                            if (
-                                                                items.current_page >
-                                                                1
-                                                            ) {
-                                                                goToPage(1);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <ChevronsLeft />
-                                                    </PaginationLink>
-                                                </PaginationItem>
-                                                <PaginationItem>
-                                                    <PaginationPrevious
-                                                        href="#"
-                                                        text="Prev"
-                                                        aria-disabled={
-                                                            items.current_page ===
-                                                            1
-                                                        }
-                                                        className={
-                                                            items.current_page ===
-                                                            1
-                                                                ? 'pointer-events-none opacity-50'
-                                                                : undefined
-                                                        }
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-
-                                                            if (
-                                                                items.current_page >
-                                                                1
-                                                            ) {
-                                                                goToPage(
-                                                                    items.current_page -
-                                                                        1,
-                                                                );
-                                                            }
-                                                        }}
-                                                    />
-                                                </PaginationItem>
-                                                {pageNumbers[0] > 1 && (
-                                                    <PaginationItem>
-                                                        <PaginationEllipsis />
-                                                    </PaginationItem>
-                                                )}
-                                                {pageNumbers.map((page) => (
-                                                    <PaginationItem key={page}>
-                                                        <PaginationLink
-                                                            href="#"
-                                                            isActive={
-                                                                page ===
-                                                                items.current_page
-                                                            }
-                                                            onClick={(
-                                                                event,
-                                                            ) => {
-                                                                event.preventDefault();
-                                                                goToPage(page);
-                                                            }}
-                                                        >
-                                                            {page}
-                                                        </PaginationLink>
-                                                    </PaginationItem>
-                                                ))}
-                                                {pageNumbers[
-                                                    pageNumbers.length - 1
-                                                ] < items.last_page && (
-                                                    <PaginationItem>
-                                                        <PaginationEllipsis />
-                                                    </PaginationItem>
-                                                )}
-                                                <PaginationItem>
-                                                    <PaginationNext
-                                                        href="#"
-                                                        aria-disabled={
-                                                            items.current_page ===
-                                                            items.last_page
-                                                        }
-                                                        className={
-                                                            items.current_page ===
-                                                            items.last_page
-                                                                ? 'pointer-events-none opacity-50'
-                                                                : undefined
-                                                        }
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-
-                                                            if (
-                                                                items.current_page <
-                                                                items.last_page
-                                                            ) {
-                                                                goToPage(
-                                                                    items.current_page +
-                                                                        1,
-                                                                );
-                                                            }
-                                                        }}
-                                                    />
-                                                </PaginationItem>
-                                                <PaginationItem className="hidden lg:block">
-                                                    <PaginationLink
-                                                        href="#"
-                                                        aria-label="Halaman terakhir"
-                                                        aria-disabled={
-                                                            items.current_page ===
-                                                            items.last_page
-                                                        }
-                                                        className={
-                                                            items.current_page ===
-                                                            items.last_page
-                                                                ? 'pointer-events-none opacity-50'
-                                                                : undefined
-                                                        }
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-
-                                                            if (
-                                                                items.current_page <
-                                                                items.last_page
-                                                            ) {
-                                                                goToPage(
-                                                                    items.last_page,
-                                                                );
-                                                            }
-                                                        }}
-                                                    >
-                                                        <ChevronsRight />
-                                                    </PaginationLink>
-                                                </PaginationItem>
-                                            </PaginationContent>
-                                        </Pagination>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                                            Lihat detail
+                                        </Link>
+                                    </DropdownMenuItem>
+                                ),
+                            }}
+                            pagination={{
+                                resource: items,
+                                onPageChange: goToPage,
+                                onPerPageChange: (perPage) => {
+                                    setSelected([]);
+                                    router.get(
+                                        '/inventaris/inventory',
+                                        {
+                                            ...filters,
+                                            view: 'assets',
+                                            per_page: perPage,
+                                            page: 1,
+                                            register_page:
+                                                registers.current_page,
+                                            register_per_page:
+                                                registers.per_page,
+                                        },
+                                        { preserveState: true },
+                                    );
+                                },
+                                noun: 'inventaris',
+                            }}
+                            tableClassName="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4"
+                        />
                     </TabsContent>
                     <TabsContent value="registers">
-                        <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                            <div className="overflow-x-auto">
-                                <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent">
-                                            <TableHead>Kode Lengkap</TableHead>
-                                            <TableHead>Kode Aset</TableHead>
-                                            <TableHead>Register</TableHead>
-                                            <TableHead>Nama Aset</TableHead>
-                                            <TableHead>Merk/Type</TableHead>
-                                            <TableHead>Tahun</TableHead>
-                                            <TableHead className="text-right">
-                                                Harga per Unit
-                                            </TableHead>
-                                            <TableHead>Kondisi</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {registers.data.map((register) => (
-                                            <TableRow key={register.id}>
-                                                <TableCell className="font-mono text-xs">
-                                                    {register.display_code}
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs">
-                                                    {register.item.kode_barang}
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs">
-                                                    {register.register}
-                                                </TableCell>
-                                                <TableCell className="font-medium">
-                                                    {
-                                                        register.item
-                                                            .nama_jenis_barang
-                                                    }
-                                                </TableCell>
-                                                <TableCell>
-                                                    {register.item.merk_type ??
-                                                        '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {register.item
-                                                        .tahun_pembelian ?? '-'}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {formatRupiah(
-                                                        Number(
-                                                            register.item.harga,
-                                                        ),
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {register.condition}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {registers.data.length === 0 && (
-                                            <TableRow>
-                                                <TableCell
-                                                    colSpan={8}
-                                                    className="text-center text-muted-foreground"
-                                                >
-                                                    <div className="flex flex-col items-center gap-2 py-8">
-                                                        <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
-                                                        Tidak ada data register.
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
-                                <div className="text-sm text-muted-foreground">
-                                    {registers.total} register.
-                                </div>
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-muted-foreground">
-                                            Baris per halaman
-                                        </span>
-                                        <Select
-                                            value={`${registers.per_page}`}
-                                            onValueChange={(value) =>
-                                                router.get(
-                                                    '/inventaris/inventory',
-                                                    {
-                                                        ...filters,
-                                                        view: 'registers',
-                                                        page: items.current_page,
-                                                        per_page:
-                                                            items.per_page,
-                                                        register_per_page:
-                                                            value,
-                                                        register_page: 1,
-                                                    },
-                                                    { preserveState: true },
-                                                )
-                                            }
-                                        >
-                                            <SelectTrigger className="h-8 w-18">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {[10, 20, 30, 40, 50].map(
-                                                    (size) => (
-                                                        <SelectItem
-                                                            key={size}
-                                                            value={`${size}`}
-                                                        >
-                                                            {size}
-                                                        </SelectItem>
-                                                    ),
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="text-sm font-medium text-muted-foreground">
-                                        Halaman {registers.current_page} dari{' '}
-                                        {registers.last_page}
-                                    </div>
-                                    {registers.last_page > 1 && (
-                                        <Pagination className="mx-0 w-auto justify-start sm:justify-end">
-                                            <PaginationContent className="gap-1">
-                                                <PaginationItem className="hidden lg:block">
-                                                    <PaginationLink
-                                                        href="#"
-                                                        aria-label="Halaman pertama"
-                                                        aria-disabled={
-                                                            registers.current_page ===
-                                                            1
-                                                        }
-                                                        className={
-                                                            registers.current_page ===
-                                                            1
-                                                                ? 'pointer-events-none opacity-50'
-                                                                : undefined
-                                                        }
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-
-                                                            if (
-                                                                registers.current_page >
-                                                                1
-                                                            ) {
-                                                                goToRegisterPage(
-                                                                    1,
-                                                                );
-                                                            }
-                                                        }}
-                                                    >
-                                                        <ChevronsLeft />
-                                                    </PaginationLink>
-                                                </PaginationItem>
-                                                <PaginationItem>
-                                                    <PaginationPrevious
-                                                        href="#"
-                                                        text="Prev"
-                                                        aria-disabled={
-                                                            registers.current_page ===
-                                                            1
-                                                        }
-                                                        className={
-                                                            registers.current_page ===
-                                                            1
-                                                                ? 'pointer-events-none opacity-50'
-                                                                : undefined
-                                                        }
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-
-                                                            if (
-                                                                registers.current_page >
-                                                                1
-                                                            ) {
-                                                                goToRegisterPage(
-                                                                    registers.current_page -
-                                                                        1,
-                                                                );
-                                                            }
-                                                        }}
-                                                    />
-                                                </PaginationItem>
-                                                {getPageNumbers(
-                                                    registers.current_page,
-                                                    registers.last_page,
-                                                ).map((page) => (
-                                                    <PaginationItem key={page}>
-                                                        <PaginationLink
-                                                            href="#"
-                                                            isActive={
-                                                                page ===
-                                                                registers.current_page
-                                                            }
-                                                            onClick={(
-                                                                event,
-                                                            ) => {
-                                                                event.preventDefault();
-                                                                goToRegisterPage(
-                                                                    page,
-                                                                );
-                                                            }}
-                                                        >
-                                                            {page}
-                                                        </PaginationLink>
-                                                    </PaginationItem>
-                                                ))}
-                                                <PaginationItem>
-                                                    <PaginationNext
-                                                        href="#"
-                                                        aria-disabled={
-                                                            registers.current_page ===
-                                                            registers.last_page
-                                                        }
-                                                        className={
-                                                            registers.current_page ===
-                                                            registers.last_page
-                                                                ? 'pointer-events-none opacity-50'
-                                                                : undefined
-                                                        }
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-
-                                                            if (
-                                                                registers.current_page <
-                                                                registers.last_page
-                                                            ) {
-                                                                goToRegisterPage(
-                                                                    registers.current_page +
-                                                                        1,
-                                                                );
-                                                            }
-                                                        }}
-                                                    />
-                                                </PaginationItem>
-                                                <PaginationItem className="hidden lg:block">
-                                                    <PaginationLink
-                                                        href="#"
-                                                        aria-label="Halaman terakhir"
-                                                        aria-disabled={
-                                                            registers.current_page ===
-                                                            registers.last_page
-                                                        }
-                                                        className={
-                                                            registers.current_page ===
-                                                            registers.last_page
-                                                                ? 'pointer-events-none opacity-50'
-                                                                : undefined
-                                                        }
-                                                        onClick={(event) => {
-                                                            event.preventDefault();
-
-                                                            if (
-                                                                registers.current_page <
-                                                                registers.last_page
-                                                            ) {
-                                                                goToRegisterPage(
-                                                                    registers.last_page,
-                                                                );
-                                                            }
-                                                        }}
-                                                    >
-                                                        <ChevronsRight />
-                                                    </PaginationLink>
-                                                </PaginationItem>
-                                            </PaginationContent>
-                                        </Pagination>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                        <DataTableShell
+                            data={registers.data}
+                            columns={registerColumns}
+                            getRowKey={(register) => register.id}
+                            emptyState={
+                                <>
+                                    <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
+                                    Tidak ada data register.
+                                </>
+                            }
+                            selection={{
+                                selectedKeys: selectedRegisters,
+                                onSelectionChange: setSelectedRegisters,
+                                selectAllLabel: 'Pilih semua register',
+                                getRowLabel: (register) =>
+                                    `Pilih register ${register.display_code}`,
+                                selectedCountLabel: (count, total) =>
+                                    `${count} dari ${total} register dipilih.`,
+                            }}
+                            pagination={{
+                                resource: registers,
+                                onPageChange: goToRegisterPage,
+                                onPerPageChange: (perPage) => {
+                                    setSelectedRegisters([]);
+                                    router.get(
+                                        '/inventaris/inventory',
+                                        {
+                                            ...filters,
+                                            view: 'registers',
+                                            page: items.current_page,
+                                            per_page: items.per_page,
+                                            register_per_page: perPage,
+                                            register_page: 1,
+                                        },
+                                        { preserveState: true },
+                                    );
+                                },
+                                noun: 'register',
+                            }}
+                            tableClassName="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4"
+                        />
                     </TabsContent>
                 </Tabs>
             </div>

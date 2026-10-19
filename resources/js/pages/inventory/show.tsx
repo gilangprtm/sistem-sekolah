@@ -7,7 +7,6 @@ import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
 import {
     Table,
     TableBody,
@@ -218,217 +217,200 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
                     </Button>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-3">
-                    <div className="grid content-start gap-4 lg:col-span-1">
-                        <section className="grid gap-3 rounded-xl border p-4">
-                            <h3 className="text-sm font-semibold">
-                                Gambar Inventaris
-                            </h3>
-                            <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border bg-muted/40">
-                                {imagePreview || item.image_url ? (
-                                    <img
-                                        src={
-                                            imagePreview ?? item.image_url ?? ''
-                                        }
-                                        alt={`Gambar ${item.nama_jenis_barang}`}
-                                        className="size-full object-contain"
+                <div className="grid items-start gap-4 lg:grid-cols-3">
+                    <section className="grid gap-3 rounded-xl border p-4">
+                        <h3 className="text-sm font-semibold">
+                            Gambar Inventaris
+                        </h3>
+                        <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border bg-muted/40">
+                            {imagePreview || item.image_url ? (
+                                <img
+                                    src={imagePreview ?? item.image_url ?? ''}
+                                    alt={`Gambar ${item.nama_jenis_barang}`}
+                                    className="size-full object-contain"
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                                    <ImagePlus
+                                        className="size-8"
+                                        aria-hidden="true"
                                     />
-                                ) : (
-                                    <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                                        <ImagePlus
-                                            className="size-8"
-                                            aria-hidden="true"
-                                        />
-                                        <span>Belum ada gambar</span>
-                                    </div>
-                                )}
-                            </div>
-                            <Input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                aria-label="Pilih gambar inventaris"
-                                aria-describedby="inventory-image-help inventory-image-error"
-                                aria-invalid={Boolean(imageErrors.image)}
-                                onChange={(event) => {
-                                    const selected =
-                                        event.target.files?.[0] ?? null;
-                                    setImage(selected);
-                                    setImagePreview(
-                                        selected
-                                            ? URL.createObjectURL(selected)
-                                            : null,
-                                    );
-                                }}
-                            />
-                            <p
-                                id="inventory-image-help"
-                                className="text-xs text-muted-foreground"
-                            >
-                                JPG, PNG, atau WebP. Maksimal 1 MB.
-                            </p>
-                            <InputError
-                                id="inventory-image-error"
-                                role="alert"
-                                message={imageErrors.image}
-                            />
-                            {image && (
-                                <Button
-                                    onClick={saveImage}
-                                    className="min-h-11"
-                                    aria-label="Simpan gambar inventaris"
-                                    disabled={imageProcessing}
-                                >
-                                    <Pencil aria-hidden="true" />
-                                    {imageProcessing
-                                        ? 'Menyimpan gambar...'
-                                        : 'Simpan gambar'}
-                                </Button>
+                                    <span>Belum ada gambar</span>
+                                </div>
                             )}
-                        </section>
-                        <section className="rounded-xl border p-4">
-                            <h3 className="mb-3 text-sm font-semibold">
-                                Data Barang (immutable)
-                            </h3>
-                            <dl className="grid gap-2 text-sm">
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Kode Barang
-                                    </dt>
-                                    <dd className="font-mono">
-                                        {item.kode_barang}
-                                    </dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Nama/Jenis
-                                    </dt>
-                                    <dd>{item.nama_jenis_barang}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Merk/Type
-                                    </dt>
-                                    <dd>{item.merk_type ?? '-'}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        No Identitas
-                                    </dt>
-                                    <dd>{item.no_identitas ?? '-'}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Bahan
-                                    </dt>
-                                    <dd>{item.bahan ?? '-'}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Asal
-                                    </dt>
-                                    <dd>{item.asal_perolehan ?? '-'}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Tahun
-                                    </dt>
-                                    <dd>{item.tahun_pembelian ?? '-'}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Ukuran
-                                    </dt>
-                                    <dd>{item.ukuran_konstruksi ?? '-'}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Satuan
-                                    </dt>
-                                    <dd>{item.satuan ?? '-'}</dd>
-                                </div>
-                                <div className="grid gap-2 border-t pt-2">
-                                    <Label htmlFor="category_id">
-                                        Kategori
-                                    </Label>
-                                    <SearchableCombobox
-                                        value={categoryId}
-                                        options={[
-                                            {
-                                                value: '',
-                                                label: 'Tanpa kategori',
-                                            },
-                                            ...categories.map((category) => ({
-                                                value: category.id.toString(),
-                                                label: category.name,
-                                            })),
-                                        ]}
-                                        onChange={setCategoryId}
-                                        placeholder="Tanpa kategori"
-                                        searchPlaceholder="Cari kategori..."
-                                        emptyMessage="Kategori tidak ditemukan."
-                                    />
-                                    <InputError
-                                        message={
-                                            categoryErrors.inventory_category_id
-                                        }
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={saveCategory}
-                                    >
-                                        Simpan Kategori
-                                    </Button>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Jenis
-                                    </dt>
-                                    <dd>{item.inventoryType?.name ?? '-'}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Harga/unit
-                                    </dt>
-                                    <dd>{formatRupiah(item.harga)}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2 border-t pt-2">
-                                    <dt className="font-medium">Qty</dt>
-                                    <dd className="font-medium">{item.qty}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <dt className="font-medium">Total</dt>
-                                    <dd className="font-medium">
-                                        {formatRupiah(item.total)}
-                                    </dd>
-                                </div>
-                            </dl>
-
-                            <div className="mt-4 grid gap-2 border-t pt-4">
-                                <Label htmlFor="keterangan">Keterangan</Label>
-                                <Textarea
-                                    id="keterangan"
-                                    value={keterangan}
-                                    onChange={(e) =>
-                                        setKeterangan(e.target.value)
-                                    }
-                                />
-                                <InputError
-                                    message={keteranganErrors.keterangan}
-                                />
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={saveKeterangan}
-                                >
-                                    <Pencil />
-                                    Simpan Keterangan
-                                </Button>
+                        </div>
+                        <Input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            aria-label="Pilih gambar inventaris"
+                            aria-describedby="inventory-image-help inventory-image-error"
+                            aria-invalid={Boolean(imageErrors.image)}
+                            onChange={(event) => {
+                                const selected =
+                                    event.target.files?.[0] ?? null;
+                                setImage(selected);
+                                setImagePreview(
+                                    selected
+                                        ? URL.createObjectURL(selected)
+                                        : null,
+                                );
+                            }}
+                        />
+                        <p
+                            id="inventory-image-help"
+                            className="text-xs text-muted-foreground"
+                        >
+                            JPG, PNG, atau WebP. Maksimal 1 MB.
+                        </p>
+                        <InputError
+                            id="inventory-image-error"
+                            role="alert"
+                            message={imageErrors.image}
+                        />
+                        {image && (
+                            <Button
+                                onClick={saveImage}
+                                className="min-h-11"
+                                aria-label="Simpan gambar inventaris"
+                                disabled={imageProcessing}
+                            >
+                                <Pencil aria-hidden="true" />
+                                {imageProcessing
+                                    ? 'Menyimpan gambar...'
+                                    : 'Simpan gambar'}
+                            </Button>
+                        )}
+                    </section>
+                    <section className="rounded-xl border p-4">
+                        <h3 className="mb-3 text-sm font-semibold">
+                            Data Barang (immutable)
+                        </h3>
+                        <dl className="grid gap-2 text-sm">
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">
+                                    Kode Barang
+                                </dt>
+                                <dd className="font-mono">
+                                    {item.kode_barang}
+                                </dd>
                             </div>
-                        </section>
-                    </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">
+                                    Nama/Jenis
+                                </dt>
+                                <dd>{item.nama_jenis_barang}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">
+                                    Merk/Type
+                                </dt>
+                                <dd>{item.merk_type ?? '-'}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">
+                                    No Identitas
+                                </dt>
+                                <dd>{item.no_identitas ?? '-'}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">Bahan</dt>
+                                <dd>{item.bahan ?? '-'}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">Asal</dt>
+                                <dd>{item.asal_perolehan ?? '-'}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">Tahun</dt>
+                                <dd>{item.tahun_pembelian ?? '-'}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">
+                                    Ukuran
+                                </dt>
+                                <dd>{item.ukuran_konstruksi ?? '-'}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">
+                                    Satuan
+                                </dt>
+                                <dd>{item.satuan ?? '-'}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">Jenis</dt>
+                                <dd>{item.inventoryType?.name ?? '-'}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="text-muted-foreground">
+                                    Harga/unit
+                                </dt>
+                                <dd>{formatRupiah(item.harga)}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2 border-t pt-2">
+                                <dt className="font-medium">Qty</dt>
+                                <dd className="font-medium">{item.qty}</dd>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                                <dt className="font-medium">Total</dt>
+                                <dd className="font-medium">
+                                    {formatRupiah(item.total)}
+                                </dd>
+                            </div>
+                        </dl>
+                    </section>
+                    <section className="grid content-start gap-3 rounded-xl border p-4">
+                        <h3 className="text-sm font-semibold">
+                            Kategori & Keterangan
+                        </h3>
+                        <div className="grid gap-2">
+                            <Label htmlFor="category_id">Kategori</Label>
+                            <SearchableCombobox
+                                value={categoryId}
+                                options={[
+                                    { value: '', label: 'Tanpa kategori' },
+                                    ...categories.map((category) => ({
+                                        value: category.id.toString(),
+                                        label: category.name,
+                                    })),
+                                ]}
+                                onChange={setCategoryId}
+                                placeholder="Tanpa kategori"
+                                searchPlaceholder="Cari kategori..."
+                                emptyMessage="Kategori tidak ditemukan."
+                            />
+                            <InputError
+                                message={categoryErrors.inventory_category_id}
+                            />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={saveCategory}
+                            >
+                                Simpan Kategori
+                            </Button>
+                        </div>
+                        <div className="grid gap-2 border-t pt-3">
+                            <Label htmlFor="keterangan">Keterangan</Label>
+                            <Textarea
+                                id="keterangan"
+                                value={keterangan}
+                                onChange={(event) =>
+                                    setKeterangan(event.target.value)
+                                }
+                            />
+                            <InputError message={keteranganErrors.keterangan} />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={saveKeterangan}
+                            >
+                                <Pencil />
+                                Simpan Keterangan
+                            </Button>
+                        </div>
+                    </section>
 
-                    <div className="rounded-xl border p-4 lg:col-span-2">
+                    <div className="rounded-xl border p-4 lg:col-span-3">
                         <div className="mb-3 flex items-center justify-between">
                             <h3 className="text-sm font-semibold">
                                 Unit / Register
@@ -478,53 +460,59 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
                                                 {unit.register}
                                             </TableCell>
                                             <TableCell>
-                                                <NativeSelect
+                                                <SearchableCombobox
                                                     value={
                                                         unit.room?.id.toString() ??
                                                         ''
                                                     }
-                                                    onChange={(event) =>
-                                                        updateRoom(
-                                                            unit,
-                                                            event.target.value,
-                                                        )
+                                                    options={[
+                                                        {
+                                                            value: '',
+                                                            label: 'Tanpa ruangan',
+                                                        },
+                                                        ...rooms.map(
+                                                            (room) => ({
+                                                                value: room.id.toString(),
+                                                                label: room.name,
+                                                            }),
+                                                        ),
+                                                    ]}
+                                                    onChange={(roomId) =>
+                                                        updateRoom(unit, roomId)
                                                     }
-                                                    className="w-full"
-                                                >
-                                                    <option value="">
-                                                        Tanpa ruangan
-                                                    </option>
-                                                    {rooms.map((room) => (
-                                                        <option
-                                                            key={room.id}
-                                                            value={room.id}
-                                                        >
-                                                            {room.name}
-                                                        </option>
-                                                    ))}
-                                                </NativeSelect>
+                                                    placeholder="Tanpa ruangan"
+                                                    searchPlaceholder="Cari ruangan..."
+                                                    emptyMessage="Ruangan tidak ditemukan."
+                                                />
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <NativeSelect
+                                                <SearchableCombobox
                                                     value={unit.condition}
-                                                    onChange={(e) =>
+                                                    options={[
+                                                        {
+                                                            value: 'B',
+                                                            label: 'B — Baik',
+                                                        },
+                                                        {
+                                                            value: 'KB',
+                                                            label: 'KB — Kurang Baik',
+                                                        },
+                                                        {
+                                                            value: 'RB',
+                                                            label: 'RB — Rusak Berat',
+                                                        },
+                                                    ]}
+                                                    onChange={(condition) =>
                                                         updateCondition(
                                                             unit,
-                                                            e.target.value,
+                                                            condition,
                                                         )
                                                     }
+                                                    placeholder="Pilih kondisi"
+                                                    searchPlaceholder="Cari kondisi..."
+                                                    emptyMessage="Kondisi tidak ditemukan."
                                                     className="ml-auto w-40"
-                                                >
-                                                    <option value="B">
-                                                        B — Baik
-                                                    </option>
-                                                    <option value="KB">
-                                                        KB — Kurang Baik
-                                                    </option>
-                                                    <option value="RB">
-                                                        RB — Rusak Berat
-                                                    </option>
-                                                </NativeSelect>
+                                                />
                                             </TableCell>
                                         </TableRow>
                                     ))}

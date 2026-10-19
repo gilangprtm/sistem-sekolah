@@ -1,17 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    ChevronsLeft,
-    ChevronsRight,
-    MoreHorizontal,
-    PackageSearch,
-    Plus,
-    Search,
-} from 'lucide-react';
+import { PackageSearch, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
+import DataTableShell from '@/components/data-table/data-table-shell';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -20,23 +14,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -44,14 +24,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -90,22 +62,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const emptyForm: RoomForm = { name: '', code: '', description: '' };
 
-function getPageNumbers(currentPage: number, pageCount: number) {
-    if (pageCount <= 3) {
-        return Array.from({ length: pageCount }, (_, index) => index + 1);
-    }
-
-    if (currentPage <= 2) {
-        return [1, 2, 3];
-    }
-
-    if (currentPage >= pageCount - 1) {
-        return [pageCount - 2, pageCount - 1, pageCount];
-    }
-
-    return [currentPage - 1, currentPage, currentPage + 1];
-}
-
 export default function InventoryRoomsIndex({ rooms, filters }: Props) {
     const [open, setOpen] = useState(false);
     const [form, setForm] = useState<RoomForm>(emptyForm);
@@ -114,7 +70,33 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [placement, setPlacement] = useState(filters.placement ?? '');
     const [selected, setSelected] = useState<number[]>([]);
-    const pageNumbers = getPageNumbers(rooms.current_page, rooms.last_page);
+
+    const columns: DataTableColumn<Room>[] = [
+        {
+            id: 'code',
+            header: 'Kode Ruangan',
+            cell: (room) => room.code,
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'name',
+            header: 'Nama Ruangan',
+            cell: (room) => room.name,
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'unit-count',
+            header: 'Jumlah Unit',
+            cell: (room) => room.units_count,
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+        },
+        {
+            id: 'description',
+            header: 'Keterangan',
+            cell: (room) => room.description || '-',
+        },
+    ];
 
     const filterParams = (): Record<string, string> => {
         const params: Record<string, string> = {};
@@ -139,16 +121,19 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
     };
 
     const applyFilters = () => {
+        setSelected([]);
         navigate({ ...filterParams(), page: 1, per_page: rooms.per_page });
     };
 
     const resetFilters = () => {
         setSearch('');
         setPlacement('');
+        setSelected([]);
         navigate({ page: 1, per_page: rooms.per_page });
     };
 
     const goToPage = (page: number) => {
+        setSelected([]);
         navigate({ ...filterParams(), page, per_page: rooms.per_page });
     };
 
@@ -178,6 +163,10 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
 
         router.delete(`/inventaris/inventory-rooms/${room.id}`, {
             preserveScroll: true,
+            onSuccess: () =>
+                setSelected((current) =>
+                    current.filter((selectedId) => selectedId !== room.id),
+                ),
         });
     };
 
@@ -255,327 +244,61 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-                    <div className="flex flex-col gap-3 border-b px-4 py-4 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {rooms.total} baris dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                rooms.data.length > 0 &&
-                                                selected.length ===
-                                                    rooms.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? rooms.data.map(
-                                                              (room) => room.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua ruangan"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Kode Ruangan</TableHead>
-                                    <TableHead>Nama Ruangan</TableHead>
-                                    <TableHead className="text-right">
-                                        Jumlah Unit
-                                    </TableHead>
-                                    <TableHead>Keterangan</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rooms.data.map((room) => (
-                                    <TableRow key={room.id}>
-                                        <TableCell className="w-12">
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    room.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  room.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      room.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${room.code}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {room.code}
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {room.name}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {room.units_count}
-                                        </TableCell>
-                                        <TableCell>
-                                            {room.description || '-'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-sm"
-                                                        className="text-muted-foreground"
-                                                        aria-label={`Aksi ${room.name}`}
-                                                    >
-                                                        <MoreHorizontal />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            router.get(
-                                                                `/inventaris/inventory-rooms/${room.id}/edit`,
-                                                            )
-                                                        }
-                                                    >
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        variant="destructive"
-                                                        onClick={() =>
-                                                            remove(room)
-                                                        }
-                                                    >
-                                                        Hapus
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {rooms.data.length === 0 && (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={6}
-                                            className="text-center text-muted-foreground"
-                                        >
-                                            <div className="flex flex-col items-center gap-2 py-8">
-                                                <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
-                                                Belum ada ruangan.
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {rooms.total} baris dipilih.
-                        </div>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-muted-foreground">
-                                    Baris per halaman
-                                </span>
-                                <Select
-                                    value={`${rooms.per_page}`}
-                                    onValueChange={(value) =>
-                                        navigate({
-                                            ...filterParams(),
-                                            page: 1,
-                                            per_page: value,
-                                        })
+                <DataTableShell
+                    data={rooms.data}
+                    columns={columns}
+                    getRowKey={(room) => room.id}
+                    emptyState={
+                        <>
+                            <PackageSearch className="h-8 w-8 text-muted-foreground/50" />
+                            Belum ada ruangan.
+                        </>
+                    }
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectAllLabel: 'Pilih semua ruangan',
+                        getRowLabel: (room) => `Pilih ${room.code}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    rowActions={{
+                        label: (room) => `Aksi ${room.name}`,
+                        render: (room) => (
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() =>
+                                        router.get(
+                                            `/inventaris/inventory-rooms/${room.id}/edit`,
+                                        )
                                     }
                                 >
-                                    <SelectTrigger className="h-8 w-18">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {[10, 20, 30, 40, 50].map((size) => (
-                                            <SelectItem
-                                                key={size}
-                                                value={`${size}`}
-                                            >
-                                                {size}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="text-sm font-medium text-muted-foreground">
-                                Halaman {rooms.current_page} dari{' '}
-                                {rooms.last_page}
-                            </div>
-                            {rooms.last_page > 1 && (
-                                <Pagination className="mx-0 w-auto justify-start sm:justify-end">
-                                    <PaginationContent className="gap-1">
-                                        <PaginationItem className="hidden lg:block">
-                                            <PaginationLink
-                                                href="#"
-                                                aria-label="Halaman pertama"
-                                                aria-disabled={
-                                                    rooms.current_page === 1
-                                                }
-                                                className={
-                                                    rooms.current_page === 1
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : undefined
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-
-                                                    if (
-                                                        rooms.current_page > 1
-                                                    ) {
-                                                        goToPage(1);
-                                                    }
-                                                }}
-                                            >
-                                                <ChevronsLeft />
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                        <PaginationItem>
-                                            <PaginationPrevious
-                                                href="#"
-                                                text="Prev"
-                                                aria-disabled={
-                                                    rooms.current_page === 1
-                                                }
-                                                className={
-                                                    rooms.current_page === 1
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : undefined
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-
-                                                    if (
-                                                        rooms.current_page > 1
-                                                    ) {
-                                                        goToPage(
-                                                            rooms.current_page -
-                                                                1,
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                        </PaginationItem>
-                                        {pageNumbers[0] > 1 && (
-                                            <PaginationItem>
-                                                <PaginationEllipsis />
-                                            </PaginationItem>
-                                        )}
-                                        {pageNumbers.map((page) => (
-                                            <PaginationItem key={page}>
-                                                <PaginationLink
-                                                    href="#"
-                                                    isActive={
-                                                        page ===
-                                                        rooms.current_page
-                                                    }
-                                                    onClick={(event) => {
-                                                        event.preventDefault();
-                                                        goToPage(page);
-                                                    }}
-                                                >
-                                                    {page}
-                                                </PaginationLink>
-                                            </PaginationItem>
-                                        ))}
-                                        {pageNumbers[pageNumbers.length - 1] <
-                                            rooms.last_page && (
-                                            <PaginationItem>
-                                                <PaginationEllipsis />
-                                            </PaginationItem>
-                                        )}
-                                        <PaginationItem>
-                                            <PaginationNext
-                                                href="#"
-                                                text="Next"
-                                                aria-disabled={
-                                                    rooms.current_page ===
-                                                    rooms.last_page
-                                                }
-                                                className={
-                                                    rooms.current_page ===
-                                                    rooms.last_page
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : undefined
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-
-                                                    if (
-                                                        rooms.current_page <
-                                                        rooms.last_page
-                                                    ) {
-                                                        goToPage(
-                                                            rooms.current_page +
-                                                                1,
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                        </PaginationItem>
-                                        <PaginationItem className="hidden lg:block">
-                                            <PaginationLink
-                                                href="#"
-                                                aria-label="Halaman terakhir"
-                                                aria-disabled={
-                                                    rooms.current_page ===
-                                                    rooms.last_page
-                                                }
-                                                className={
-                                                    rooms.current_page ===
-                                                    rooms.last_page
-                                                        ? 'pointer-events-none opacity-50'
-                                                        : undefined
-                                                }
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-
-                                                    if (
-                                                        rooms.current_page <
-                                                        rooms.last_page
-                                                    ) {
-                                                        goToPage(
-                                                            rooms.last_page,
-                                                        );
-                                                    }
-                                                }}
-                                            >
-                                                <ChevronsRight />
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                    </PaginationContent>
-                                </Pagination>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={() => remove(room)}
+                                >
+                                    Hapus
+                                </DropdownMenuItem>
+                            </>
+                        ),
+                    }}
+                    pagination={{
+                        resource: rooms,
+                        onPageChange: goToPage,
+                        onPerPageChange: (perPage) => {
+                            setSelected([]);
+                            navigate({
+                                ...filterParams(),
+                                page: 1,
+                                per_page: perPage,
+                            });
+                        },
+                        noun: 'ruangan',
+                    }}
+                    tableClassName="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4"
+                />
 
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent>

@@ -36,6 +36,55 @@ class InventoryRoomTest extends TestCase
             ->assertRedirect('/inventaris/inventory-rooms?page=2&search=Kelas');
     }
 
+    public function test_room_index_uses_the_generic_data_table_shell(): void
+    {
+        $page = file_get_contents(resource_path('js/pages/inventory-rooms/index.tsx'));
+
+        $this->assertIsString($page);
+        $this->assertStringContainsString("import DataTableShell from '@/components/data-table/data-table-shell';", $page);
+        $this->assertSame(1, substr_count($page, '<DataTableShell'));
+        $this->assertStringContainsString('columns={columns}', $page);
+        $this->assertStringContainsString("selectAllLabel: 'Pilih semua ruangan'", $page);
+        $this->assertStringContainsString('rowActions={{', $page);
+        $this->assertStringContainsString('pagination={{', $page);
+        $this->assertStringNotContainsString("from '@/components/ui/table'", $page);
+        $this->assertStringNotContainsString("from '@/components/ui/pagination'", $page);
+        $this->assertStringNotContainsString("from '@/components/ui/checkbox'", $page);
+    }
+
+    public function test_create_and_edit_register_tables_use_the_generic_data_table_shell(): void
+    {
+        foreach (['create', 'edit'] as $pageName) {
+            $page = file_get_contents(
+                resource_path("js/pages/inventory-rooms/{$pageName}.tsx"),
+            );
+
+            $this->assertIsString($page);
+            $this->assertSame(2, substr_count($page, '<DataTableShell'));
+            $this->assertStringContainsString(
+                "import DataTableShell from '@/components/data-table/data-table-shell';",
+                $page,
+            );
+            $this->assertStringContainsString('selection={{', $page);
+            $this->assertStringContainsString('rowActions={{', $page);
+            $this->assertStringContainsString("variant: 'custom'", $page);
+            $this->assertStringContainsString('pagination={{', $page);
+            $this->assertStringNotContainsString("id: 'remove'", $page);
+            $this->assertStringNotContainsString(
+                "from '@/components/ui/table'",
+                $page,
+            );
+            $this->assertStringNotContainsString(
+                "from '@/components/ui/checkbox'",
+                $page,
+            );
+            $this->assertStringNotContainsString(
+                "from '@/components/ui/pagination'",
+                $page,
+            );
+        }
+    }
+
     public function test_admin_can_create_room_and_assign_selected_units(): void
     {
         $admin = $this->admin();
