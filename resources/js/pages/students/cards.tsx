@@ -1,24 +1,13 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CreditCard, Printer, Search, UserRound } from 'lucide-react';
 import { useState } from 'react';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -126,6 +115,46 @@ export default function StudentCards({
         navigate({ ...filterParams(), page, per_page: students.per_page });
     };
     const printQuery = new URLSearchParams(filterParams()).toString();
+    const columns: DataTableColumn<Student>[] = [
+        {
+            id: 'name',
+            header: 'Nama',
+            cell: (student) => student.full_name,
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'identity',
+            header: 'NIS/NISN',
+            cell: (student) => student.nis || student.nisn || '-',
+            cellClassName: 'font-mono text-xs',
+        },
+        {
+            id: 'cohort',
+            header: 'Angkatan',
+            cell: (student) => student.tahun_angkatan || '-',
+        },
+        {
+            id: 'account',
+            header: 'Akun',
+            cell: (student) => student.user?.email || 'Belum terhubung',
+        },
+        {
+            id: 'gender',
+            header: 'Jenis Kelamin',
+            cell: (student) =>
+                student.gender === 'L'
+                    ? 'Laki-laki'
+                    : student.gender === 'P'
+                      ? 'Perempuan'
+                      : '-',
+        },
+        {
+            id: 'status',
+            header: 'Status',
+            cell: (student) =>
+                student.status === 'active' ? 'Aktif' : 'Tidak aktif',
+        },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -225,148 +254,55 @@ export default function StudentCards({
                     </div>
                 </div>
 
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {students.total} baris
-                            dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-                            <TableHeader>
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                students.data.length > 0 &&
-                                                selected.length ===
-                                                    students.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? students.data.map(
-                                                              (student) =>
-                                                                  student.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua siswa"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Nama</TableHead>
-                                    <TableHead>NIS/NISN</TableHead>
-                                    <TableHead>Angkatan</TableHead>
-                                    <TableHead>Akun</TableHead>
-                                    <TableHead>Jenis Kelamin</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {students.data.map((student) => (
-                                    <TableRow key={student.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    student.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  student.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      student.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih siswa ${student.full_name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {student.full_name}
-                                        </TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {student.nis || student.nisn || '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {student.tahun_angkatan || '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {student.user?.email ||
-                                                'Belum terhubung'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {student.gender === 'L'
-                                                ? 'Laki-laki'
-                                                : student.gender === 'P'
-                                                  ? 'Perempuan'
-                                                  : '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {student.status === 'active'
-                                                ? 'Aktif'
-                                                : 'Tidak aktif'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                asChild
-                                            >
-                                                <Link
-                                                    href={`/students/cards/${student.id}`}
-                                                >
-                                                    <CreditCard />
-                                                    Kartu Pelajar
-                                                </Link>
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {students.data.length === 0 && (
-                                    <DataTableEmptyState
-                                        colSpan={8}
-                                        icon={
-                                            <UserRound className="h-8 w-8 text-muted-foreground/50" />
-                                        }
-                                    >
-                                        Belum ada data siswa untuk dicetak.
-                                    </DataTableEmptyState>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={students}
-                        noun="siswa"
-                        onPageChange={goToPage}
-                        onPerPageChange={(perPage) =>
+                <DataTableShell
+                    data={students.data}
+                    columns={columns}
+                    getRowKey={(student) => student.id}
+                    emptyState={
+                        <>
+                            <UserRound className="h-8 w-8 text-muted-foreground/50" />
+                            Belum ada data siswa untuk dicetak.
+                        </>
+                    }
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectedCount: selected.length,
+                        selectAllLabel: 'Pilih semua siswa',
+                        getRowLabel: (student) =>
+                            `Pilih siswa ${student.full_name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                        onSelectAll: (checked, rows) =>
+                            setSelected(
+                                checked
+                                    ? rows.map((student) => student.id)
+                                    : [],
+                            ),
+                    }}
+                    rowActions={{
+                        variant: 'custom',
+                        render: (student) => (
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={`/students/cards/${student.id}`}>
+                                    <CreditCard />
+                                    Kartu Pelajar
+                                </Link>
+                            </Button>
+                        ),
+                    }}
+                    pagination={{
+                        resource: students,
+                        noun: 'siswa',
+                        onPageChange: goToPage,
+                        onPerPageChange: (perPage) =>
                             navigate({
                                 ...filterParams(),
                                 page: 1,
                                 per_page: perPage,
-                            })
-                        }
-                    />
-                </DataTableShell>
+                            }),
+                    }}
+                />
             </div>
         </AppLayout>
     );

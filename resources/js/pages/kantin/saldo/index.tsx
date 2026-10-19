@@ -1,8 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, WalletCards } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
 import DataTableShell from '@/components/data-table/data-table-shell';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
@@ -16,16 +16,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { formatWitaDateTime } from '@/lib/date-time';
 import {
@@ -42,13 +36,21 @@ type Student = {
     full_name: string;
     kantin_saldo?: { saldo: string } | null;
 };
+type PurchaseDetail = {
+    barang_name: string;
+    quantity: number;
+    harga: string;
+    subtotal: string;
+};
 type Transaction = {
     id: number;
     type: string;
     amount: string;
-    balance_after: string;
+    balance_before: string | null;
+    balance_after: string | null;
     created_at: string;
     student: { nis: string | null; full_name: string };
+    details?: PurchaseDetail[];
 };
 type Period = 'today' | 'week' | 'month' | 'year' | 'all';
 
@@ -61,7 +63,14 @@ type PageProps = {
         total: number;
     };
     canTopUp: boolean;
-    ledger: {
+    purchaseHistory: {
+        data: Transaction[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
+    topUpHistory: {
         data: Transaction[];
         current_page: number;
         last_page: number;
@@ -94,7 +103,8 @@ const periodOptions: { value: Period; label: string }[] = [
 export default function KantinSaldoIndex({
     students,
     canTopUp,
-    ledger,
+    purchaseHistory,
+    topUpHistory,
     filters,
     summary,
 }: PageProps) {
@@ -106,6 +116,11 @@ export default function KantinSaldoIndex({
     const [amount, setAmount] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
+    const [selectedPurchases, setSelectedPurchases] = useState<number[]>([]);
+    const [selectedTopUps, setSelectedTopUps] = useState<number[]>([]);
+    const [viewedTransaction, setViewedTransaction] =
+        useState<Transaction | null>(null);
 
     const navigate = (params: Record<string, string | number>) =>
         router.get('/kantin/saldo', params, {
@@ -188,6 +203,51 @@ export default function KantinSaldoIndex({
                 },
             },
         );
+    const studentColumns: DataTableColumn<Student>[] = [
+        {
+            id: 'identity',
+            header: 'NIS / NISN',
+            cell: (student) => student.nis ?? student.nisn ?? '-',
+        },
+        {
+            id: 'student',
+            header: 'Siswa',
+            cell: (student) => student.full_name,
+        },
+        {
+            id: 'balance',
+            header: 'Saldo',
+            cell: (student) => currency(student.kantin_saldo?.saldo ?? 0),
+            cellClassName: 'font-medium',
+        },
+    ];
+    const transactionColumns: DataTableColumn<Transaction>[] = [
+        {
+            id: 'created-at',
+            header: 'Waktu',
+            cell: (transaction) => formatWitaDateTime(transaction.created_at),
+        },
+        {
+            id: 'student',
+            header: 'Siswa',
+            cell: (transaction) => transaction.student.full_name,
+        },
+        {
+            id: 'amount',
+            header: 'Jumlah',
+            cell: (transaction) => currency(transaction.amount),
+        },
+    ];
+    const transactionActions = {
+        label: (transaction: Transaction) => `Aksi transaksi ${transaction.id}`,
+        render: (transaction: Transaction) => (
+            <DropdownMenuItem
+                onSelect={() => setViewedTransaction(transaction)}
+            >
+                Lihat
+            </DropdownMenuItem>
+        ),
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -229,8 +289,9 @@ export default function KantinSaldoIndex({
                                     search,
                                     period: option.value,
                                     page: 1,
-                                    ledger_page: 1,
-                                    per_page: ledger.per_page,
+                                    per_page: topUpHistory.per_page,
+                                    purchase_page: 1,
+                                    top_up_page: 1,
                                 });
                             }}
                         >
@@ -293,114 +354,258 @@ export default function KantinSaldoIndex({
                                 search,
                                 period,
                                 page: 1,
-                                ledger_page: 1,
-                                per_page: ledger.per_page,
+                                purchase_page: 1,
+                                top_up_page: 1,
+                                per_page: topUpHistory.per_page,
                             });
                         }
                     }}
                     placeholder="Cari nama, NIS, atau NISN siswa..."
                     className="max-w-md"
                 />
-                <DataTableShell>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>NIS / NISN</TableHead>
-                                <TableHead>Siswa</TableHead>
-                                <TableHead>Saldo</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {students.data.map((student) => (
-                                <TableRow key={student.id}>
-                                    <TableCell>
-                                        {student.nis ?? student.nisn ?? '-'}
-                                    </TableCell>
-                                    <TableCell>{student.full_name}</TableCell>
-                                    <TableCell className="font-medium">
-                                        {currency(
-                                            student.kantin_saldo?.saldo ?? 0,
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    <DataTablePagination
-                        resource={students}
-                        onPageChange={(page) =>
+                <DataTableShell
+                    data={students.data}
+                    columns={studentColumns}
+                    getRowKey={(student) => student.id}
+                    emptyState="Belum ada data saldo siswa."
+                    selection={{
+                        selectedKeys: selectedStudents,
+                        onSelectionChange: setSelectedStudents,
+                        selectedCount: selectedStudents.length,
+                        selectAllLabel: 'Pilih semua siswa',
+                        getRowLabel: (student) =>
+                            `Pilih siswa ${student.full_name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    pagination={{
+                        resource: students,
+                        onPageChange: (page) =>
                             navigate({
                                 search,
                                 period,
                                 page,
+                                purchase_page: purchaseHistory.current_page,
+                                top_up_page: topUpHistory.current_page,
                                 per_page: students.per_page,
-                            })
-                        }
-                        onPerPageChange={(per_page) =>
-                            navigate({ search, period, page: 1, per_page })
-                        }
-                        noun="siswa"
-                    />
-                </DataTableShell>
-                <DataTableShell>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Waktu</TableHead>
-                                <TableHead>Siswa</TableHead>
-                                <TableHead>Jenis</TableHead>
-                                <TableHead>Jumlah</TableHead>
-                                <TableHead>Saldo setelah</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {ledger.data.map((transaction) => (
-                                <TableRow key={transaction.id}>
-                                    <TableCell>
-                                        {formatWitaDateTime(
-                                            transaction.created_at,
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {transaction.student.full_name}
-                                    </TableCell>
-                                    <TableCell>
-                                        {transaction.type === 'top_up'
-                                            ? 'Top Up'
-                                            : transaction.type}
-                                    </TableCell>
-                                    <TableCell>
-                                        {currency(transaction.amount)}
-                                    </TableCell>
-                                    <TableCell>
-                                        {currency(transaction.balance_after)}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    <DataTablePagination
-                        resource={ledger}
-                        onPageChange={(page) =>
+                            }),
+                        onPerPageChange: (per_page) => {
+                            setSelectedStudents([]);
                             navigate({
                                 search,
                                 period,
-                                ledger_page: page,
-                                per_page: ledger.per_page,
-                            })
-                        }
-                        onPerPageChange={(per_page) =>
-                            navigate({
-                                search,
-                                period,
-                                ledger_page: 1,
+                                page: 1,
+                                purchase_page: 1,
+                                top_up_page: 1,
                                 per_page,
-                            })
-                        }
-                        noun="transaksi"
-                    />
-                </DataTableShell>
+                            });
+                        },
+                        noun: 'siswa',
+                    }}
+                />
+                <Tabs defaultValue="purchases" className="gap-4">
+                    <TabsList
+                        variant="line"
+                        className="h-11 w-full justify-start overflow-x-auto overflow-y-hidden"
+                        aria-label="History transaksi saldo"
+                    >
+                        <TabsTrigger value="purchases">
+                            History Pembelian
+                        </TabsTrigger>
+                        <TabsTrigger value="top-ups">
+                            History Top Up
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="purchases">
+                        <DataTableShell
+                            data={purchaseHistory.data}
+                            columns={transactionColumns}
+                            getRowKey={(transaction) => transaction.id}
+                            emptyState="Belum ada history pembelian."
+                            rowActions={transactionActions}
+                            selection={{
+                                selectedKeys: selectedPurchases,
+                                onSelectionChange: setSelectedPurchases,
+                                selectedCount: selectedPurchases.length,
+                                selectAllLabel:
+                                    'Pilih semua transaksi pembelian',
+                                getRowLabel: (transaction) =>
+                                    `Pilih transaksi pembelian ${transaction.id}`,
+                                selectedCountLabel: (count, total) =>
+                                    `${count} dari ${total} baris dipilih.`,
+                            }}
+                            pagination={{
+                                resource: purchaseHistory,
+                                onPageChange: (page) =>
+                                    navigate({
+                                        search,
+                                        period,
+                                        purchase_page: page,
+                                        top_up_page: topUpHistory.current_page,
+                                        per_page: purchaseHistory.per_page,
+                                    }),
+                                onPerPageChange: (per_page) =>
+                                    navigate({
+                                        search,
+                                        period,
+                                        purchase_page: 1,
+                                        top_up_page: topUpHistory.current_page,
+                                        per_page,
+                                    }),
+                                noun: 'pembelian',
+                            }}
+                        />
+                    </TabsContent>
+                    <TabsContent value="top-ups">
+                        <DataTableShell
+                            data={topUpHistory.data}
+                            columns={transactionColumns}
+                            getRowKey={(transaction) => transaction.id}
+                            emptyState="Belum ada history top up."
+                            rowActions={transactionActions}
+                            selection={{
+                                selectedKeys: selectedTopUps,
+                                onSelectionChange: setSelectedTopUps,
+                                selectedCount: selectedTopUps.length,
+                                selectAllLabel: 'Pilih semua transaksi top up',
+                                getRowLabel: (transaction) =>
+                                    `Pilih transaksi top up ${transaction.id}`,
+                                selectedCountLabel: (count, total) =>
+                                    `${count} dari ${total} baris dipilih.`,
+                            }}
+                            pagination={{
+                                resource: topUpHistory,
+                                onPageChange: (page) =>
+                                    navigate({
+                                        search,
+                                        period,
+                                        purchase_page:
+                                            purchaseHistory.current_page,
+                                        top_up_page: page,
+                                        per_page: topUpHistory.per_page,
+                                    }),
+                                onPerPageChange: (per_page) =>
+                                    navigate({
+                                        search,
+                                        period,
+                                        purchase_page:
+                                            purchaseHistory.current_page,
+                                        top_up_page: 1,
+                                        per_page,
+                                    }),
+                                noun: 'top up',
+                            }}
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
+            <Dialog
+                open={viewedTransaction !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setViewedTransaction(null);
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Detail Transaksi</DialogTitle>
+                        <DialogDescription>
+                            Informasi lengkap transaksi saldo kantin.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {viewedTransaction && (
+                        <div className="grid gap-3 text-sm sm:grid-cols-2">
+                            <div>
+                                <p className="text-muted-foreground">Waktu</p>
+                                <p className="font-medium">
+                                    {formatWitaDateTime(
+                                        viewedTransaction.created_at,
+                                    )}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-muted-foreground">Siswa</p>
+                                <p className="font-medium">
+                                    {viewedTransaction.student.full_name}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-muted-foreground">
+                                    {viewedTransaction.type === 'purchase'
+                                        ? 'Total pembelian'
+                                        : 'Nilai top up'}
+                                </p>
+                                <p className="font-medium">
+                                    {currency(viewedTransaction.amount)}
+                                </p>
+                            </div>
+                            {viewedTransaction.type === 'purchase' ? (
+                                <div className="sm:col-span-2">
+                                    <p className="mb-2 text-muted-foreground">
+                                        Barang yang dibeli
+                                    </p>
+                                    <div className="space-y-2">
+                                        {(viewedTransaction.details ?? []).map(
+                                            (detail, index) => (
+                                                <div
+                                                    key={`${detail.barang_name}-${index}`}
+                                                    className="flex items-center justify-between gap-4"
+                                                >
+                                                    <span>
+                                                        {detail.barang_name} ×{' '}
+                                                        {detail.quantity}
+                                                    </span>
+                                                    <span className="font-medium">
+                                                        {currency(
+                                                            detail.subtotal,
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:col-span-2">
+                                    <div className="min-w-0">
+                                        <p className="text-muted-foreground">
+                                            Saldo sebelum top up
+                                        </p>
+                                        <p className="font-medium">
+                                            {currency(
+                                                viewedTransaction.balance_before ??
+                                                    0,
+                                            )}
+                                        </p>
+                                    </div>
+                                    <span aria-hidden="true">→</span>
+                                    <div className="min-w-0 text-right">
+                                        <p className="text-muted-foreground">
+                                            Saldo setelah
+                                        </p>
+                                        <p className="font-medium">
+                                            {currency(
+                                                viewedTransaction.balance_after ??
+                                                    0,
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setViewedTransaction(null)}
+                        >
+                            Tutup
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             {canTopUp && (
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogContent className="sm:max-w-lg">

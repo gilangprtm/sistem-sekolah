@@ -9,17 +9,13 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
-import DataTablePagination from '@/components/data-table/data-table-pagination';
-import DataTableRowActions from '@/components/data-table/data-table-row-actions';
 import DataTableShell from '@/components/data-table/data-table-shell';
-import DataTableToolbar from '@/components/data-table/data-table-toolbar';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Command,
     CommandEmpty,
@@ -43,14 +39,6 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import {
@@ -244,6 +232,60 @@ export default function KantinBarangIndex({
         page: 1,
         per_page: barangs.per_page,
     });
+    const columns: DataTableColumn<Barang>[] = [
+        {
+            id: 'image',
+            header: 'Gambar',
+            cell: (barang) =>
+                barang.image_url ? (
+                    <img
+                        src={barang.image_url}
+                        alt={barang.name}
+                        className="size-12 rounded-md object-cover"
+                    />
+                ) : (
+                    <div className="grid size-12 place-items-center rounded-md bg-muted text-xs text-muted-foreground">
+                        —
+                    </div>
+                ),
+        },
+        {
+            id: 'code',
+            header: 'Kode',
+            cell: (barang) => barang.kode_barang,
+            cellClassName: 'font-medium',
+        },
+        {
+            id: 'name',
+            header: 'Nama',
+            cell: (barang) => barang.name,
+        },
+        {
+            id: 'category',
+            header: 'Kategori',
+            cell: (barang) => barang.category.name,
+        },
+        {
+            id: 'brand',
+            header: 'Brand',
+            cell: (barang) => barang.brand ?? '—',
+        },
+        {
+            id: 'unit',
+            header: 'Satuan',
+            cell: (barang) => barang.satuan,
+        },
+        {
+            id: 'price',
+            header: 'Harga',
+            cell: (barang) => formatRupiah(barang.harga),
+        },
+        {
+            id: 'status',
+            header: 'Status',
+            cell: (barang) => (barang.status === 'active' ? 'Aktif' : 'Arsip'),
+        },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -315,162 +357,57 @@ export default function KantinBarangIndex({
                         </div>
                     </div>
                 </div>
-                <DataTableShell>
-                    <DataTableToolbar>
-                        <div className="text-sm text-muted-foreground">
-                            {selected.length} dari {barangs.total} baris
-                            dipilih.
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelected([])}
-                            disabled={!selected.length}
-                        >
-                            Hapus pilihan
-                        </Button>
-                    </DataTableToolbar>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={
-                                                barangs.data.length > 0 &&
-                                                selected.length ===
-                                                    barangs.data.length
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked
-                                                        ? barangs.data.map(
-                                                              (item) => item.id,
-                                                          )
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Pilih semua barang"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Gambar</TableHead>
-                                    <TableHead>Kode</TableHead>
-                                    <TableHead>Nama</TableHead>
-                                    <TableHead>Kategori</TableHead>
-                                    <TableHead>Brand</TableHead>
-                                    <TableHead>Satuan</TableHead>
-                                    <TableHead>Harga</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {barangs.data.map((barang) => (
-                                    <TableRow key={barang.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    barang.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked
-                                                            ? [
-                                                                  ...current,
-                                                                  barang.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      barang.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Pilih ${barang.name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            {barang.image_url ? (
-                                                <img
-                                                    src={barang.image_url}
-                                                    alt={barang.name}
-                                                    className="size-12 rounded-md object-cover"
-                                                />
-                                            ) : (
-                                                <div className="grid size-12 place-items-center rounded-md bg-muted text-xs text-muted-foreground">
-                                                    —
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {barang.kode_barang}
-                                        </TableCell>
-                                        <TableCell>{barang.name}</TableCell>
-                                        <TableCell>
-                                            {barang.category.name}
-                                        </TableCell>
-                                        <TableCell>
-                                            {barang.brand ?? '—'}
-                                        </TableCell>
-                                        <TableCell>{barang.satuan}</TableCell>
-                                        <TableCell>
-                                            {formatRupiah(barang.harga)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {barang.status === 'active'
-                                                ? 'Aktif'
-                                                : 'Arsip'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DataTableRowActions
-                                                label={`Aksi ${barang.name}`}
-                                            >
-                                                <DropdownMenuItem
-                                                    onSelect={() =>
-                                                        openEdit(barang)
-                                                    }
-                                                >
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                {barang.status === 'active' && (
-                                                    <DropdownMenuItem
-                                                        variant="destructive"
-                                                        onSelect={() =>
-                                                            archive(barang)
-                                                        }
-                                                    >
-                                                        Arsipkan
-                                                    </DropdownMenuItem>
-                                                )}
-                                            </DataTableRowActions>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {barangs.data.length === 0 && (
-                                    <DataTableEmptyState colSpan={10}>
-                                        Belum ada barang Kantin.
-                                    </DataTableEmptyState>
+                <DataTableShell
+                    data={barangs.data}
+                    columns={columns}
+                    getRowKey={(barang) => barang.id}
+                    emptyState="Belum ada barang Kantin."
+                    selection={{
+                        selectedKeys: selected,
+                        onSelectionChange: setSelected,
+                        selectedCount: selected.length,
+                        selectAllLabel: 'Pilih semua barang',
+                        getRowLabel: (barang) => `Pilih ${barang.name}`,
+                        selectedCountLabel: (count, total) =>
+                            `${count} dari ${total} baris dipilih.`,
+                    }}
+                    rowActions={{
+                        label: (barang) => `Aksi ${barang.name}`,
+                        render: (barang) => (
+                            <>
+                                <DropdownMenuItem
+                                    onSelect={() => openEdit(barang)}
+                                >
+                                    Edit
+                                </DropdownMenuItem>
+                                {barang.status === 'active' && (
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        onSelect={() => archive(barang)}
+                                    >
+                                        Arsipkan
+                                    </DropdownMenuItem>
                                 )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <DataTablePagination
-                        resource={barangs}
-                        onPageChange={(page) =>
+                            </>
+                        ),
+                    }}
+                    pagination={{
+                        resource: barangs,
+                        onPageChange: (page) =>
                             navigate({
                                 ...filters,
                                 page,
                                 per_page: barangs.per_page,
-                            })
-                        }
-                        onPerPageChange={(perPage) =>
-                            navigate({ ...filters, page: 1, per_page: perPage })
-                        }
-                        noun="barang"
-                    />
-                </DataTableShell>
+                            }),
+                        onPerPageChange: (perPage) =>
+                            navigate({
+                                ...filters,
+                                page: 1,
+                                per_page: perPage,
+                            }),
+                        noun: 'barang',
+                    }}
+                />
             </div>
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">

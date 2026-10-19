@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -67,29 +68,92 @@ class KantinSaldoController extends Controller
             ->selectRaw('COUNT(*) as top_up_count, COALESCE(SUM(amount), 0) as top_up_amount')
             ->first();
 
-        $ledger = (clone $ledgerQuery)
+        $mapTransaction = static function (KantinSaldoTransaction $transaction): array {
+            return [
+                'id' => $transaction->id,
+                'type' => $transaction->type,
+                'amount' => (string) $transaction->amount,
+                'balance_before' => (string) $transaction->balance_before,
+                'balance_after' => (string) $transaction->balance_after,
+                'created_at' => $transaction->created_at->utc()->toRfc3339String(),
+                'student' => [
+                    'nis' => $transaction->student?->nis,
+                    'full_name' => $transaction->student?->full_name,
+                ],
+            ];
+        };
+
+        $purchaseHistory = DB::table('tr_kantin_penjualan as sales')
+            ->join('m_students as students', 'students.id', '=', 'sales.student_id')
+            ->when($periodStart !== null, fn ($query) => $query
+                ->where('sales.created_at', '>=', $periodStart)
+                ->where('sales.created_at', '<=', $now))
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $query->where('students.full_name', 'like', "%{$search}%")
+                    ->orWhere('students.nis', 'like', "%{$search}%")
+                    ->orWhere('students.nisn', 'like', "%{$search}%");
+            }))
+            ->select([
+                'sales.id',
+                'sales.student_id',
+                'sales.total as amount',
+                'sales.created_at',
+                'students.nis',
+                'students.full_name',
+            ])
+            ->orderByDesc('sales.created_at')
+            ->orderByDesc('sales.id')
+            ->paginate($perPage, ['*'], 'purchase_page')
+            ->withQueryString();
+
+        $purchaseIds = collect($purchaseHistory->items())->pluck('id')->all();
+        $purchaseDetails = DB::table('tr_kantin_penjualan_detail as details')
+            ->join('m_kantin_barang as products', 'products.id', '=', 'details.kantin_barang_id')
+            ->whereIn('details.penjualan_id', $purchaseIds)
+            ->orderBy('details.id')
+            ->get([
+                'details.penjualan_id',
+                'products.name as barang_name',
+                'details.quantity',
+                'details.harga',
+                'details.subtotal',
+            ])
+            ->groupBy('penjualan_id');
+
+        $purchaseHistory->through(function (object $sale) use ($purchaseDetails): array {
+            return [
+                'id' => (int) $sale->id,
+                'type' => 'purchase',
+                'amount' => number_format((float) $sale->amount, 2, '.', ''),
+                'balance_before' => null,
+                'balance_after' => null,
+                'created_at' => Carbon::parse($sale->created_at)->utc()->toRfc3339String(),
+                'student' => [
+                    'nis' => $sale->nis,
+                    'full_name' => $sale->full_name,
+                ],
+                'details' => collect($purchaseDetails->get($sale->id, []))->map(static fn (object $detail): array => [
+                    'barang_name' => (string) $detail->barang_name,
+                    'quantity' => (int) $detail->quantity,
+                    'harga' => number_format((float) $detail->harga, 2, '.', ''),
+                    'subtotal' => number_format((float) $detail->subtotal, 2, '.', ''),
+                ])->values()->all(),
+            ];
+        });
+
+        $topUpHistory = (clone $ledgerQuery)
+            ->where('type', 'top_up')
             ->with('student:id,nis,nisn,full_name')
             ->latest()
-            ->paginate($perPage, ['*'], 'ledger_page')
-            ->through(static function (KantinSaldoTransaction $transaction): array {
-                return [
-                    'id' => $transaction->id,
-                    'type' => $transaction->type,
-                    'amount' => (string) $transaction->amount,
-                    'balance_after' => (string) $transaction->balance_after,
-                    'created_at' => $transaction->created_at->utc()->toRfc3339String(),
-                    'student' => [
-                        'nis' => $transaction->student?->nis,
-                        'full_name' => $transaction->student?->full_name,
-                    ],
-                ];
-            })
+            ->paginate($perPage, ['*'], 'top_up_page')
+            ->through($mapTransaction)
             ->withQueryString();
 
         return Inertia::render('kantin/saldo/index', [
             'students' => $students,
             'canTopUp' => $canTopUp,
-            'ledger' => $ledger,
+            'purchaseHistory' => $purchaseHistory,
+            'topUpHistory' => $topUpHistory,
             'filters' => $request->only(['search', 'period', 'per_page']),
             'summary' => [
                 'students' => Student::query()->count(),

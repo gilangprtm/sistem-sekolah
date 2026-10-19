@@ -434,6 +434,14 @@ class KantinBarangTest extends TestCase
         $this->assertStringNotContainsString("title: 'Kantin'", $sidebarSource);
 
         $pageSource = File::get(resource_path('js/pages/kantin/barang/index.tsx'));
+        $this->assertStringContainsString("import DataTableShell from '@/components/data-table/data-table-shell';", $pageSource);
+        $this->assertStringContainsString("import type { DataTableColumn } from '@/components/data-table/data-table-shell';", $pageSource);
+        $this->assertStringContainsString('columns={columns}', $pageSource);
+        $this->assertStringContainsString('selection={{', $pageSource);
+        $this->assertStringContainsString('rowActions={{', $pageSource);
+        $this->assertStringContainsString('pagination={{', $pageSource);
+        $this->assertStringNotContainsString("from '@/components/ui/table'", $pageSource);
+        $this->assertStringNotContainsString("from '@/components/ui/checkbox'", $pageSource);
         $this->assertStringContainsString('onSelect={()=>openEdit(barang)}', preg_replace('/\s+/', '', $pageSource));
         $this->assertStringContainsString('setOpen(true)', $pageSource);
         $this->assertStringContainsString('formatRupiah(barang.harga)', $pageSource);

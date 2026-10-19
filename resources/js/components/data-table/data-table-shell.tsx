@@ -164,7 +164,12 @@ export default function DataTableShell<
                 </DataTableToolbar>
             )}
             <div className="overflow-x-auto">
-                <Table className={tableClassName}>
+                <Table
+                    className={cn(
+                        '**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4',
+                        tableClassName,
+                    )}
+                >
                     <TableHeader>
                         <TableRow>
                             {selection && (

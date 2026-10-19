@@ -47,6 +47,19 @@ class CurriculumDataTableShellTest extends TestCase
         }
     }
 
+    public function test_generic_data_table_shell_uses_sixteen_pixel_horizontal_cell_padding(): void
+    {
+        $source = file_get_contents(
+            resource_path('js/components/data-table/data-table-shell.tsx'),
+        );
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString(
+            "'**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4'",
+            $source,
+        );
+    }
+
     public function test_academic_year_selection_count_includes_rows_from_other_pages(): void
     {
         $source = file_get_contents(
