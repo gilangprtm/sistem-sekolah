@@ -18,7 +18,6 @@ type Student = {
     tahun_angkatan: number | null;
     full_name: string;
     gender: string | null;
-    status: string;
     user?: { name: string; email: string } | null;
 };
 
@@ -35,12 +34,10 @@ type Props = {
     filters: {
         search?: string;
         gender?: string;
-        status?: string;
         tahun_angkatan?: string;
     };
     filterOptions: {
         genders: FilterOption[];
-        statuses: FilterOption[];
         angkatans: number[];
     };
 };
@@ -63,7 +60,6 @@ export default function StudentCards({
         auth?.permissions?.includes('student.card.print');
     const [search, setSearch] = useState(filters.search ?? '');
     const [gender, setGender] = useState(filters.gender ?? '');
-    const [status, setStatus] = useState(filters.status ?? '');
     const [tahunAngkatan, setTahunAngkatan] = useState(
         filters.tahun_angkatan ?? '',
     );
@@ -78,10 +74,6 @@ export default function StudentCards({
 
         if (gender) {
             params.gender = gender;
-        }
-
-        if (status) {
-            params.status = status;
         }
 
         if (tahunAngkatan) {
@@ -106,7 +98,6 @@ export default function StudentCards({
     const resetFilters = () => {
         setSearch('');
         setGender('');
-        setStatus('');
         setTahunAngkatan('');
         navigate({ page: 1, per_page: students.per_page });
     };
@@ -147,12 +138,6 @@ export default function StudentCards({
                     : student.gender === 'P'
                       ? 'Perempuan'
                       : '-',
-        },
-        {
-            id: 'status',
-            header: 'Status',
-            cell: (student) =>
-                student.status === 'active' ? 'Aktif' : 'Tidak aktif',
         },
     ];
 
@@ -215,20 +200,6 @@ export default function StudentCards({
                             />
                         </div>
                         <div className="grid gap-2 md:col-span-2">
-                            <Label>Status</Label>
-                            <SearchableCombobox
-                                value={status}
-                                options={[
-                                    { value: '', label: 'Semua' },
-                                    ...filterOptions.statuses,
-                                ]}
-                                onChange={setStatus}
-                                placeholder="Semua"
-                                searchPlaceholder="Cari status..."
-                                emptyMessage="Status tidak ditemukan."
-                            />
-                        </div>
-                        <div className="grid gap-2 md:col-span-2">
                             <Label>Angkatan</Label>
                             <SearchableCombobox
                                 value={tahunAngkatan}
@@ -245,7 +216,7 @@ export default function StudentCards({
                                 emptyMessage="Angkatan tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-1">
+                        <div className="flex gap-2 md:col-span-3">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset

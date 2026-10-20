@@ -266,6 +266,19 @@ class StudentCardTest extends TestCase
                 ->where('filters.search', 'kartu'));
     }
 
+    public function test_student_cards_page_omits_status_filter_and_table_column(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/students/cards.tsx'));
+
+        $this->assertIsString($source);
+        $this->assertStringNotContainsString("id: 'status'", $source);
+        $this->assertStringNotContainsString('<Label>Status</Label>', $source);
+        $this->assertStringNotContainsString('filterOptions.statuses', $source);
+        $this->assertStringNotContainsString('params.status', $source);
+        $this->assertStringContainsString('params.gender = gender', $source);
+        $this->assertStringContainsString('params.tahun_angkatan = tahunAngkatan', $source);
+    }
+
     public function test_student_cards_print_uses_active_list_filters_and_card_download_surface(): void
     {
         $admin = User::factory()->create();
