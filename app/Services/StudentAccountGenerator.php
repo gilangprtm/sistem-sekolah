@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Student;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -86,27 +85,11 @@ final class StudentAccountGenerator
     {
         $nisns = array_values(array_unique(array_map(static fn (string $nisn): string => trim($nisn), $nisns)));
 
-        if ($nisns === [] || count($nisns) > 300) {
-            throw ValidationException::withMessages(['file' => 'CSV harus berisi 1 sampai 300 NISN.']);
+        if ($nisns === []) {
+            throw ValidationException::withMessages(['file' => 'CSV harus berisi minimal 1 NISN.']);
         }
 
         return DB::transaction(function () use ($nisns): array {
-            $students = Student::query()
-                ->whereIn('nisn', $nisns)
-                ->get(['id', 'nisn', 'full_name', 'user_id'])
-                ->keyBy('nisn');
-            $missing = array_values(array_diff($nisns, $students->keys()->all()));
-
-            if ($missing !== []) {
-                throw ValidationException::withMessages(['file' => 'NISN tidak ditemukan: '.implode(', ', $missing).'.']);
-            }
-
-            $studentsWithAccounts = $students->filter(fn (Student $student): bool => $student->user_id !== null);
-
-            if ($studentsWithAccounts->isNotEmpty()) {
-                throw ValidationException::withMessages(['file' => 'Sebagian NISN sudah memiliki akun Siswa.']);
-            }
-
             $emails = array_map(static fn (string $nisn): string => $nisn.'@sekolah.sch.id', $nisns);
 
             if (User::query()->whereIn('email', $emails)->exists()) {
@@ -123,16 +106,14 @@ final class StudentAccountGenerator
 
             try {
                 foreach ($nisns as $nisn) {
-                    $student = $students->get($nisn);
                     $user = new User;
                     $user->forceFill([
-                        'name' => $student->full_name,
+                        'name' => 'Siswa '.$nisn.'@sekolah.sch.id',
                         'email' => $nisn.'@sekolah.sch.id',
                         'email_verified_at' => now(),
                         'password' => $password,
                     ])->save();
                     $user->assignRole($role);
-                    $student->update(['user_id' => $user->id]);
                 }
             } catch (UniqueConstraintViolationException) {
                 throw ValidationException::withMessages(['file' => 'Akun berdasarkan NISN bertabrakan.']);

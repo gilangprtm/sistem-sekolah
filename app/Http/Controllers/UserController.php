@@ -144,8 +144,8 @@ class UserController extends Controller
                 throw ValidationException::withMessages(['file' => 'CSV memiliki baris kosong.']);
             }
 
-            if (preg_match('/^\d{10}$/', $nisn) !== 1) {
-                throw ValidationException::withMessages(['file' => 'Format NISN tidak valid pada CSV.']);
+            if (preg_match('/^\d+$/', $nisn) !== 1) {
+                throw ValidationException::withMessages(['file' => 'NISN pada CSV harus berupa angka.']);
             }
 
             if (in_array($nisn, $nisns, true)) {
@@ -153,10 +153,6 @@ class UserController extends Controller
             }
 
             $nisns[] = $nisn;
-
-            if (count($nisns) > 300) {
-                throw ValidationException::withMessages(['file' => 'CSV maksimal berisi 300 NISN.']);
-            }
         }
 
         $result = $generator->generateFromNisns($nisns);

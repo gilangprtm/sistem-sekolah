@@ -120,10 +120,6 @@ class UserManagementTest extends TestCase
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        $students = Student::factory()->count(2)->sequence(
-            ['nisn' => '1234567890', 'full_name' => 'Siswa Satu'],
-            ['nisn' => '0987654321', 'full_name' => 'Siswa Dua'],
-        )->create();
 
         $response = $this->actingAs($admin)->post('/users/import-student-accounts', [
             'file' => UploadedFile::fake()->createWithContent(
@@ -134,27 +130,38 @@ class UserManagementTest extends TestCase
 
         $response->assertRedirect()
             ->assertSessionHas('inertia.flash_data.toast.message', '2 akun Siswa berhasil dibuat.');
-        foreach ($students as $student) {
-            $student->refresh();
-            $this->assertNotNull($student->user_id);
-            $user = User::findOrFail($student->user_id);
-            $this->assertSame($student->nisn.'@sekolah.sch.id', $user->email);
+        foreach (['1234567890', '0987654321'] as $nisn) {
+            $user = User::query()->where('email', $nisn.'@sekolah.sch.id')->firstOrFail();
+            $this->assertSame('Siswa '.$nisn.'@sekolah.sch.id', $user->name);
             $this->assertTrue(Hash::check('password123', $user->password));
             $this->assertTrue($user->hasRole('Siswa'));
+            $this->assertNull($user->student);
         }
     }
 
-    public function test_student_accounts_import_accepts_300_nisn_rows(): void
+    public function test_student_accounts_import_preserves_nisn_with_varying_digit_lengths(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        Student::factory()->count(300)->sequence(
-            fn ($sequence): array => ['nisn' => sprintf('%010d', 1000000001 + $sequence->index)],
-        )->create();
+        $nisns = ['1', '12345', '149975514', '0149975514', '00149975514', '00000000000149975514'];
+
+        $this->actingAs($admin)->post('/users/import-student-accounts', [
+            'file' => UploadedFile::fake()->createWithContent('accounts.csv', "Akun\n".implode("\n", $nisns)."\n"),
+        ])->assertSessionHas('inertia.flash_data.toast.message', '6 akun Siswa berhasil dibuat.');
+
+        foreach ($nisns as $nisn) {
+            $this->assertDatabaseHas('users', ['email' => $nisn.'@sekolah.sch.id']);
+        }
+    }
+
+    public function test_student_accounts_import_accepts_more_than_300_nisn_rows(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
 
         $nisns = array_map(
             static fn (int $number): string => sprintf('%010d', $number),
-            range(1000000001, 1000000300),
+            range(1000000001, 1000000500),
         );
         $csv = "Akun\r\n".implode("\r\n", $nisns)."\r\n";
 
@@ -163,32 +170,74 @@ class UserManagementTest extends TestCase
                 'file' => UploadedFile::fake()->createWithContent('accounts.csv', $csv),
             ])
             ->assertRedirect()
-            ->assertSessionHas('inertia.flash_data.toast.message', '300 akun Siswa berhasil dibuat.');
+            ->assertSessionHas('inertia.flash_data.toast.message', '500 akun Siswa berhasil dibuat.');
 
-        $this->assertSame(300, User::query()->whereIn('email', array_map(
+        $this->assertSame(500, User::query()->whereIn('email', array_map(
             static fn (string $nisn): string => $nisn.'@sekolah.sch.id',
             $nisns,
         ))->count());
     }
 
-    public function test_student_accounts_import_rejects_duplicate_or_missing_nisn_without_partial_accounts(): void
+    public function test_student_accounts_import_rejects_duplicate_nisn_without_partial_accounts(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        Student::factory()->create(['nisn' => '1234567890']);
 
         $this->actingAs($admin)->post('/users/import-student-accounts', [
             'file' => UploadedFile::fake()->createWithContent('accounts.csv', "Akun\n1234567890\n1234567890\n"),
-        ])->assertSessionHasErrors('file');
-        $this->assertSame(0, User::query()->where('email', 'like', '%@sekolah.sch.id')->count());
+        ])->assertSessionHasErrors(['file' => 'NISN duplikat ditemukan pada CSV.']);
 
-        $this->actingAs($admin)->post('/users/import-student-accounts', [
-            'file' => UploadedFile::fake()->createWithContent('accounts.csv', "Akun\n1234567890\n1111111111\n"),
-        ])->assertSessionHasErrors('file');
         $this->assertSame(0, User::query()->where('email', 'like', '%@sekolah.sch.id')->count());
     }
 
-    public function test_student_accounts_import_rejects_invalid_csv_shapes_and_bounds(): void
+    public function test_student_accounts_import_leaves_existing_student_profiles_and_links_unchanged(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $existingUser = User::factory()->create();
+        $students = Student::factory()->count(2)->sequence(
+            ['nisn' => '0149975514', 'user_id' => null],
+            ['nisn' => '0987654321', 'user_id' => $existingUser->id],
+        )->create();
+        $originalProfiles = $students->map(static fn (Student $student): array => $student->refresh()->getAttributes())->all();
+
+        $this->actingAs($admin)->post('/users/import-student-accounts', [
+            'file' => UploadedFile::fake()->createWithContent('accounts.csv', "Akun\n0149975514\n0987654321\n"),
+        ])->assertSessionHas('inertia.flash_data.toast.message', '2 akun Siswa berhasil dibuat.');
+
+        foreach ($students as $index => $student) {
+            $this->assertSame($originalProfiles[$index], $student->refresh()->getAttributes());
+        }
+        $this->assertDatabaseHas('users', ['email' => '0149975514@sekolah.sch.id']);
+        $this->assertDatabaseHas('users', ['email' => '0987654321@sekolah.sch.id']);
+    }
+
+    public function test_student_accounts_import_rolls_back_when_batch_creation_fails_midway(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $insertCount = 0;
+        DB::listen(function (QueryExecuted $query) use (&$insertCount): void {
+            if (str_starts_with(strtolower(trim($query->sql)), 'insert into "users"')) {
+                $insertCount++;
+                if ($insertCount === 2) {
+                    throw new RuntimeException('forced batch failure');
+                }
+            }
+        });
+
+        try {
+            app(StudentAccountGenerator::class)->generateFromNisns(['0149975514', '0987654321']);
+            $this->fail('Expected the batch failure to be raised.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('forced batch failure', $exception->getMessage());
+        }
+
+        $this->assertDatabaseMissing('users', ['email' => '0149975514@sekolah.sch.id']);
+        $this->assertDatabaseMissing('users', ['email' => '0987654321@sekolah.sch.id']);
+    }
+
+    public function test_student_accounts_import_rejects_invalid_csv_shapes_and_empty_input(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
@@ -196,7 +245,7 @@ class UserManagementTest extends TestCase
         foreach (
             [
                 "Wrong\n1234567890\n" => 'Header CSV wajib tepat satu kolom: Akun.',
-                "Akun\n12345\n" => 'Format NISN tidak valid pada CSV.',
+                "Akun\n123abc\n" => 'NISN pada CSV harus berupa angka.',
                 "Akun\n1234567890,extra\n" => 'CSV memiliki format kolom yang tidak valid.',
                 "Akun\n\n" => 'CSV memiliki baris kosong.',
             ] as $csv => $message
@@ -208,27 +257,26 @@ class UserManagementTest extends TestCase
                 ->assertSessionHasErrors(['file' => $message]);
         }
 
-        $csv = "Akun\n".implode("\n", array_map(static fn (int $number): string => sprintf('%010d', $number), range(1, 301)));
         $this->actingAs($admin)
             ->post('/users/import-student-accounts', [
-                'file' => UploadedFile::fake()->createWithContent('accounts.csv', $csv),
+                'file' => UploadedFile::fake()->createWithContent('accounts.csv', "Akun\n"),
             ])
-            ->assertSessionHasErrors(['file' => 'CSV maksimal berisi 300 NISN.']);
+            ->assertSessionHasErrors(['file' => 'CSV harus berisi minimal 1 NISN.']);
+
+        $this->assertSame(0, User::query()->where('email', 'like', '%@sekolah.sch.id')->count());
     }
 
     public function test_student_accounts_import_rejects_existing_account_without_partial_creation(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        Student::factory()->create(['nisn' => '1234567890']);
         User::factory()->create(['email' => '1234567890@sekolah.sch.id']);
-        Student::factory()->create(['nisn' => '0987654321']);
 
         $this->actingAs($admin)
             ->post('/users/import-student-accounts', [
                 'file' => UploadedFile::fake()->createWithContent('accounts.csv', "Akun\n1234567890\n0987654321\n"),
             ])
-            ->assertSessionHasErrors('file');
+            ->assertSessionHasErrors(['file' => 'Sebagian akun berdasarkan NISN sudah tersedia.']);
 
         $this->assertDatabaseMissing('users', ['email' => '0987654321@sekolah.sch.id']);
     }
@@ -239,6 +287,7 @@ class UserManagementTest extends TestCase
         $user->assignRole('Guru');
 
         $this->get('/users/student-accounts/template')->assertRedirect('/login');
+        $this->post('/users/import-student-accounts')->assertRedirect('/login');
         $this->actingAs($user)->get('/users/student-accounts/template')->assertForbidden();
         $this->actingAs($user)->post('/users/import-student-accounts')->assertForbidden();
     }

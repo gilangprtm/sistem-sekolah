@@ -386,8 +386,7 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                         <DialogHeader>
                             <DialogTitle>Import CSV Akun Siswa</DialogTitle>
                             <DialogDescription>
-                                Gunakan template dengan satu NISN per baris,
-                                maksimal 300 baris.
+                                Gunakan template dengan satu NISN per baris.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-3">
