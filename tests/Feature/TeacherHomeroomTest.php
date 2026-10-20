@@ -187,11 +187,31 @@ class TeacherHomeroomTest extends TestCase
         $this->assertStringContainsString('whatsappUrl(student.parent_phone)', $page);
         $this->assertStringContainsString('https://wa.me/', $page);
         $this->assertStringContainsString('Detail Siswa', $page);
-        $this->assertStringContainsString('sm:max-w-3xl', $page);
+        $this->assertStringContainsString('size="large"', $page);
         $this->assertStringContainsString('Profil siswa', $page);
         $this->assertStringContainsString('formatStudentDate(student.birth_date)', $page);
         $this->assertStringContainsString('return `${dayNumber} ${monthName} ${year}`;', $page);
         $this->assertStringContainsString('Informasi orang tua', $page);
+    }
+
+    public function test_homeroom_dialogs_use_the_responsive_modal_shell(): void
+    {
+        $page = file_get_contents(resource_path('js/pages/teacher/homeroom.tsx'));
+        $shell = file_get_contents(resource_path('js/components/ui/modal-shell.tsx'));
+
+        $this->assertIsString($page);
+        $this->assertIsString($shell);
+        $this->assertStringContainsString("import ModalShell from '@/components/ui/modal-shell';", $page);
+        $this->assertSame(2, substr_count($page, '<ModalShell size="small">'));
+        $this->assertSame(1, substr_count($page, 'size="large"'));
+        $this->assertStringNotContainsString('<DialogContent', $page);
+        $this->assertStringContainsString("size?: 'small' | 'medium' | 'large' | 'extra-large';", $shell);
+        $this->assertStringContainsString("small: 'lg:max-w-sm'", $shell);
+        $this->assertStringContainsString("medium: 'lg:max-w-[35vw]'", $shell);
+        $this->assertStringContainsString("large: 'lg:max-w-[60vw]'", $shell);
+        $this->assertStringContainsString("'extra-large': 'lg:max-w-[85vw]'", $shell);
+        $this->assertStringContainsString('sm:max-w-[calc(100%-2rem)]', $shell);
+        $this->assertStringContainsString('max-h-[calc(100dvh-2rem)] overflow-y-auto', $shell);
     }
 
     public function test_page_uses_line_tabs_for_homeroom_sections(): void

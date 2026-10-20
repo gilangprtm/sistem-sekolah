@@ -25,12 +25,12 @@ import {
 } from '@/components/ui/card';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import ModalShell from '@/components/ui/modal-shell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { formatWitaDate } from '@/lib/date-time';
@@ -916,7 +916,7 @@ export default function HomeroomPage({
                         }
                     }}
                 >
-                    <DialogContent>
+                    <ModalShell size="small">
                         <DialogHeader>
                             <DialogTitle>Absen Siswa</DialogTitle>
                             <DialogDescription>
@@ -985,7 +985,7 @@ export default function HomeroomPage({
                                 </div>
                             </>
                         )}
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
 
                 <Dialog
@@ -997,7 +997,7 @@ export default function HomeroomPage({
                         }
                     }}
                 >
-                    <DialogContent>
+                    <ModalShell size="small">
                         <DialogHeader>
                             <DialogTitle>Meja {editingSeat}</DialogTitle>
                             <DialogDescription>
@@ -1106,7 +1106,7 @@ export default function HomeroomPage({
                                 )}
                             </>
                         )}
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
 
                 <Dialog
@@ -1117,7 +1117,10 @@ export default function HomeroomPage({
                         }
                     }}
                 >
-                    <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-3xl [&_[data-slot=dialog-close]]:top-4 [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:min-h-11 [&_[data-slot=dialog-close]]:min-w-11">
+                    <ModalShell
+                        size="large"
+                        className="grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 [&_[data-slot=dialog-close]]:top-4 [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:min-h-11 [&_[data-slot=dialog-close]]:min-w-11"
+                    >
                         <DialogHeader className="border-b px-5 py-5 pr-16 sm:px-7 sm:py-6 sm:pr-20">
                             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                 Profil siswa
@@ -1137,7 +1140,7 @@ export default function HomeroomPage({
                                 <StudentDetail student={viewingStudent} />
                             </div>
                         )}
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>
