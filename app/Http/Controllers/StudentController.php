@@ -8,6 +8,7 @@ use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentPlacement;
 use App\Models\User;
+use App\Services\AutoLinkStudentAccounts;
 use App\Services\StudentCsvImporter;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -29,9 +30,21 @@ class StudentController extends Controller
     {
         return Inertia::render('students/index', [
             'students' => $this->paginatedStudents($request),
-            'filters' => $request->only(['search', 'gender', 'status', 'per_page']),
+            'filters' => $request->only(['search', 'gender', 'status', 'account', 'per_page']),
             'filterOptions' => $this->studentFilterOptions(),
         ]);
+    }
+
+    public function autoLinkAccounts(AutoLinkStudentAccounts $autoLink): RedirectResponse
+    {
+        $result = $autoLink->handle();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => "{$result['linked']} akun berhasil dihubungkan. {$result['skipped']} siswa dilewati.",
+        ]);
+
+        return back();
     }
 
     public function cards(Request $request): Response
@@ -225,6 +238,9 @@ class StudentController extends Controller
         $search = $request->string('search')->trim()->toString();
         $gender = $request->string('gender')->toString();
         $status = $request->string('status')->toString();
+        $account = $request->routeIs('students.index')
+            ? $request->string('account')->toString()
+            : '';
         $tahunAngkatan = $angkatanOptions === null
             ? null
             : $this->validatedAngkatan($request->input('tahun_angkatan'), $angkatanOptions);
@@ -241,6 +257,8 @@ class StudentController extends Controller
             })
             ->when($gender !== '', fn ($query) => $query->where('gender', $gender))
             ->when($status !== '', fn ($query) => $query->where('status', $status))
+            ->when($account === 'connected', fn ($query) => $query->whereHas('user'))
+            ->when($account === 'unconnected', fn ($query) => $query->whereDoesntHave('user'))
             ->when($tahunAngkatan !== null, fn ($query) => $query->where('tahun_angkatan', $tahunAngkatan))
             ->orderBy('full_name');
     }

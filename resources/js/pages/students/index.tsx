@@ -1,7 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Download, Plus, Search, UserRound } from 'lucide-react';
+import { Download, Link2, Plus, Search, UserRound } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import { useRef, useState } from 'react';
+import { autoLinkAccounts } from '@/actions/App/Http/Controllers/StudentController';
 import AlertError from '@/components/alert-error';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
@@ -21,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
+import type { Auth, BreadcrumbItem } from '@/types';
 
 type Student = {
     id: number;
@@ -37,6 +38,7 @@ type Student = {
 type FilterOption = { value: string; label: string };
 
 type Props = {
+    auth: Auth;
     students: {
         data: Student[];
         current_page: number;
@@ -48,6 +50,7 @@ type Props = {
         search?: string;
         gender?: string;
         status?: string;
+        account?: string;
         per_page?: number;
     };
     filterOptions: { genders: FilterOption[]; statuses: FilterOption[] };
@@ -56,14 +59,22 @@ type Props = {
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Siswa', href: '/students' }];
 
 export default function StudentsIndex({
+    auth,
     students,
     filters,
     filterOptions,
 }: Props) {
+    const canAutoLink = ['student.update', 'student.assign-account'].every(
+        (permission) => auth.permissions?.includes(permission),
+    );
+    const [autoLinkOpen, setAutoLinkOpen] = useState(false);
+    const [autoLinkProcessing, setAutoLinkProcessing] = useState(false);
+    const [autoLinkErrors, setAutoLinkErrors] = useState<string[]>([]);
     const [selected, setSelected] = useState<number[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
     const [gender, setGender] = useState(filters.gender ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
+    const [account, setAccount] = useState(filters.account ?? '');
     const [importErrors, setImportErrors] = useState<string[]>([]);
     const [importDialogOpen, setImportDialogOpen] = useState(false);
     const [importProcessing, setImportProcessing] = useState(false);
@@ -85,6 +96,10 @@ export default function StudentsIndex({
             params.status = status;
         }
 
+        if (account) {
+            params.account = account;
+        }
+
         return params;
     };
 
@@ -104,6 +119,7 @@ export default function StudentsIndex({
         setSearch('');
         setGender('');
         setStatus('');
+        setAccount('');
         navigate({ page: 1, per_page: students.per_page });
     };
 
@@ -147,6 +163,25 @@ export default function StudentsIndex({
                     setImportErrors(Object.values(errors));
                 },
                 onFinish: () => setImportProcessing(false),
+            },
+        );
+    };
+
+    const connectAccounts = () => {
+        if (autoLinkProcessing) {
+            return;
+        }
+
+        setAutoLinkErrors([]);
+        setAutoLinkProcessing(true);
+        router.post(
+            autoLinkAccounts.url(),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => setAutoLinkOpen(false),
+                onError: (errors) => setAutoLinkErrors(Object.values(errors)),
+                onFinish: () => setAutoLinkProcessing(false),
             },
         );
     };
@@ -222,6 +257,21 @@ export default function StudentsIndex({
                         >
                             Import Excel
                         </Button>
+                        {canAutoLink && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setAutoLinkErrors([]);
+                                    setAutoLinkOpen(true);
+                                }}
+                                disabled={autoLinkProcessing}
+                                className="w-full sm:w-auto"
+                            >
+                                <Link2 />
+                                Hubungkan Otomatis
+                            </Button>
+                        )}
                         <Button asChild className="w-full sm:w-auto">
                             <Link href="/students/create">
                                 <Plus />
@@ -232,7 +282,7 @@ export default function StudentsIndex({
                 </div>
                 <div className="grid gap-4 rounded-xl border p-4">
                     <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-5">
+                        <div className="grid gap-2 md:col-span-4">
                             <Label htmlFor="student-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -280,7 +330,25 @@ export default function StudentsIndex({
                                 emptyMessage="Status tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="grid gap-2 md:col-span-2">
+                            <Label>Akun</Label>
+                            <SearchableCombobox
+                                value={account}
+                                options={[
+                                    { value: '', label: 'Semua' },
+                                    { value: 'connected', label: 'Terhubung' },
+                                    {
+                                        value: 'unconnected',
+                                        label: 'Tidak Terhubung',
+                                    },
+                                ]}
+                                onChange={setAccount}
+                                placeholder="Semua"
+                                searchPlaceholder="Cari akun..."
+                                emptyMessage="Akun tidak ditemukan."
+                            />
+                        </div>
+                        <div className="flex gap-2 md:col-span-2">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset
@@ -345,6 +413,62 @@ export default function StudentsIndex({
                     }}
                     tableClassName="min-w-[760px]"
                 />
+                <Dialog
+                    open={autoLinkOpen}
+                    onOpenChange={(open) => {
+                        if (!autoLinkProcessing) {
+                            setAutoLinkOpen(open);
+                        }
+                    }}
+                >
+                    <DialogContent
+                        showCloseButton={!autoLinkProcessing}
+                        onEscapeKeyDown={(event) => {
+                            if (autoLinkProcessing) {
+                                event.preventDefault();
+                            }
+                        }}
+                        onPointerDownOutside={(event) => {
+                            if (autoLinkProcessing) {
+                                event.preventDefault();
+                            }
+                        }}
+                    >
+                        <DialogHeader>
+                            <DialogTitle>Hubungkan Akun Otomatis</DialogTitle>
+                            <DialogDescription>
+                                Hubungkan seluruh siswa yang belum terhubung
+                                dengan akun sesuai NISN. Siswa tanpa NISN atau
+                                akun yang cocok akan dilewati. Tautan yang sudah
+                                ada tidak diubah dan akun baru tidak dibuat.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {autoLinkErrors.length > 0 && (
+                            <AlertError
+                                title="Penautan akun gagal"
+                                errors={autoLinkErrors}
+                            />
+                        )}
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setAutoLinkOpen(false)}
+                                disabled={autoLinkProcessing}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                onClick={connectAccounts}
+                                disabled={autoLinkProcessing}
+                            >
+                                {autoLinkProcessing && <Spinner />}
+                                {autoLinkProcessing
+                                    ? 'Menghubungkan...'
+                                    : 'Hubungkan Otomatis'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
                 <Dialog
                     open={importDialogOpen}
                     onOpenChange={(open) => {

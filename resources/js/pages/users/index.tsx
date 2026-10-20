@@ -32,7 +32,6 @@ type UserItem = {
     id: number;
     name: string;
     email: string;
-    email_verified_at: string | null;
     created_at: string;
     roles: { id: number; name: string }[];
 };
@@ -50,27 +49,17 @@ type UsersPageProps = {
     filters: {
         search?: string;
         role?: string;
-        status?: string;
         per_page?: number;
-    };
-    filterOptions: {
-        statuses: { value: string; label: string }[];
     };
 };
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Users', href: '/users' }];
 
-export default function UsersIndex({
-    users,
-    roles,
-    filters,
-    filterOptions,
-}: UsersPageProps) {
+export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
     const { auth } = usePage<UsersPageProps>().props;
     const [selected, setSelected] = useState<number[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
     const [role, setRole] = useState(filters.role ?? '');
-    const [status, setStatus] = useState(filters.status ?? '');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<UserItem | null>(null);
     const [form, setForm] = useState({
@@ -199,10 +188,6 @@ export default function UsersIndex({
             params.role = role;
         }
 
-        if (status) {
-            params.status = status;
-        }
-
         return params;
     };
 
@@ -221,7 +206,6 @@ export default function UsersIndex({
     const resetFilters = () => {
         setSearch('');
         setRole('');
-        setStatus('');
         setSelected([]);
         navigate({ page: 1, per_page: users.per_page });
     };
@@ -245,12 +229,6 @@ export default function UsersIndex({
                 user.roles.length === 0
                     ? '-'
                     : user.roles.map((item) => item.name).join(', '),
-        },
-        {
-            id: 'status',
-            header: 'Status',
-            cell: (user) =>
-                user.email_verified_at ? 'Verified' : 'Unverified',
         },
     ];
 
@@ -324,21 +302,7 @@ export default function UsersIndex({
                                 emptyMessage="Role tidak ditemukan."
                             />
                         </div>
-                        <div className="grid gap-2 md:col-span-2">
-                            <Label>Status</Label>
-                            <SearchableCombobox
-                                value={status}
-                                options={[
-                                    { value: '', label: 'Semua' },
-                                    ...filterOptions.statuses,
-                                ]}
-                                onChange={setStatus}
-                                placeholder="Semua"
-                                searchPlaceholder="Cari status..."
-                                emptyMessage="Status tidak ditemukan."
-                            />
-                        </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="flex gap-2 md:col-span-5">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset
