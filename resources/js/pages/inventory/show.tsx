@@ -1,12 +1,22 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import {
     Table,
     TableBody,
@@ -73,10 +83,12 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
     const [keteranganErrors, setKeteranganErrors] = useState<
         Record<string, string>
     >({});
-    const [addQty, setAddQty] = useState('1');
+    const [addQty, setAddQty] = useState('');
     const [addQtyErrors, setAddQtyErrors] = useState<Record<string, string>>(
         {},
     );
+    const [addUnitModalOpen, setAddUnitModalOpen] = useState(false);
+    const [addingUnits, setAddingUnits] = useState(false);
     useEffect(() => {
         if (!imagePreview) {
             return;
@@ -141,17 +153,28 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
         );
     };
 
-    const addUnits = () => {
+    const addUnits = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        if (addingUnits) {
+            return;
+        }
+
+        setAddQtyErrors({});
+        setAddingUnits(true);
+
         router.post(
             `/inventaris/inventory/${item.id}/units`,
             { qty: addQty },
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    setAddQty('1');
+                    setAddQty('');
                     setAddQtyErrors({});
+                    setAddUnitModalOpen(false);
                 },
                 onError: (errs) => setAddQtyErrors(errs),
+                onFinish: () => setAddingUnits(false),
             },
         );
     };
@@ -411,25 +434,92 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
                     </section>
 
                     <div className="rounded-xl border p-4 lg:col-span-3">
-                        <div className="mb-3 flex items-center justify-between">
-                            <h3 className="text-sm font-semibold">
-                                Unit / Register
-                            </h3>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    type="number"
-                                    min={1}
-                                    value={addQty}
-                                    onChange={(e) => setAddQty(e.target.value)}
-                                    className="w-20"
-                                />
-                                <Button size="sm" onClick={addUnits}>
-                                    <Plus />
-                                    Tambah Unit
-                                </Button>
+                        <Dialog
+                            open={addUnitModalOpen}
+                            onOpenChange={(open) => {
+                                if (!addingUnits) {
+                                    setAddUnitModalOpen(open);
+                                }
+                            }}
+                        >
+                            <div className="mb-3 flex items-center justify-between">
+                                <h3 className="text-sm font-semibold">
+                                    Unit / Register
+                                </h3>
+                                <DialogTrigger asChild>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => {
+                                            setAddQty('');
+                                            setAddQtyErrors({});
+                                        }}
+                                    >
+                                        <Plus />
+                                        Tambah Unit
+                                    </Button>
+                                </DialogTrigger>
                             </div>
-                        </div>
-                        <InputError message={addQtyErrors.qty} />
+                            <ModalShell size="small">
+                                <form
+                                    onSubmit={addUnits}
+                                    className="grid gap-4"
+                                >
+                                    <DialogHeader>
+                                        <DialogTitle>Tambah Unit</DialogTitle>
+                                        <DialogDescription>
+                                            Masukkan jumlah unit yang akan
+                                            ditambahkan.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="add-unit-qty">
+                                            Berapa Unit
+                                        </Label>
+                                        <Input
+                                            id="add-unit-qty"
+                                            type="number"
+                                            min={1}
+                                            step={1}
+                                            required
+                                            autoFocus
+                                            disabled={addingUnits}
+                                            value={addQty}
+                                            onChange={(event) =>
+                                                setAddQty(event.target.value)
+                                            }
+                                            aria-invalid={Boolean(
+                                                addQtyErrors.qty,
+                                            )}
+                                            aria-describedby="add-unit-qty-error"
+                                        />
+                                        <InputError
+                                            id="add-unit-qty-error"
+                                            message={addQtyErrors.qty}
+                                        />
+                                    </div>
+                                    <DialogFooter>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={addingUnits}
+                                            onClick={() =>
+                                                setAddUnitModalOpen(false)
+                                            }
+                                        >
+                                            Batal
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={addingUnits}
+                                        >
+                                            {addingUnits
+                                                ? 'Menambahkan...'
+                                                : 'Tambah Unit'}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </ModalShell>
+                        </Dialog>
 
                         <div className="w-full overflow-x-auto">
                             <Table className="w-full table-fixed">
