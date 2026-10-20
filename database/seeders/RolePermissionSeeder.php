@@ -37,6 +37,7 @@ class RolePermissionSeeder extends Seeder
         'student.assign-account',
         'teacher.view',
         'teacher.homeroom.view',
+        'teacher.homeroom.seating.manage',
         'teacher.create',
         'teacher.update',
         'teacher.delete',
@@ -157,6 +158,7 @@ class RolePermissionSeeder extends Seeder
         // Role lain tanpa permission khusus (fase selanjutnya)
         Role::findByName('Guru', 'web')->syncPermissions([
             'teacher.homeroom.view',
+            'teacher.homeroom.seating.manage',
         ]);
         Role::findByName('Admin Perpustakaan', 'web')->syncPermissions([]);
         Role::findByName('Siswa', 'web')->syncPermissions([]);

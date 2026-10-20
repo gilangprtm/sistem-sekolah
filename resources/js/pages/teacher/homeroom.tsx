@@ -1,7 +1,21 @@
+import {
+    DndContext,
+    MouseSensor,
+    TouchSensor,
+    useDraggable,
+    useDroppable,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
 import { Head, router } from '@inertiajs/react';
+import { Armchair, Grip } from 'lucide-react';
 import { useState } from 'react';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
+import SearchableCombobox from '@/components/searchable-combobox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
@@ -19,6 +33,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
+import { update as updateSeating } from '@/routes/teacher/homeroom/seating';
 import type { BreadcrumbItem } from '@/types';
 
 type AcademicYear = {
@@ -66,7 +81,118 @@ type Props = {
     students: PaginatedStudents | null;
     filters: { per_page?: number };
     hasTeacherProfile: boolean;
+    canManageSeating: boolean;
+    seating: {
+        version: string;
+        seats: Array<{ seat_number: number; student_id: number }>;
+        students: Array<{
+            id: number;
+            full_name: string | null;
+            photo_url: string | null;
+        }>;
+    } | null;
 };
+
+type SeatStudent = NonNullable<Props['seating']>['students'][number];
+
+function ClassroomSeat({
+    number,
+    student,
+    disabled,
+    onSelect,
+}: {
+    number: number;
+    student?: SeatStudent;
+    disabled: boolean;
+    onSelect: () => void;
+}) {
+    const { setNodeRef: setDropRef, isOver } = useDroppable({
+        id: number,
+        disabled,
+    });
+    const {
+        setNodeRef: setDragRef,
+        attributes,
+        listeners,
+        transform,
+        isDragging,
+    } = useDraggable({
+        id: number,
+        disabled: disabled || !student,
+    });
+
+    return (
+        <div
+            ref={setDropRef}
+            className={`relative min-w-0 rounded-xl border bg-card p-2 ${isOver ? 'border-primary bg-primary/10 ring-2 ring-primary' : ''}`}
+        >
+            <button
+                ref={setDragRef}
+                type="button"
+                disabled={disabled}
+                onClick={onSelect}
+                {...attributes}
+                {...listeners}
+                style={{
+                    transform: transform
+                        ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+                        : undefined,
+                    opacity: isDragging ? 0.4 : 1,
+                }}
+                className="relative z-10 grid h-44 w-full touch-manipulation grid-rows-[minmax(0,1fr)_2rem_1rem] items-center justify-items-center gap-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                aria-label={`Meja ${number}: ${student?.full_name ?? 'Kosong'}. Pilih atau ganti siswa.`}
+            >
+                {student ? (
+                    <Avatar
+                        className={
+                            student.photo_url
+                                ? 'aspect-[2/3] h-auto w-full max-w-20 overflow-hidden rounded-md after:rounded-md'
+                                : 'size-12'
+                        }
+                    >
+                        <AvatarImage
+                            src={student.photo_url ?? undefined}
+                            alt={student.full_name ?? 'Siswa'}
+                            draggable={false}
+                            className="aspect-auto rounded-md object-top"
+                        />
+                        <AvatarFallback
+                            className={
+                                student.photo_url ? 'rounded-md' : undefined
+                            }
+                        >
+                            {(student.full_name ?? 'S')
+                                .split(' ')
+                                .map((word) => word[0])
+                                .slice(0, 2)
+                                .join('')}
+                        </AvatarFallback>
+                    </Avatar>
+                ) : (
+                    <Armchair
+                        className="size-8 text-muted-foreground"
+                        aria-hidden="true"
+                    />
+                )}
+                <span className="line-clamp-2 w-full text-center text-xs font-medium">
+                    {student?.full_name ?? `Meja ${number}`}
+                </span>
+                {student && (
+                    <Grip
+                        className="size-4 text-muted-foreground"
+                        aria-hidden="true"
+                    />
+                )}
+            </button>
+            <span
+                className="absolute top-1 left-1 z-20 rounded bg-background/80 px-1 text-[10px] text-muted-foreground"
+                aria-hidden="true"
+            >
+                {number}
+            </span>
+        </div>
+    );
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Wali Kelas', href: '/guru/wali-kelas' },
@@ -273,9 +399,94 @@ export default function HomeroomPage({
     students,
     filters,
     hasTeacherProfile,
+    canManageSeating,
+    seating,
 }: Props) {
     const [selected, setSelected] = useState<number[]>([]);
     const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+    const [editingSeat, setEditingSeat] = useState<number | null>(null);
+    const [seatError, setSeatError] = useState<string | null>(null);
+    const [seatSaving, setSeatSaving] = useState(false);
+    const seatSensors = useSensors(
+        useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, {
+            activationConstraint: { delay: 250, tolerance: 8 },
+        }),
+    );
+    const activeAssignments: Record<number, number> = Object.fromEntries(
+        (seating?.seats ?? []).map(({ seat_number, student_id }) => [
+            seat_number,
+            student_id,
+        ]),
+    );
+    const seatedIds = new Set(Object.values(activeAssignments));
+    const unseatedStudents = (seating?.students ?? []).filter(
+        ({ id }) => !seatedIds.has(id),
+    );
+    const seatOptions = unseatedStudents.map((student) => ({
+        value: String(student.id),
+        label: student.full_name ?? `Siswa ${student.id}`,
+    }));
+
+    const saveSeatAssignments = (assignments: Record<number, number>) => {
+        if (!seating || !canManageSeating || seatSaving) {
+            return;
+        }
+
+        setSeatSaving(true);
+        setSeatError(null);
+        router.put(
+            updateSeating.url(),
+            {
+                version: seating.version,
+                seats: Array.from({ length: 40 }, (_, index) => ({
+                    seat_number: index + 1,
+                    student_id: assignments[index + 1] ?? null,
+                })),
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setEditingSeat(null),
+                onError: (errors) => {
+                    setSeatError(
+                        Object.values(errors).flat()[0] ??
+                            'Posisi duduk belum dapat disimpan.',
+                    );
+                },
+                onFinish: () => setSeatSaving(false),
+            },
+        );
+    };
+
+    const moveStudent = (sourceSeat: number, targetSeat: number) => {
+        if (!sourceSeat || !targetSeat || sourceSeat === targetSeat) {
+            return;
+        }
+
+        const next = { ...activeAssignments };
+        const sourceStudent = next[sourceSeat];
+        const targetStudent = next[targetSeat];
+
+        if (!sourceStudent) {
+            return;
+        }
+
+        if (targetStudent) {
+            next[sourceSeat] = targetStudent;
+        } else {
+            delete next[sourceSeat];
+        }
+
+        next[targetSeat] = sourceStudent;
+        saveSeatAssignments(next);
+    };
+    const handleSeatDragEnd = ({ active, over }: DragEndEvent) => {
+        if (!over) {
+            return;
+        }
+
+        moveStudent(Number(active.id), Number(over.id));
+    };
     const emptyMessage = !hasTeacherProfile
         ? 'Akun Anda belum terhubung dengan data guru.'
         : !academicYear
@@ -439,9 +650,139 @@ export default function HomeroomPage({
                         </TabsContent>
 
                         <TabsContent value="tempat-duduk">
-                            <p className="py-6 text-sm text-muted-foreground">
-                                Informasi tempat duduk belum tersedia.
-                            </p>
+                            <section
+                                className="space-y-4"
+                                aria-labelledby="seating-heading"
+                            >
+                                <div>
+                                    <h2
+                                        id="seating-heading"
+                                        className="font-semibold"
+                                    >
+                                        Denah Tempat Duduk
+                                    </h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        4 pasang di depan · 5 pasang ke belakang
+                                        per kelompok · 40 meja siswa
+                                    </p>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        Sentuh meja untuk memilih, mengganti,
+                                        atau mengosongkan siswa. Geser foto
+                                        untuk memindahkan atau menukar tempat;
+                                        pada layar sentuh, tahan foto sebentar
+                                        lalu geser. Perubahan tersimpan
+                                        otomatis.
+                                    </p>
+                                </div>
+                                <p className="text-sm" aria-live="polite">
+                                    {seatSaving
+                                        ? 'Menyimpan denah…'
+                                        : `${seatedIds.size} siswa sudah duduk · ${unseatedStudents.length} belum mendapat tempat`}
+                                </p>
+                                {seatError && (
+                                    <div
+                                        role="alert"
+                                        className="rounded-lg border border-destructive p-3 text-sm text-destructive"
+                                    >
+                                        {seatError}{' '}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                router.reload({
+                                                    only: ['seating'],
+                                                })
+                                            }
+                                        >
+                                            Muat ulang denah
+                                        </Button>
+                                    </div>
+                                )}
+                                {!canManageSeating && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Anda hanya dapat melihat denah tempat
+                                        duduk.
+                                    </p>
+                                )}
+                                <div
+                                    className="overflow-x-auto rounded-xl border bg-muted/20 p-4"
+                                    tabIndex={0}
+                                    role="region"
+                                    aria-label="Denah 40 meja siswa; geser mendatar pada layar kecil"
+                                >
+                                    <div className="min-w-[860px] space-y-6">
+                                        <div className="grid grid-cols-4 gap-10">
+                                            <div className="col-start-4 rounded-lg border bg-muted px-6 py-4 text-center text-sm font-semibold">
+                                                Meja Guru · Depan kelas
+                                            </div>
+                                        </div>
+                                        <DndContext
+                                            sensors={seatSensors}
+                                            onDragEnd={handleSeatDragEnd}
+                                        >
+                                            <div className="grid grid-cols-4 gap-10">
+                                                {Array.from(
+                                                    { length: 4 },
+                                                    (_, group) => (
+                                                        <div
+                                                            key={group}
+                                                            className="grid grid-cols-2 gap-x-2 gap-y-5"
+                                                            aria-label={`Kelompok meja ${group + 1}`}
+                                                        >
+                                                            {Array.from(
+                                                                { length: 5 },
+                                                                (_, depth) =>
+                                                                    [0, 1].map(
+                                                                        (
+                                                                            side,
+                                                                        ) => {
+                                                                            const number =
+                                                                                depth *
+                                                                                    8 +
+                                                                                group *
+                                                                                    2 +
+                                                                                side +
+                                                                                1;
+
+                                                                            return (
+                                                                                <ClassroomSeat
+                                                                                    key={
+                                                                                        number
+                                                                                    }
+                                                                                    number={
+                                                                                        number
+                                                                                    }
+                                                                                    student={seating?.students.find(
+                                                                                        ({
+                                                                                            id,
+                                                                                        }) =>
+                                                                                            id ===
+                                                                                            activeAssignments[
+                                                                                                number
+                                                                                            ],
+                                                                                    )}
+                                                                                    disabled={
+                                                                                        !canManageSeating ||
+                                                                                        seatSaving
+                                                                                    }
+                                                                                    onSelect={() =>
+                                                                                        setEditingSeat(
+                                                                                            number,
+                                                                                        )
+                                                                                    }
+                                                                                />
+                                                                            );
+                                                                        },
+                                                                    ),
+                                                            )}
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </DndContext>
+                                    </div>
+                                </div>
+                            </section>
                         </TabsContent>
 
                         <TabsContent value="absen-hari-ini">
@@ -451,6 +792,127 @@ export default function HomeroomPage({
                         </TabsContent>
                     </Tabs>
                 )}
+
+                <Dialog
+                    open={editingSeat !== null}
+                    onOpenChange={(open) => {
+                        if (!open && !seatSaving) {
+                            setEditingSeat(null);
+                            setSeatError(null);
+                        }
+                    }}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Meja {editingSeat}</DialogTitle>
+                            <DialogDescription>
+                                Pilih siswa yang belum mendapat tempat duduk.
+                                Untuk menukar dengan siswa yang sudah duduk,
+                                gunakan pilihan pindah/tukar atau geser foto.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {editingSeat !== null && (
+                            <>
+                                <p className="text-sm">
+                                    Penghuni:{' '}
+                                    {seating?.students.find(
+                                        ({ id }) =>
+                                            id ===
+                                            activeAssignments[editingSeat],
+                                    )?.full_name ?? 'Kosong'}
+                                </p>
+                                <fieldset
+                                    disabled={seatSaving}
+                                    className="space-y-4"
+                                >
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">
+                                            Pilih siswa
+                                        </p>
+                                        <SearchableCombobox
+                                            value=""
+                                            options={seatOptions}
+                                            placeholder="Cari dan pilih siswa…"
+                                            searchPlaceholder="Cari nama siswa…"
+                                            emptyMessage="Tidak ada siswa yang belum mendapat tempat."
+                                            onChange={(value) =>
+                                                saveSeatAssignments({
+                                                    ...activeAssignments,
+                                                    [editingSeat]:
+                                                        Number(value),
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                    {activeAssignments[editingSeat] && (
+                                        <div className="space-y-2">
+                                            <p className="text-sm font-medium">
+                                                Pindah / tukar meja
+                                            </p>
+                                            <SearchableCombobox
+                                                value=""
+                                                placeholder="Pilih meja tujuan…"
+                                                searchPlaceholder="Cari meja atau nama siswa…"
+                                                options={Array.from(
+                                                    { length: 40 },
+                                                    (_, index) => index + 1,
+                                                )
+                                                    .filter(
+                                                        (number) =>
+                                                            number !==
+                                                            editingSeat,
+                                                    )
+                                                    .map((number) => ({
+                                                        value: String(number),
+                                                        label: `Meja ${number} · ${seating?.students.find(({ id }) => id === activeAssignments[number])?.full_name ?? 'Kosong'}`,
+                                                    }))}
+                                                onChange={(value) =>
+                                                    moveStudent(
+                                                        editingSeat,
+                                                        Number(value),
+                                                    )
+                                                }
+                                            />
+                                        </div>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        disabled={
+                                            !activeAssignments[editingSeat] ||
+                                            seatSaving
+                                        }
+                                        onClick={() => {
+                                            const next = {
+                                                ...activeAssignments,
+                                            };
+                                            delete next[editingSeat];
+                                            saveSeatAssignments(next);
+                                        }}
+                                    >
+                                        Clear · Kosongkan meja
+                                    </Button>
+                                </fieldset>
+                                {seatSaving && (
+                                    <p
+                                        role="status"
+                                        className="text-sm text-muted-foreground"
+                                    >
+                                        Menyimpan…
+                                    </p>
+                                )}
+                                {seatError && (
+                                    <p
+                                        role="alert"
+                                        className="text-sm text-destructive"
+                                    >
+                                        {seatError}
+                                    </p>
+                                )}
+                            </>
+                        )}
+                    </DialogContent>
+                </Dialog>
 
                 <Dialog
                     open={viewingStudent !== null}

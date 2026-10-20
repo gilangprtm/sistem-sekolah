@@ -60,14 +60,14 @@ function NewsSection({ news }: { news: NewsItem[] }) {
             </div>
 
             {news.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {news.map((item, index) => (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    {news.map((item) => (
                         <a
                             key={item.id}
                             href={item.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`group min-w-0 overflow-hidden rounded-xl border bg-card transition-colors outline-none hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring ${index === 0 ? 'sm:col-span-2 xl:col-span-1' : ''}`}
+                            className="group min-w-0 overflow-hidden rounded-xl border bg-card transition-colors outline-none hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             <div className="aspect-[16/9] overflow-hidden bg-muted">
                                 {item.imageUrl &&
@@ -92,7 +92,7 @@ function NewsSection({ news }: { news: NewsItem[] }) {
                                     </div>
                                 )}
                             </div>
-                            <div className="space-y-2 p-4">
+                            <div className="space-y-1.5 p-3">
                                 {item.publishedAt && (
                                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                         <CalendarDays
@@ -102,11 +102,11 @@ function NewsSection({ news }: { news: NewsItem[] }) {
                                         {formatWitaDate(item.publishedAt)}
                                     </p>
                                 )}
-                                <h3 className="line-clamp-2 text-base leading-6 font-semibold">
+                                <h3 className="line-clamp-2 text-sm leading-5 font-semibold">
                                     {item.title}
                                 </h3>
                                 {item.excerpt && (
-                                    <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+                                    <p className="line-clamp-2 text-xs leading-4 text-muted-foreground">
                                         {item.excerpt}
                                     </p>
                                 )}
