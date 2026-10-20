@@ -1,4 +1,5 @@
 import { Head, InfiniteScroll, router } from '@inertiajs/react';
+import { ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
@@ -6,6 +7,7 @@ import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
 import { formatWitaDateTime } from '@/lib/date-time';
 import { formatRupiah } from '@/lib/utils';
+import { index as kantinPos } from '@/routes/kantin/pos';
 
 type Detail = {
     barang_name: string;
@@ -128,6 +130,19 @@ export default function StudentKantin({
                             </p>
                         </div>
                     </div>
+                    <Button asChild className="min-h-11 w-full rounded-xl">
+                        <a
+                            href={kantinPos.url()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Menuju Kantin
+                            <ArrowUpRight aria-hidden="true" />
+                            <span className="sr-only">
+                                (dibuka di browser baru)
+                            </span>
+                        </a>
+                    </Button>
                     <div
                         className="grid w-full shrink-0 grid-cols-2 rounded-2xl bg-muted p-1"
                         role="tablist"

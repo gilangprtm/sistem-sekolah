@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import {
+    ChevronUp,
     LogOut,
     Minus,
     Plus,
@@ -35,7 +36,7 @@ export default function KantinPos({ categories, products }: Props) {
     const [pinChallenge, setPinChallenge] = useState<PinChallenge | null>(null);
     const [pin, setPin] = useState('');
     const [verificationToken, setVerificationToken] = useState('');
-    const [qr, setQr] = useState('');
+    const [nisn, setNisn] = useState('');
     const [scanning, setScanning] = useState(false);
     const [busy, setBusy] = useState(false);
     const [paying, setPaying] = useState(false);
@@ -57,7 +58,7 @@ export default function KantinPos({ categories, products }: Props) {
         [],
     );
 
-    async function identify(value: string) {
+    async function identify(value: string, method: 'nisn' | 'qr') {
         if (busy) {
             return;
         }
@@ -82,7 +83,7 @@ export default function KantinPos({ categories, products }: Props) {
                         )?.[1] ?? '',
                     ),
                 },
-                body: JSON.stringify({ qr: value.trim() }),
+                body: JSON.stringify({ [method]: value.trim() }),
             });
             const data = await response.json();
 
@@ -104,7 +105,7 @@ export default function KantinPos({ categories, products }: Props) {
             setStudent(data.student as IdentifiedStudent);
             setVerificationToken(data.verification_token as string);
             setCart({});
-            setQr('');
+            setNisn('');
         } catch (cause) {
             setError(
                 cause instanceof Error ? cause.message : 'Gagal membaca kartu.',
@@ -119,7 +120,7 @@ export default function KantinPos({ categories, products }: Props) {
 
         if (!navigator.mediaDevices?.getUserMedia) {
             setError(
-                'Kamera tidak tersedia. Gunakan HTTPS atau pemindai QR eksternal.',
+                'Kamera tidak tersedia. Gunakan HTTPS atau masukkan NISN.',
             );
 
             return;
@@ -137,7 +138,7 @@ export default function KantinPos({ categories, products }: Props) {
 
         if (!DetectorAPI) {
             setError(
-                'Browser ini belum mendukung pemindaian QR lewat kamera. Gunakan browser yang mendukung BarcodeDetector atau pemindai QR eksternal.',
+                'Browser ini belum mendukung pemindaian QR lewat kamera. Silakan masuk menggunakan NISN.',
             );
 
             return;
@@ -166,7 +167,7 @@ export default function KantinPos({ categories, products }: Props) {
                 const codes = await detector.detect(video);
 
                 if (codes[0]?.rawValue) {
-                    await identify(codes[0].rawValue);
+                    await identify(codes[0].rawValue, 'qr');
                     break;
                 }
 
@@ -182,6 +183,7 @@ export default function KantinPos({ categories, products }: Props) {
     const [search, setSearch] = useState('');
     const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
     const [cart, setCart] = useState<Record<number, number>>({});
+    const [cartOpen, setCartOpen] = useState(false);
 
     const visible = useMemo(
         () =>
@@ -295,9 +297,10 @@ export default function KantinPos({ categories, products }: Props) {
             setCart({});
             setStudent(null);
             setVerificationToken('');
-            setQr('');
+            setNisn('');
             setSearch('');
             setCategory(null);
+            setCartOpen(false);
             setNotice(
                 'Pembayaran berhasil! Total ' +
                     formatRupiah(Number(data.total)) +
@@ -338,11 +341,12 @@ export default function KantinPos({ categories, products }: Props) {
 
         stopCamera();
         setCart({});
+        setCartOpen(false);
         setStudent(null);
         setVerificationToken('');
         setPinChallenge(null);
         setPin('');
-        setQr('');
+        setNisn('');
         setSearch('');
         setCategory(null);
         setError('');
@@ -465,7 +469,8 @@ export default function KantinPos({ categories, products }: Props) {
                     </p>
                     <h1 className="mt-2 text-3xl font-bold">Kantin Sekolah</h1>
                     <p className="mt-3 text-slate-500">
-                        Scan QR Code pada kartu pelajar untuk mulai berbelanja.
+                        Scan kartu pelajar untuk mulai berbelanja, atau masuk
+                        menggunakan NISN.
                     </p>
                     <video
                         ref={videoRef}
@@ -480,36 +485,38 @@ export default function KantinPos({ categories, products }: Props) {
                         disabled={busy}
                         className="mt-6 min-h-14 w-full rounded-2xl bg-[#160F42] font-semibold text-white disabled:opacity-50"
                     >
-                        {scanning ? 'Batalkan Scan' : 'Scan QR Kartu Pelajar'}
+                        {scanning ? 'Batalkan Scan' : 'Scan Kartu Pelajar'}
                     </button>
                     <form
                         onSubmit={(event) => {
                             event.preventDefault();
-                            void identify(qr);
+                            void identify(nisn, 'nisn');
                         }}
                         className="mt-6 space-y-3 border-t border-slate-100 pt-5"
                     >
-                        <label
-                            htmlFor="qr-input"
-                            className="block text-left text-sm text-slate-500"
-                        >
-                            Pemindai QR eksternal / input kode kartu
+                        <p className="pt-3 text-left text-sm text-slate-500">
+                            Atau masuk menggunakan NISN
+                        </p>
+                        <label htmlFor="nisn-input" className="sr-only">
+                            NISN siswa
                         </label>
                         <input
-                            id="qr-input"
+                            id="nisn-input"
                             autoComplete="off"
                             type="text"
-                            value={qr}
-                            onChange={(event) => setQr(event.target.value)}
-                            placeholder="Scan kode di sini"
+                            value={nisn}
+                            onChange={(event) => setNisn(event.target.value)}
+                            inputMode="numeric"
+                            maxLength={20}
+                            placeholder="Masukkan NISN"
                             className="min-h-12 w-full rounded-xl border border-slate-200 px-4"
                         />
                         <button
                             type="submit"
-                            disabled={!qr.trim() || busy}
+                            disabled={!nisn.trim() || busy}
                             className="min-h-12 w-full rounded-xl border border-[#DCD6EE] font-semibold text-[#160F42] disabled:opacity-40"
                         >
-                            {busy ? 'Memeriksa...' : 'Verifikasi Kartu'}
+                            {busy ? 'Memeriksa...' : 'Verifikasi NISN'}
                         </button>
                     </form>
                     {notice && (
@@ -531,10 +538,20 @@ export default function KantinPos({ categories, products }: Props) {
     }
 
     return (
-        <div className="min-h-dvh bg-slate-50 text-slate-900">
+        <div className="relative isolate min-h-dvh bg-[#160F42] text-slate-900">
             <Head title="Kantin Sekolah" />
+            <div
+                aria-hidden="true"
+                className="pointer-events-none fixed inset-0 -z-10 bg-[url('/images/hero-background.png')] bg-cover bg-center"
+            />
+            <div
+                aria-hidden="true"
+                className="pointer-events-none fixed inset-0 -z-10 bg-[#100B32]/80"
+            />
             <div className="mx-auto flex min-h-dvh max-w-7xl flex-col lg:flex-row">
-                <main className="min-w-0 flex-1 p-5 pb-[32vh] sm:p-8 lg:pb-8">
+                <main
+                    className={`min-w-0 flex-1 p-5 sm:p-8 ${cartOpen ? 'pb-[calc(50dvh+1.25rem)] sm:pb-[calc(50dvh+2rem)]' : 'pb-[calc(18rem+env(safe-area-inset-bottom))] sm:pb-[calc(18rem+env(safe-area-inset-bottom))]'} lg:pb-8`}
+                >
                     <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#DCD6EE] bg-[#F4F2FA] p-4">
                         <div>
                             <p className="text-xs text-[#160F42]">
@@ -563,14 +580,14 @@ export default function KantinPos({ categories, products }: Props) {
                             </button>
                         </div>
                     </div>
-                    <header className="mb-8">
-                        <p className="text-sm font-semibold tracking-wide text-[#160F42]">
+                    <header className="mb-8 text-white">
+                        <p className="text-sm font-semibold tracking-wide text-white/80">
                             SMPN 17 DENPASAR
                         </p>
                         <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
                             Kantin Sekolah
                         </h1>
-                        <p className="mt-2 text-sm text-slate-500">
+                        <p className="mt-2 text-sm text-white/75">
                             Pilih makanan dan minuman favoritmu.
                         </p>
                     </header>
@@ -612,7 +629,7 @@ export default function KantinPos({ categories, products }: Props) {
                                     key={product.id}
                                     className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                                 >
-                                    <div className="mb-4 grid aspect-[4/3] place-items-center overflow-hidden rounded-xl bg-[#F4F2FA]">
+                                    <div className="mb-4 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-[#F4F2FA]">
                                         {product.image_url &&
                                         !imageErrors[product.id] ? (
                                             <img
@@ -669,117 +686,175 @@ export default function KantinPos({ categories, products }: Props) {
                     )}
                 </main>
 
-                <aside className="fixed inset-x-0 bottom-0 z-40 flex h-[32dvh] min-h-44 flex-col border-t border-slate-200 bg-white p-3 shadow-[0_-8px_25px_rgba(0,0,0,.08)] lg:sticky lg:top-0 lg:h-dvh lg:w-96 lg:p-6 lg:shadow-none">
-                    <div className="mb-2 flex items-center justify-between lg:mb-5">
-                        <h2 className="flex items-center gap-2 text-lg font-bold">
-                            <ShoppingBasket className="size-5 text-[#160F42]" />
-                            Keranjang{' '}
-                            <span className="text-sm font-normal text-slate-500">
-                                ({count})
+                <aside
+                    aria-label="Keranjang belanja"
+                    onKeyDown={(event) => {
+                        if (event.key === 'Escape' && cartOpen) {
+                            setCartOpen(false);
+                            document.getElementById('cart-toggle')?.focus();
+                        }
+                    }}
+                    className="fixed inset-x-0 bottom-0 z-40 flex max-h-[50dvh] flex-col overflow-hidden rounded-t-2xl border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_25px_rgba(0,0,0,.08)] lg:sticky lg:top-0 lg:h-dvh lg:max-h-none lg:w-96 lg:shrink-0 lg:rounded-none lg:p-6 lg:shadow-none"
+                >
+                    <button
+                        id="cart-toggle"
+                        type="button"
+                        aria-expanded={cartOpen}
+                        aria-controls="cart-details"
+                        aria-label={
+                            cartOpen ? 'Tutup keranjang' : 'Buka keranjang'
+                        }
+                        onClick={() => setCartOpen((open) => !open)}
+                        className="flex min-h-20 w-full shrink-0 flex-col gap-3 px-5 pt-3 pb-4 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#160F42] lg:hidden"
+                    >
+                        <span
+                            aria-hidden="true"
+                            className="mx-auto h-1 w-10 rounded-full bg-slate-300"
+                        />
+                        <span className="flex w-full items-center justify-between gap-3">
+                            <span className="flex items-center gap-2 font-semibold">
+                                <ShoppingBasket
+                                    className="size-5 text-[#160F42]"
+                                    aria-hidden="true"
+                                />
+                                <span aria-live="polite">{count} barang</span>
                             </span>
-                        </h2>
-                        {count > 0 && (
+                            <span className="flex items-center gap-2 font-bold text-[#160F42]">
+                                <ChevronUp
+                                    aria-hidden="true"
+                                    className={`size-4 transition-transform motion-reduce:transition-none ${cartOpen ? 'rotate-180' : ''}`}
+                                />
+                            </span>
+                        </span>
+                    </button>
+                    <div className="flex min-h-0 flex-col px-3 pb-3 lg:flex-1 lg:overflow-hidden lg:p-0">
+                        <div
+                            id="cart-details"
+                            className={`${cartOpen ? 'flex' : 'hidden'} min-h-0 flex-col overflow-y-auto overscroll-contain lg:flex lg:flex-1 lg:overflow-visible`}
+                        >
+                            <div className="mb-2 flex shrink-0 items-center justify-between lg:mb-5">
+                                <h2 className="sr-only items-center gap-2 text-lg font-bold lg:not-sr-only lg:flex">
+                                    <ShoppingBasket className="size-5 text-[#160F42]" />
+                                    Keranjang{' '}
+                                    <span className="text-sm font-normal text-slate-500">
+                                        ({count})
+                                    </span>
+                                </h2>
+                                {count > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setCart({})}
+                                        className="flex items-center gap-1 text-sm text-slate-500"
+                                    >
+                                        <Trash2 className="size-4" /> Kosongkan
+                                    </button>
+                                )}
+                            </div>
+                            <div className="shrink-0 space-y-3 lg:min-h-0 lg:flex-1 lg:shrink lg:space-y-4 lg:overflow-y-auto lg:overscroll-contain">
+                                {items.length ? (
+                                    items.map((product) => (
+                                        <div
+                                            key={product.id}
+                                            className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold">
+                                                    {product.name}
+                                                </p>
+                                                <p className="text-sm text-slate-500">
+                                                    {formatRupiah(
+                                                        Number(product.harga) *
+                                                            cart[product.id],
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Kurangi ${product.name}`}
+                                                    onClick={() =>
+                                                        changeQuantity(
+                                                            product.id,
+                                                            -1,
+                                                        )
+                                                    }
+                                                    className="grid size-10 place-items-center rounded-xl border border-slate-200"
+                                                >
+                                                    <Minus className="size-4" />
+                                                </button>
+                                                <span className="w-5 text-center font-semibold">
+                                                    {cart[product.id]}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Tambah ${product.name}`}
+                                                    onClick={() =>
+                                                        changeQuantity(
+                                                            product.id,
+                                                            1,
+                                                        )
+                                                    }
+                                                    className="grid size-10 place-items-center rounded-xl bg-[#EDEAF5] text-[#160F42]"
+                                                >
+                                                    <Plus className="size-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="py-4 text-center text-sm text-slate-500 lg:py-10">
+                                        Belum ada barang di keranjang.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div
+                            id="cart-summary"
+                            className="mt-auto shrink-0 border-t border-slate-200 pt-2 lg:mt-5 lg:pt-5"
+                        >
+                            <div className="flex justify-between text-base font-semibold">
+                                <span>Total belanja</span>
+                                <span>{formatRupiah(total)}</span>
+                            </div>
+                            <p className="mt-2 text-sm text-slate-500">
+                                Sisa saldo setelah belanja:{' '}
+                                <strong
+                                    className={
+                                        total > Number(student.balance)
+                                            ? 'text-red-600'
+                                            : 'text-[#160F42]'
+                                    }
+                                >
+                                    {formatRupiah(
+                                        Number(student.balance) - total,
+                                    )}
+                                </strong>
+                            </p>
+                            {error && (
+                                <p
+                                    role="alert"
+                                    className="mt-2 text-sm text-red-600"
+                                >
+                                    {error}
+                                </p>
+                            )}
                             <button
                                 type="button"
-                                onClick={() => setCart({})}
-                                className="flex items-center gap-1 text-sm text-slate-500"
-                            >
-                                <Trash2 className="size-4" /> Kosongkan
-                            </button>
-                        )}
-                    </div>
-                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto lg:space-y-4">
-                        {items.length ? (
-                            items.map((product) => (
-                                <div
-                                    key={product.id}
-                                    className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4"
-                                >
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold">
-                                            {product.name}
-                                        </p>
-                                        <p className="text-sm text-slate-500">
-                                            {formatRupiah(
-                                                Number(product.harga) *
-                                                    cart[product.id],
-                                            )}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            aria-label={`Kurangi ${product.name}`}
-                                            onClick={() =>
-                                                changeQuantity(product.id, -1)
-                                            }
-                                            className="grid size-10 place-items-center rounded-xl border border-slate-200"
-                                        >
-                                            <Minus className="size-4" />
-                                        </button>
-                                        <span className="w-5 text-center font-semibold">
-                                            {cart[product.id]}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            aria-label={`Tambah ${product.name}`}
-                                            onClick={() =>
-                                                changeQuantity(product.id, 1)
-                                            }
-                                            className="grid size-10 place-items-center rounded-xl bg-[#EDEAF5] text-[#160F42]"
-                                        >
-                                            <Plus className="size-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="py-10 text-center text-sm text-slate-500">
-                                Belum ada barang di keranjang.
-                            </p>
-                        )}
-                    </div>
-                    <div className="mt-2 shrink-0 border-t border-slate-200 pt-2 lg:mt-5 lg:pt-5">
-                        <div className="flex justify-between text-base font-semibold">
-                            <span>Total belanja</span>
-                            <span>{formatRupiah(total)}</span>
-                        </div>
-                        <p className="mt-2 text-sm text-slate-500">
-                            Sisa saldo setelah belanja:{' '}
-                            <strong
-                                className={
+                                onClick={() => void checkout()}
+                                disabled={
+                                    !count ||
+                                    paying ||
                                     total > Number(student.balance)
-                                        ? 'text-red-600'
-                                        : 'text-[#160F42]'
                                 }
+                                className="mt-2 min-h-12 w-full rounded-2xl bg-[#160F42] text-base font-bold text-white disabled:bg-slate-200 disabled:text-slate-500 lg:mt-4 lg:min-h-14"
                             >
-                                {formatRupiah(Number(student.balance) - total)}
-                            </strong>
-                        </p>
-                        {error && (
-                            <p
-                                role="alert"
-                                className="mt-2 text-sm text-red-600"
-                            >
-                                {error}
-                            </p>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => void checkout()}
-                            disabled={
-                                !count ||
-                                paying ||
-                                total > Number(student.balance)
-                            }
-                            className="mt-2 min-h-12 w-full rounded-2xl bg-[#160F42] text-base font-bold text-white disabled:bg-slate-200 disabled:text-slate-500 lg:mt-4 lg:min-h-14"
-                        >
-                            {paying
-                                ? 'Memproses pembayaran...'
-                                : total > Number(student.balance)
-                                  ? 'Saldo tidak mencukupi'
-                                  : 'Bayar ' + formatRupiah(total)}
-                        </button>
+                                {paying
+                                    ? 'Memproses pembayaran...'
+                                    : total > Number(student.balance)
+                                      ? 'Saldo tidak mencukupi'
+                                      : 'Bayar ' + formatRupiah(total)}
+                            </button>
+                        </div>
                     </div>
                 </aside>
             </div>

@@ -177,6 +177,9 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringContainsString('role="tablist"', $source);
         $this->assertStringContainsString('aria-label="Riwayat Kantin"', $source);
         $this->assertStringContainsString('id="student-kantin-balance-heading"', $source);
+        $this->assertStringContainsString('href={kantinPos.url()}', $source);
+        $this->assertStringContainsString('target="_blank"', $source);
+        $this->assertStringContainsString('Menuju Kantin', $source);
         $this->assertStringContainsString("useState<'purchases' | 'topups'>", $source);
         $this->assertStringContainsString('Riwayat Pembelian', $source);
         $this->assertStringContainsString('Riwayat Top Up', $source);
@@ -195,6 +198,7 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringNotContainsString('ShoppingBasket', $source);
         $this->assertStringNotContainsString('Portal Siswa', $source);
         $this->assertStringNotContainsString('student-kantin-heading', $source);
+        $this->assertStringNotContainsString('href="/kantin/pos"', $source);
     }
 
     public function test_unlinked_student_kantin_page_has_safe_empty_state_and_zero_balance(): void

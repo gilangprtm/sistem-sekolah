@@ -23,12 +23,19 @@ class KantinPosController extends Controller
 
     public function identify(Request $request): JsonResponse
     {
-        $validated = $request->validate(['qr' => ['required', 'string', 'email', 'max:255']]);
-        $student = Student::query()
-            ->where('status', 'active')
-            ->whereHas('user', fn ($query) => $query->where('email', $validated['qr']))
-            ->with('kantinSaldo:id,student_id,saldo')
-            ->first();
+        $validated = $request->validate([
+            'qr' => ['required_without:nisn', 'prohibits:nisn', 'nullable', 'string', 'email', 'max:255'],
+            'nisn' => ['required_without:qr', 'prohibits:qr', 'nullable', 'string', 'max:20'],
+        ]);
+        $studentQuery = Student::query()->where('status', 'active');
+
+        if (filled($validated['nisn'] ?? null)) {
+            $studentQuery->where('nisn', $validated['nisn'])->has('user');
+        } else {
+            $studentQuery->whereHas('user', fn ($query) => $query->where('email', $validated['qr']));
+        }
+
+        $student = $studentQuery->with('kantinSaldo:id,student_id,saldo')->first();
 
         if ($student === null) {
             return response()->json(['message' => 'Kartu pelajar tidak ditemukan atau siswa tidak aktif.'], 404);

@@ -25,14 +25,143 @@ class KantinPosTest extends TestCase
         $this->assertStringContainsString("backgroundImage: \"url('/images/hero-background.png')\"", $source);
         $this->assertStringContainsString('if (!student)', $source);
         $this->assertStringContainsString('<Head title="Scan Kartu Pelajar - Kantin" />', $source);
+        $this->assertStringContainsString('Scan kartu pelajar untuk mulai berbelanja, atau masuk', $source);
+    }
+
+    public function test_identify_by_nisn_requires_pin_and_returns_student_after_pin_verification(): void
+    {
+        $studentUser = User::factory()->create(['email' => 'nisn-student@example.test']);
+        $student = Student::factory()->create([
+            'user_id' => $studentUser->id,
+            'nisn' => '0098765432',
+            'status' => 'active',
+            'kantin_pin_hash' => Hash::make('123456'),
+        ]);
+
+        $challenge = $this->postJson('/kantin/pos/identify', ['nisn' => $student->nisn])
+            ->assertOk()
+            ->assertJsonPath('pin_required', true)
+            ->json('challenge_token');
+
+        $this->postJson('/kantin/pos/verify-pin', [
+            'challenge_token' => $challenge,
+            'pin' => '123456',
+        ])
+            ->assertOk()
+            ->assertJsonPath('student.id', $student->id)
+            ->assertJsonPath('student.name', $student->full_name);
+    }
+
+    public function test_identify_by_unknown_nisn_does_not_find_student(): void
+    {
+        $this->postJson('/kantin/pos/identify', ['nisn' => '0000000000'])
+            ->assertNotFound()
+            ->assertJson(['message' => 'Kartu pelajar tidak ditemukan atau siswa tidak aktif.']);
+    }
+
+    public function test_identify_by_nisn_rejects_inactive_students_and_profiles_without_accounts(): void
+    {
+        $studentUser = User::factory()->create();
+        Student::factory()->create([
+            'user_id' => $studentUser->id,
+            'nisn' => '0012345671',
+            'status' => 'inactive',
+            'kantin_pin_hash' => Hash::make('123456'),
+        ]);
+        Student::factory()->create([
+            'user_id' => null,
+            'nisn' => '0012345672',
+            'status' => 'active',
+            'kantin_pin_hash' => Hash::make('123456'),
+        ]);
+
+        foreach (['0012345671', '0012345672'] as $nisn) {
+            $this->postJson('/kantin/pos/identify', ['nisn' => $nisn])
+                ->assertNotFound()
+                ->assertJsonMissingPath('challenge_token');
+        }
+    }
+
+    public function test_identify_requires_an_identifier_and_validates_nisn_as_a_bounded_string(): void
+    {
+        $this->postJson('/kantin/pos/identify', [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['qr', 'nisn']);
+
+        foreach ([1234567890, ['0012345678'], str_repeat('1', 21)] as $nisn) {
+            $this->postJson('/kantin/pos/identify', ['nisn' => $nisn])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['nisn']);
+        }
+    }
+
+    public function test_identify_rejects_submitting_nisn_and_qr_together(): void
+    {
+        $this->postJson('/kantin/pos/identify', [
+            'qr' => 'student@example.test',
+            'nisn' => '0012345678',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['qr', 'nisn']);
+    }
+
+    public function test_pos_product_surface_uses_darkened_school_hero_background(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/kantin/pos/index.tsx'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString("bg-[url('/images/hero-background.png')]", $source);
+        $this->assertStringContainsString('bg-[#100B32]/80', $source);
+        $this->assertStringContainsString('pointer-events-none fixed inset-0', $source);
+        $this->assertStringContainsString('<header className="mb-8 text-white">', $source);
+    }
+
+    public function test_mobile_pos_cart_toggles_an_adaptive_half_viewport_drawer(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/kantin/pos/index.tsx'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString('const [cartOpen, setCartOpen] = useState(false);', $source);
+        $this->assertStringContainsString('aria-expanded={cartOpen}', $source);
+        $this->assertStringContainsString('aria-controls="cart-details"', $source);
+        $this->assertStringContainsString('max-h-[50dvh]', $source);
+        $this->assertStringContainsString('>{count} barang</span>', $source);
+        $this->assertStringContainsString('{formatRupiah(total)}</span>', $source);
+        $this->assertMatchesRegularExpression('/\\$\\{cartOpen \\? \'flex\' : \'hidden\'\\}[^\n]*lg:flex/', $source);
+        $this->assertMatchesRegularExpression('/id="cart-details"[\\s\\S]*?id="cart-summary"/', $source);
+        $this->assertMatchesRegularExpression('/id="cart-summary"\\s+className="mt-auto shrink-0 border-t/', $source);
+        $this->assertStringContainsString("event.key === 'Escape' && cartOpen", $source);
+    }
+
+    public function test_pos_offers_card_camera_scan_and_manual_nisn_without_external_scanner_mode(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/kantin/pos/index.tsx'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString('JSON.stringify({ [method]: value.trim() })', $source);
+        $this->assertStringContainsString("identify(nisn, 'nisn')", $source);
+        $this->assertStringContainsString("identify(codes[0].rawValue, 'qr')", $source);
+        $this->assertStringContainsString("'Scan Kartu Pelajar'", $source);
+        $this->assertStringContainsString('Atau masuk menggunakan NISN', $source);
+        $this->assertStringContainsString('Verifikasi NISN', $source);
+        $this->assertStringNotContainsString('pemindai QR eksternal', $source);
+        $this->assertStringNotContainsString('identificationMethod', $source);
     }
 
     public function test_identify_requires_pin_when_student_has_no_pin(): void
     {
         $studentUser = User::factory()->create(['email' => 'student-no-pin@example.test']);
-        Student::factory()->create(['user_id' => $studentUser->id, 'status' => 'active']);
+        $student = Student::factory()->create([
+            'user_id' => $studentUser->id,
+            'nisn' => '0012345678',
+            'status' => 'active',
+        ]);
 
         $this->postJson('/kantin/pos/identify', ['qr' => $studentUser->email])
+            ->assertStatus(409)
+            ->assertJson(['message' => 'Buat PIN terlebih dulu di aplikasi Portal Siswa']);
+
+        $this->postJson('/kantin/pos/identify', ['nisn' => $student->nisn])
             ->assertStatus(409)
             ->assertJson(['message' => 'Buat PIN terlebih dulu di aplikasi Portal Siswa']);
     }
