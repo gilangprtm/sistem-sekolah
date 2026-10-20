@@ -110,7 +110,13 @@ class TeacherHomeroomTest extends TestCase
                 ->where('students.data.0.mother_name', 'Ibu Ani')
                 ->where('students.data.0.father_name', 'Ayah Ani')
                 ->where('students.data.1.full_name', 'Budi')
-                ->where('students.data.1.nis', '002'));
+                ->where('students.data.1.nis', '002')
+                ->has('attendanceStudents', 2)
+                ->where('attendanceStudents.0.full_name', 'Ani')
+                ->where('attendanceStudents.1.full_name', 'Budi')
+                ->missing('attendanceStudents.0.address')
+                ->where('attendanceStudents.0.phone', '081234567890')
+                ->where('attendanceStudents.0.parent_phone', '+62 812-2222-3333'));
     }
 
     public function test_student_list_honors_the_requested_page_size(): void
@@ -127,7 +133,8 @@ class TeacherHomeroomTest extends TestCase
             'status' => 'active',
         ]);
 
-        foreach (Student::factory()->count(3)->create() as $student) {
+        foreach (['Zaki', 'Ani', 'Made'] as $name) {
+            $student = Student::factory()->create(['full_name' => $name]);
             StudentPlacement::query()->create([
                 'academic_year_id' => $year->id,
                 'rombel_id' => $rombel->id,
@@ -142,25 +149,32 @@ class TeacherHomeroomTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('students.total', 3)
                 ->where('students.per_page', 2)
-                ->has('students.data', 2));
+                ->has('students.data', 2)
+                ->has('attendanceStudents', 3)
+                ->where('attendanceStudents.0.full_name', 'Ani')
+                ->where('attendanceStudents.1.full_name', 'Made')
+                ->where('attendanceStudents.2.full_name', 'Zaki'));
     }
 
     public function test_student_table_uses_the_shared_data_table_pattern(): void
     {
         $page = file_get_contents(resource_path('js/pages/teacher/homeroom.tsx'));
 
+        $shell = file_get_contents(resource_path('js/components/data-table/data-table-shell.tsx'));
+
         $this->assertIsString($page);
+        $this->assertIsString($shell);
         $this->assertStringContainsString("import DataTableShell from '@/components/data-table/data-table-shell';", $page);
         $this->assertStringContainsString('columns={columns}', $page);
         $this->assertStringContainsString('getRowKey={(student) => student.id}', $page);
         $this->assertStringContainsString('selection={{', $page);
         $this->assertStringContainsString('rowActions={{', $page);
         $this->assertStringContainsString('pagination={{', $page);
-        $this->assertStringContainsString("import DataTableRowActions from '@/components/data-table/data-table-row-actions';", file_get_contents(resource_path('js/components/data-table/data-table-shell.tsx')));
-        $this->assertStringContainsString('<DataTableRowActions', file_get_contents(resource_path('js/components/data-table/data-table-shell.tsx')));
+        $this->assertStringContainsString("import DataTableRowActions from '@/components/data-table/data-table-row-actions';", $shell);
+        $this->assertStringContainsString('<DataTableRowActions', $shell);
         $this->assertStringContainsString('<DropdownMenuItem onClick={onView}>', $page);
         $this->assertStringNotContainsString("import {\n    Table,", $page);
-        $this->assertStringContainsString('Hapus pilihan', file_get_contents(resource_path('js/components/data-table/data-table-shell.tsx')));
+        $this->assertStringContainsString('Hapus pilihan', $shell);
         $this->assertStringContainsString("selectAllLabel: 'Pilih semua siswa'", $page);
         $this->assertStringContainsString('Aksi', $page);
         $this->assertStringContainsString('Lihat', $page);
@@ -193,7 +207,29 @@ class TeacherHomeroomTest extends TestCase
         $this->assertStringContainsString('Absen Hari Ini', $page);
         $this->assertStringContainsString('<TabsContent value="data-siswa">', $page);
         $this->assertStringContainsString('<TabsContent value="tempat-duduk">', $page);
-        $this->assertStringContainsString('<TabsContent value="absen-hari-ini">', $page);
+        $this->assertMatchesRegularExpression('/<TabsContent\s+value="absen-hari-ini"/', $page);
+        $this->assertStringContainsString('data={attendanceStudents}', $page);
+        $this->assertStringContainsString("header: 'Keterangan'", $page);
+        $this->assertStringContainsString('setAttendancePreview(', $page);
+        $this->assertMatchesRegularExpression("/attendancePreview\\s*\\[\\s*student\\.id\\s*\\]\\s*\\?\\?\\s*'A'/", $page);
+        $this->assertStringContainsString('onSelect={() =>', $page);
+        $this->assertStringContainsString('<DialogTitle>Absen Siswa</DialogTitle>', $page);
+        $this->assertStringContainsString('options={attendanceOptions}', $page);
+        $this->assertStringContainsString('value={attendanceStudent.status}', $page);
+        $this->assertStringContainsString('searchPlaceholder="Cari keterangan absen…"', $page);
+        foreach (['H' => 'Hadir', 'I' => 'Izin', 'S' => 'Sakit', 'D' => 'Dispensasi', 'A' => 'Alpa'] as $code => $label) {
+            $this->assertStringContainsString("{ value: '{$code}', label: '{$label}' }", $page);
+        }
+        $this->assertMatchesRegularExpression('/<DropdownMenuItem\s+onSelect=\{.*?setAttendanceStudent\(\{.*?\}\).*?>\s*Absen\s*<\/DropdownMenuItem>/s', $page);
+        $this->assertMatchesRegularExpression('/setAttendancePreview\(\(current\) => \(\{\s*\.\.\.current,\s*\[attendanceStudent\.id\]:\s*attendanceStudent\.status,/', $page);
+        $this->assertStringContainsString('setAttendanceStudent(null)', $page);
+        $this->assertStringContainsString('Perubahan hanya untuk pratinjau', $page);
+        $this->assertStringNotContainsString('aria-pressed=', $page);
+        $this->assertStringContainsString('bg-red-600', $page);
+        $this->assertStringContainsString('statusStyles[status]', $page);
+        $this->assertStringContainsString('formatWitaDate(new Date().toISOString())', $page);
+        $this->assertStringNotContainsString('Pratinjau tampilan · seluruh siswa diurutkan', $page);
+        $this->assertStringNotContainsString('statuses.map(', $page);
     }
 
     public function test_teacher_cannot_see_another_teachers_homeroom(): void
@@ -217,6 +253,7 @@ class TeacherHomeroomTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('academicYear.year', '2026/2027')
                 ->where('homeroom', null)
+                ->where('attendanceStudents', null)
                 ->where('students', null));
     }
 
@@ -232,6 +269,7 @@ class TeacherHomeroomTest extends TestCase
                 ->where('academicYear', null)
                 ->where('homeroom', null)
                 ->where('students', null)
+                ->where('attendanceStudents', null)
                 ->where('hasTeacherProfile', false));
     }
 }

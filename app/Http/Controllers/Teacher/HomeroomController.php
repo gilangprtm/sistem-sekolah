@@ -35,6 +35,7 @@ class HomeroomController extends Controller
 
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
         $students = null;
+        $attendanceStudents = null;
         $seating = null;
 
         if ($assignment !== null) {
@@ -57,6 +58,17 @@ class HomeroomController extends Controller
                 ...HomeroomSeat::snapshot($academicYear->id, $assignment->rombel_id),
                 'students' => $roster,
             ];
+
+            $attendanceStudents = Student::query()
+                ->where('status', 'active')
+                ->whereIn('id', StudentPlacement::query()
+                    ->select('student_id')
+                    ->where('academic_year_id', $academicYear->id)
+                    ->where('rombel_id', $assignment->rombel_id)
+                    ->where('status', 'active'))
+                ->orderBy('full_name')
+                ->orderBy('id')
+                ->get(['id', 'full_name', 'phone', 'parent_phone']);
 
             $students = StudentPlacement::query()
                 ->with('student:id,nis,nisn,tahun_angkatan,full_name,gender,birth_place,birth_date,address,phone,mother_name,father_name,mother_occupation,father_occupation,parent_phone')
@@ -95,6 +107,7 @@ class HomeroomController extends Controller
             'academicYear' => $academicYear?->only(['id', 'year']),
             'homeroom' => $assignment?->rombel?->only(['id', 'code', 'name', 'grade_level', 'parallel_code']),
             'students' => $students,
+            'attendanceStudents' => $attendanceStudents,
             'seating' => $seating,
             'canManageSeating' => $request->user()->can('teacher.homeroom.seating.manage'),
             'filters' => $request->only(['per_page']),
