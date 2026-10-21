@@ -64,13 +64,16 @@ type Props = {
     };
 };
 
-type PeriodForm = {
-    yearId: number;
-    code: string;
-    name: string;
-    status: string;
-    id?: number;
-};
+type AcademicForm =
+    | { kind: 'year'; id?: number; year: string; status: string }
+    | {
+          kind: 'period';
+          yearId: number;
+          id?: number;
+          code: string;
+          name: string;
+          status: string;
+      };
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Tahun Ajaran & Semester', href: '/kurikulum/academic-years' },
@@ -84,13 +87,8 @@ export default function AcademicYearsIndex({
     const [selected, setSelected] = useState<number[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
-    const [year, setYear] = useState('');
-    const [newYearStatus, setNewYearStatus] = useState('inactive');
+    const [form, setForm] = useState<AcademicForm | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [period, setPeriod] = useState<PeriodForm | null>(null);
-    const [editingYear, setEditingYear] = useState<Year | null>(null);
-    const [yearDialogOpen, setYearDialogOpen] = useState(false);
-    const [semesterDialogOpen, setSemesterDialogOpen] = useState(false);
 
     const filterParams = (): Record<string, string> => {
         const params: Record<string, string> = {};
@@ -130,133 +128,96 @@ export default function AcademicYearsIndex({
         navigate({ ...filterParams(), page, per_page: years.per_page });
     };
 
-    const submitYear = () =>
-        router.post(
-            '/kurikulum/academic-years',
-            { year, status: newYearStatus },
-            {
-                onError: setErrors,
-                onSuccess: () => {
-                    setYear('');
-                    setErrors({});
-                    setYearDialogOpen(false);
-                },
-            },
-        );
+    const closeDialog = (open: boolean) => {
+        if (!open) {
+            setForm(null);
+            setErrors({});
+        }
+    };
 
-    const submitYearUpdate = () => {
-        if (!editingYear) {
+    const submitForm = () => {
+        if (!form) {
             return;
         }
 
-        router.patch(
-            `/kurikulum/academic-years/${editingYear.id}`,
-            {
-                year: editingYear.year,
-                status: editingYear.status,
-            },
-            {
-                onError: setErrors,
-                onSuccess: () => {
-                    setEditingYear(null);
-                    setErrors({});
-                    setYearDialogOpen(false);
-                },
-            },
-        );
-    };
+        const options = {
+            onError: setErrors,
+            onSuccess: () => closeDialog(false),
+        };
 
-    const submitPeriod = () => {
-        if (!period) {
+        if (form.kind === 'year') {
+            const payload = { year: form.year, status: form.status };
+
+            if (form.id) {
+                router.patch(
+                    `/kurikulum/academic-years/${form.id}`,
+                    payload,
+                    options,
+                );
+            } else {
+                router.post('/kurikulum/academic-years', payload, options);
+            }
+
             return;
         }
 
         const payload = {
-            code: period.code,
-            name: period.name,
-            status: period.status,
+            code: form.code,
+            name: form.name,
+            status: form.status,
         };
 
-        if (period.id) {
-            router.patch(`/kurikulum/academic-periods/${period.id}`, payload, {
-                onError: setErrors,
-                onSuccess: () => {
-                    setPeriod(null);
-                    setErrors({});
-                    setSemesterDialogOpen(false);
-                },
-            });
-
-            return;
+        if (form.id) {
+            router.patch(
+                `/kurikulum/academic-periods/${form.id}`,
+                payload,
+                options,
+            );
+        } else {
+            router.post(
+                `/kurikulum/academic-years/${form.yearId}/periods`,
+                payload,
+                options,
+            );
         }
-
-        router.post(
-            `/kurikulum/academic-years/${period.yearId}/periods`,
-            payload,
-            {
-                onError: setErrors,
-                onSuccess: () => {
-                    setPeriod(null);
-                    setErrors({});
-                    setSemesterDialogOpen(false);
-                },
-            },
-        );
     };
 
     const openYearCreate = () => {
         setErrors({});
-        setEditingYear(null);
-        setYear('');
-        setNewYearStatus('inactive');
-        setYearDialogOpen(true);
+        setForm({ kind: 'year', year: '', status: 'inactive' });
     };
 
     const openYearEdit = (item: Year) => {
         setErrors({});
-        setEditingYear(item);
-        setYearDialogOpen(true);
+        setForm({
+            kind: 'year',
+            id: item.id,
+            year: item.year,
+            status: item.status,
+        });
     };
 
     const openNewPeriod = (yearId: number, code: 'ganjil' | 'genap') => {
         setErrors({});
-        setPeriod({
+        setForm({
+            kind: 'period',
             yearId,
             code,
             name: code === 'ganjil' ? 'Semester Ganjil' : 'Semester Genap',
             status: 'inactive',
         });
-        setSemesterDialogOpen(true);
     };
 
     const openPeriodEdit = (item: Year, semester: Period) => {
         setErrors({});
-        setPeriod({
+        setForm({
+            kind: 'period',
             yearId: item.id,
             id: semester.id,
             code: semester.code,
             name: semester.name,
             status: semester.status,
         });
-        setSemesterDialogOpen(true);
-    };
-
-    const closeYearDialog = (open: boolean) => {
-        setYearDialogOpen(open);
-
-        if (!open) {
-            setEditingYear(null);
-            setErrors({});
-        }
-    };
-
-    const closeSemesterDialog = (open: boolean) => {
-        setSemesterDialogOpen(open);
-
-        if (!open) {
-            setPeriod(null);
-            setErrors({});
-        }
     };
 
     const columns: DataTableColumn<Year>[] = [
@@ -422,7 +383,7 @@ export default function AcademicYearsIndex({
                             <DropdownMenuItem
                                 onClick={() => openYearEdit(item)}
                             >
-                                Ubah Tahun Ajaran
+                                Edit
                             </DropdownMenuItem>
                         ),
                     }}
@@ -439,175 +400,135 @@ export default function AcademicYearsIndex({
                     }}
                 />
 
-                <Dialog open={yearDialogOpen} onOpenChange={closeYearDialog}>
-                    <ModalShell size="medium">
-                        <DialogHeader>
-                            <DialogTitle>
-                                {editingYear
-                                    ? 'Ubah Tahun Ajaran'
-                                    : 'Tambah Tahun Ajaran'}
-                            </DialogTitle>
-                            <DialogDescription>
-                                Atur periode Tahun Ajaran dan status awalnya.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
-                            <div className="grid gap-2">
-                                <Label htmlFor="academic-year-form">
-                                    Tahun Ajaran
-                                </Label>
-                                <Input
-                                    id="academic-year-form"
-                                    placeholder="2025/2026"
-                                    value={editingYear?.year ?? year}
-                                    onChange={(event) => {
-                                        if (editingYear) {
-                                            setEditingYear({
-                                                ...editingYear,
-                                                year: event.target.value,
-                                            });
-                                        } else {
-                                            setYear(event.target.value);
-                                        }
-                                    }}
-                                />
-                                <InputError message={errors.year} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Status</Label>
-                                <Select
-                                    value={editingYear?.status ?? newYearStatus}
-                                    onValueChange={(value) => {
-                                        if (editingYear) {
-                                            setEditingYear({
-                                                ...editingYear,
-                                                status: value,
-                                            });
-                                        } else {
-                                            setNewYearStatus(value);
-                                        }
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="active">
-                                            Aktif
-                                        </SelectItem>
-                                        <SelectItem value="inactive">
-                                            Tidak Aktif
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <InputError message={errors.status} />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => closeYearDialog(false)}
-                            >
-                                Batal
-                            </Button>
-                            <Button
-                                onClick={
-                                    editingYear ? submitYearUpdate : submitYear
-                                }
-                            >
-                                Simpan Tahun Ajaran
-                            </Button>
-                        </DialogFooter>
-                    </ModalShell>
-                </Dialog>
-
-                <Dialog
-                    open={semesterDialogOpen}
-                    onOpenChange={closeSemesterDialog}
-                >
-                    <ModalShell size="medium">
-                        <DialogHeader>
-                            <DialogTitle>
-                                {period?.id
-                                    ? 'Ubah Semester'
-                                    : 'Tambah Semester'}
-                            </DialogTitle>
-                            <DialogDescription>
-                                Atur semester dan statusnya pada Tahun Ajaran
-                                terkait.
-                            </DialogDescription>
-                        </DialogHeader>
-                        {period && (
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="grid gap-2">
-                                    <Label>Semester</Label>
-                                    <Select
-                                        value={period.code}
-                                        onValueChange={(
-                                            code: 'ganjil' | 'genap',
-                                        ) =>
-                                            setPeriod({
-                                                ...period,
-                                                code,
-                                                name:
-                                                    code === 'ganjil'
-                                                        ? 'Semester Ganjil'
-                                                        : 'Semester Genap',
-                                            })
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="ganjil">
-                                                Semester Ganjil
-                                            </SelectItem>
-                                            <SelectItem value="genap">
-                                                Semester Genap
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <InputError message={errors.code} />
+                <Dialog open={form !== null} onOpenChange={closeDialog}>
+                    <ModalShell size="small" className="@container sm:max-w-sm">
+                        {form && (
+                            <>
+                                <DialogHeader>
+                                    <DialogTitle>
+                                        {form.kind === 'year'
+                                            ? form.id
+                                                ? 'Edit Tahun Ajaran'
+                                                : 'Tambah Tahun Ajaran'
+                                            : form.id
+                                              ? 'Ubah Semester'
+                                              : 'Tambah Semester'}
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        {form.kind === 'year'
+                                            ? 'Atur periode Tahun Ajaran dan status awalnya.'
+                                            : 'Atur semester dan statusnya pada Tahun Ajaran terkait.'}
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid items-start gap-3 @min-[20rem]:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                                    <div className="grid gap-2">
+                                        {form.kind === 'year' ? (
+                                            <>
+                                                <Label htmlFor="academic-year-form">
+                                                    Tahun Ajaran
+                                                </Label>
+                                                <Input
+                                                    id="academic-year-form"
+                                                    placeholder="2025/2026"
+                                                    value={form.year}
+                                                    onChange={(event) =>
+                                                        setForm({
+                                                            ...form,
+                                                            year: event.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={errors.year}
+                                                />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Label htmlFor="academic-semester-form">
+                                                    Semester
+                                                </Label>
+                                                <Select
+                                                    value={form.code}
+                                                    onValueChange={(
+                                                        code:
+                                                            'ganjil' | 'genap',
+                                                    ) =>
+                                                        setForm({
+                                                            ...form,
+                                                            code,
+                                                            name:
+                                                                code ===
+                                                                'ganjil'
+                                                                    ? 'Semester Ganjil'
+                                                                    : 'Semester Genap',
+                                                        })
+                                                    }
+                                                >
+                                                    <SelectTrigger
+                                                        id="academic-semester-form"
+                                                        className="w-full"
+                                                    >
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="ganjil">
+                                                            Semester Ganjil
+                                                        </SelectItem>
+                                                        <SelectItem value="genap">
+                                                            Semester Genap
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <InputError
+                                                    message={errors.code}
+                                                />
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="academic-status-form">
+                                            Status
+                                        </Label>
+                                        <Select
+                                            value={form.status}
+                                            onValueChange={(status) =>
+                                                setForm({ ...form, status })
+                                            }
+                                        >
+                                            <SelectTrigger
+                                                id="academic-status-form"
+                                                className="w-full"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="active">
+                                                    Aktif
+                                                </SelectItem>
+                                                <SelectItem value="inactive">
+                                                    Tidak Aktif
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors.status} />
+                                    </div>
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label>Status</Label>
-                                    <Select
-                                        value={period.status}
-                                        onValueChange={(value) =>
-                                            setPeriod({
-                                                ...period,
-                                                status: value,
-                                            })
-                                        }
+                                <DialogFooter>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => closeDialog(false)}
                                     >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="active">
-                                                Aktif
-                                            </SelectItem>
-                                            <SelectItem value="inactive">
-                                                Tidak Aktif
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <InputError message={errors.status} />
-                                </div>
-                            </div>
+                                        Batal
+                                    </Button>
+                                    <Button onClick={submitForm}>
+                                        {form.kind === 'year'
+                                            ? 'Simpan Tahun Ajaran'
+                                            : 'Simpan Semester'}
+                                    </Button>
+                                </DialogFooter>
+                            </>
                         )}
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => closeSemesterDialog(false)}
-                            >
-                                Batal
-                            </Button>
-                            <Button onClick={submitPeriod}>
-                                Simpan Semester
-                            </Button>
-                        </DialogFooter>
                     </ModalShell>
                 </Dialog>
             </div>

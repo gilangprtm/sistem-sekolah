@@ -275,7 +275,7 @@ export default function RombelsIndex({
                     }}
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <ModalShell>
+                    <ModalShell size="medium">
                         <DialogHeader>
                             <DialogTitle>
                                 {editing ? 'Edit Rombel' : 'Tambah Rombel'}
@@ -285,7 +285,7 @@ export default function RombelsIndex({
                                 kode paralel.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4">
+                        <div className="@container grid gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="rombel-name">Nama</Label>
                                 <Input
@@ -300,54 +300,68 @@ export default function RombelsIndex({
                                 />
                                 <InputError message={errors.name} />
                             </div>
-                            <div className="grid gap-2">
-                                <Label>Tingkat</Label>
-                                <SearchableCombobox
-                                    value={form.grade_level}
-                                    options={['VII', 'VIII', 'IX'].map(
-                                        (value) => ({ value, label: value }),
-                                    )}
-                                    onChange={(value) =>
-                                        setForm({ ...form, grade_level: value })
-                                    }
-                                    placeholder="Pilih tingkat"
-                                    searchPlaceholder="Cari tingkat..."
-                                    emptyMessage="Tingkat tidak ditemukan."
-                                />
-                                <InputError message={errors.grade_level} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="rombel-parallel">
-                                    Kode Paralel
-                                </Label>
-                                <Input
-                                    id="rombel-parallel"
-                                    value={form.parallel_code}
-                                    onChange={(event) =>
-                                        setForm({
-                                            ...form,
-                                            parallel_code: event.target.value,
-                                        })
-                                    }
-                                />
-                                <InputError message={errors.parallel_code} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Status</Label>
-                                <SearchableCombobox
-                                    value={form.status}
-                                    options={[
-                                        { value: 'active', label: 'Aktif' },
-                                        { value: 'inactive', label: 'Arsip' },
-                                    ]}
-                                    onChange={(value) =>
-                                        setForm({ ...form, status: value })
-                                    }
-                                    placeholder="Pilih status"
-                                    searchPlaceholder="Cari status..."
-                                    emptyMessage="Status tidak ditemukan."
-                                />
-                                <InputError message={errors.status} />
+                            <div className="grid items-start gap-4 @min-[20rem]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] @min-[28rem]:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+                                <div className="grid min-w-0 gap-2">
+                                    <Label>Tingkat</Label>
+                                    <SearchableCombobox
+                                        value={form.grade_level}
+                                        options={['VII', 'VIII', 'IX'].map(
+                                            (value) => ({
+                                                value,
+                                                label: value,
+                                            }),
+                                        )}
+                                        onChange={(value) =>
+                                            setForm({
+                                                ...form,
+                                                grade_level: value,
+                                            })
+                                        }
+                                        placeholder="Pilih tingkat"
+                                        searchPlaceholder="Cari tingkat..."
+                                        emptyMessage="Tingkat tidak ditemukan."
+                                    />
+                                    <InputError message={errors.grade_level} />
+                                </div>
+                                <div className="grid min-w-0 gap-2">
+                                    <Label htmlFor="rombel-parallel">
+                                        Kode Paralel
+                                    </Label>
+                                    <Input
+                                        id="rombel-parallel"
+                                        value={form.parallel_code}
+                                        onChange={(event) =>
+                                            setForm({
+                                                ...form,
+                                                parallel_code:
+                                                    event.target.value,
+                                            })
+                                        }
+                                    />
+                                    <InputError
+                                        message={errors.parallel_code}
+                                    />
+                                </div>
+                                <div className="grid min-w-0 gap-2 @min-[20rem]:col-span-2 @min-[28rem]:col-span-1">
+                                    <Label>Status</Label>
+                                    <SearchableCombobox
+                                        value={form.status}
+                                        options={[
+                                            { value: 'active', label: 'Aktif' },
+                                            {
+                                                value: 'inactive',
+                                                label: 'Arsip',
+                                            },
+                                        ]}
+                                        onChange={(value) =>
+                                            setForm({ ...form, status: value })
+                                        }
+                                        placeholder="Pilih status"
+                                        searchPlaceholder="Cari status..."
+                                        emptyMessage="Status tidak ditemukan."
+                                    />
+                                    <InputError message={errors.status} />
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>

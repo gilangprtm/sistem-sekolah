@@ -60,6 +60,21 @@ class CurriculumDataTableShellTest extends TestCase
         );
     }
 
+    public function test_academic_year_and_semester_forms_share_one_dialog(): void
+    {
+        $source = file_get_contents(
+            resource_path('js/pages/academic-years/index.tsx'),
+        );
+
+        $this->assertIsString($source);
+        $this->assertSame(1, substr_count($source, '<Dialog '));
+        $this->assertStringContainsString('<Dialog open={form !== null}', $source);
+        $this->assertStringContainsString("form.kind === 'year'", $source);
+        $this->assertSame(1, substr_count($source, '<ModalShell '));
+        $this->assertStringContainsString('Edit Tahun Ajaran', $source);
+        $this->assertMatchesRegularExpression('/onClick=\\{\\(\\) => openYearEdit\\(item\\)\\}\\s*>\\s*Edit\\s*<\\/DropdownMenuItem>/s', $source);
+    }
+
     public function test_academic_year_selection_count_includes_rows_from_other_pages(): void
     {
         $source = file_get_contents(

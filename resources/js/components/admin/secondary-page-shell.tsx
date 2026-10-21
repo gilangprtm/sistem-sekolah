@@ -7,6 +7,7 @@ type Props = {
     title: string;
     description?: string;
     backHref: string;
+    backLabel?: string;
     actions?: ReactNode;
     footerActions?: ReactNode;
     children: ReactNode;
@@ -16,6 +17,7 @@ export default function SecondaryPageShell({
     title,
     description,
     backHref,
+    backLabel = 'Kembali',
     actions,
     footerActions,
     children,
@@ -25,7 +27,7 @@ export default function SecondaryPageShell({
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
                     <Button asChild variant="outline" size="icon">
-                        <Link href={backHref} aria-label="Kembali">
+                        <Link href={backHref} aria-label={backLabel}>
                             <ArrowLeft aria-hidden="true" />
                         </Link>
                     </Button>

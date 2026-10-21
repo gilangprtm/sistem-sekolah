@@ -1,12 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { AlertCircle, ArrowLeft, Plus, Search, UsersRound } from 'lucide-react';
+import { AlertCircle, Plus, Search, UsersRound } from 'lucide-react';
 import { useState } from 'react';
+import SecondaryPageShell from '@/components/admin/secondary-page-shell';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
-import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,6 +17,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ModalShell from '@/components/ui/modal-shell';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -101,6 +105,8 @@ export default function ManagementClassManage({
     const [lookupOpen, setLookupOpen] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
+    const [registeredRombelNoticeOpen, setRegisteredRombelNoticeOpen] =
+        useState(false);
 
     const selectedStudentRows = selectedStudentIds
         .map((id) => selectedStudentDetails[id])
@@ -219,25 +225,34 @@ export default function ManagementClassManage({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Kelola Manajemen Kelas" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                    <Button asChild variant="outline" size="icon">
-                        <Link
-                            href="/kurikulum/management-class"
-                            aria-label="Kembali ke daftar manajemen kelas"
+            <SecondaryPageShell
+                title="Kelola Manajemen Kelas"
+                description="Atur tahun ajaran, wali kelas, dan siswa dalam satu kelas"
+                backHref="/kurikulum/management-class"
+                backLabel="Kembali ke daftar manajemen kelas"
+                footerActions={
+                    <>
+                        <Button asChild variant="outline">
+                            <Link href="/kurikulum/management-class">
+                                Batal
+                            </Link>
+                        </Button>
+                        <Button
+                            onClick={submit}
+                            disabled={
+                                processing ||
+                                !selectedYear ||
+                                !rombelId ||
+                                !teacherId
+                            }
                         >
-                            <ArrowLeft />
-                        </Link>
-                    </Button>
-                    <Heading
-                        variant="small"
-                        title="Kelola Manajemen Kelas"
-                        description="Atur tahun ajaran, wali kelas, dan siswa dalam satu kelas"
-                    />
-                </div>
-
+                            {processing ? 'Menyimpan...' : 'Simpan Perubahan'}
+                        </Button>
+                    </>
+                }
+            >
                 <div className="grid gap-4 rounded-xl border p-4 md:p-6">
-                    <section className="grid gap-4 border-b pb-6">
+                    <section className="grid gap-4 border-b pb-6 lg:grid-cols-3 lg:items-start">
                         <div className="grid gap-2">
                             <Label>Tahun Ajaran</Label>
                             <SearchableCombobox
@@ -269,47 +284,79 @@ export default function ManagementClassManage({
                         </div>
                         <div className="grid gap-2">
                             <Label>Kelas</Label>
-                            <SearchableCombobox
-                                value={rombelId}
-                                options={availableRombels.map((rombel) => ({
-                                    value: rombel.id.toString(),
-                                    label: registeredRombelIds.includes(
-                                        rombel.id,
-                                    )
-                                        ? `${rombel.code} · ${rombel.name} — Sudah terdaftar`
-                                        : `${rombel.code} · ${rombel.name}`,
-                                }))}
-                                onChange={(value) => {
-                                    setRombelId(value);
-                                    router.get(
-                                        '/kurikulum/management-class/manage',
-                                        {
-                                            academic_year_id: selectedYear?.id,
-                                            rombel_id: Number(value),
-                                        },
-                                        {
-                                            preserveState: false,
-                                            preserveScroll: true,
-                                        },
-                                    );
-                                }}
-                                placeholder="Pilih kelas dari master Rombel"
-                                searchPlaceholder="Cari kode atau nama Rombel..."
-                                emptyMessage="Rombel tidak ditemukan."
-                            />
+                            <div className="flex items-center gap-1">
+                                <SearchableCombobox
+                                    className="min-w-0 flex-1"
+                                    value={rombelId}
+                                    options={availableRombels.map((rombel) => ({
+                                        value: rombel.id.toString(),
+                                        label: registeredRombelIds.includes(
+                                            rombel.id,
+                                        )
+                                            ? `${rombel.code} · ${rombel.name} — Sudah terdaftar`
+                                            : `${rombel.code} · ${rombel.name}`,
+                                    }))}
+                                    onChange={(value) => {
+                                        setRombelId(value);
+                                        router.get(
+                                            '/kurikulum/management-class/manage',
+                                            {
+                                                academic_year_id:
+                                                    selectedYear?.id,
+                                                rombel_id: Number(value),
+                                            },
+                                            {
+                                                preserveState: false,
+                                                preserveScroll: true,
+                                            },
+                                        );
+                                    }}
+                                    placeholder="Pilih kelas dari master Rombel"
+                                    searchPlaceholder="Cari kode atau nama Rombel..."
+                                    emptyMessage="Rombel tidak ditemukan."
+                                />
+                                {selectedRombelAlreadyRegistered && (
+                                    <Tooltip
+                                        open={registeredRombelNoticeOpen}
+                                        onOpenChange={
+                                            setRegisteredRombelNoticeOpen
+                                        }
+                                    >
+                                        <TooltipTrigger asChild>
+                                            <button
+                                                type="button"
+                                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-amber-500 outline-none hover:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-ring"
+                                                aria-label="Informasi: kelas sudah terdaftar"
+                                                onPointerDown={(event) =>
+                                                    event.preventDefault()
+                                                }
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    setRegisteredRombelNoticeOpen(
+                                                        (open) => !open,
+                                                    );
+                                                }}
+                                            >
+                                                <AlertCircle
+                                                    aria-hidden="true"
+                                                    className="size-4"
+                                                />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            side="top"
+                                            className="max-w-[min(24rem,calc(100vw-2rem))] text-wrap"
+                                        >
+                                            Kelas ini sudah terdaftar pada Tahun
+                                            Ajaran yang dipilih. Data siswa dan
+                                            wali kelas yang tampil adalah data
+                                            kelas tersebut. Perubahan akan
+                                            memperbarui data kelas ini.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                )}
+                            </div>
                             <InputError message={errors.rombel_id} />
-                            {selectedRombelAlreadyRegistered && (
-                                <Alert className="border-amber-500/40 text-amber-700 dark:text-amber-300">
-                                    <AlertCircle className="size-4" />
-                                    <AlertDescription>
-                                        Kelas ini sudah terdaftar pada Tahun
-                                        Ajaran yang dipilih. Data siswa dan wali
-                                        kelas yang tampil adalah data kelas
-                                        tersebut. Perubahan akan memperbarui
-                                        data kelas ini.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
                         </div>
                         <div className="grid gap-2">
                             <Label>Wali Kelas</Label>
@@ -364,7 +411,7 @@ export default function ManagementClassManage({
                                 render: (student) => (
                                     <Button
                                         type="button"
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
                                         className="text-destructive"
                                         onClick={() =>
@@ -378,30 +425,11 @@ export default function ManagementClassManage({
                             }}
                         />
                     </section>
-
-                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                        <Button asChild variant="outline">
-                            <Link href="/kurikulum/management-class">
-                                Batal
-                            </Link>
-                        </Button>
-                        <Button
-                            onClick={submit}
-                            disabled={
-                                processing ||
-                                !selectedYear ||
-                                !rombelId ||
-                                !teacherId
-                            }
-                        >
-                            {processing ? 'Menyimpan...' : 'Simpan Perubahan'}
-                        </Button>
-                    </div>
                 </div>
-            </div>
+            </SecondaryPageShell>
 
             <Dialog open={lookupOpen} onOpenChange={setLookupOpen}>
-                <ModalShell size="large">
+                <ModalShell size="medium">
                     <DialogHeader>
                         <DialogTitle>Tambah Siswa</DialogTitle>
                         <DialogDescription>

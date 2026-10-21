@@ -294,7 +294,7 @@ export default function SubjectsIndex({
                     }}
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <ModalShell>
+                    <ModalShell size="medium">
                         <DialogHeader>
                             <DialogTitle>
                                 {editing
@@ -306,103 +306,110 @@ export default function SubjectsIndex({
                                 underscore, atau tanda hubung.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="subject-code">Kode</Label>
-                                <Input
-                                    id="subject-code"
-                                    value={form.code}
-                                    onChange={(event) =>
-                                        setForm({
-                                            ...form,
-                                            code: event.target.value,
-                                        })
-                                    }
-                                />
-                                <InputError message={errors.code} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="subject-name">Nama</Label>
-                                <Input
-                                    id="subject-name"
-                                    value={form.name}
-                                    onChange={(event) =>
-                                        setForm({
-                                            ...form,
-                                            name: event.target.value,
-                                        })
-                                    }
-                                />
-                                <InputError message={errors.name} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="subject-jp-per-class">
-                                    JP per Kelas
-                                </Label>
-                                <Input
-                                    id="subject-jp-per-class"
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    minLength={1}
-                                    maxLength={2}
-                                    value={form.jp_per_class}
-                                    onChange={(event) => {
-                                        const digitsOnly =
-                                            event.target.value.replace(
-                                                /\D/g,
-                                                '',
-                                            );
-
-                                        setForm({
-                                            ...form,
-                                            jp_per_class: digitsOnly
-                                                ? Number(digitsOnly)
-                                                : 1,
-                                        });
-                                    }}
-                                />
-                                <InputError message={errors.jp_per_class} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="subject-color">
-                                    Warna jadwal
-                                </Label>
-                                <div className="flex items-center gap-2">
+                        <div className="@container grid gap-4">
+                            <div className="grid items-start gap-4 @min-[28rem]:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="subject-code">Kode</Label>
                                     <Input
-                                        id="subject-color"
-                                        type="color"
-                                        value={form.color}
+                                        id="subject-code"
+                                        value={form.code}
                                         onChange={(event) =>
                                             setForm({
                                                 ...form,
-                                                color: event.target.value.toUpperCase(),
+                                                code: event.target.value,
                                             })
                                         }
-                                        className="h-9 w-14 cursor-pointer p-1"
                                     />
-                                    <span className="text-sm text-muted-foreground">
-                                        {form.color}
-                                    </span>
+                                    <InputError message={errors.code} />
                                 </div>
-                                <InputError message={errors.color} />
+                                <div className="grid gap-2">
+                                    <Label htmlFor="subject-name">Nama</Label>
+                                    <Input
+                                        id="subject-name"
+                                        value={form.name}
+                                        onChange={(event) =>
+                                            setForm({
+                                                ...form,
+                                                name: event.target.value,
+                                            })
+                                        }
+                                    />
+                                    <InputError message={errors.name} />
+                                </div>
                             </div>
-                            <div className="grid gap-2">
-                                <Label>Status</Label>
-                                <SearchableCombobox
-                                    value={form.status}
-                                    options={[
-                                        { value: 'active', label: 'Aktif' },
-                                        { value: 'inactive', label: 'Arsip' },
-                                    ]}
-                                    onChange={(value) =>
-                                        setForm({ ...form, status: value })
-                                    }
-                                    placeholder="Pilih status"
-                                    searchPlaceholder="Cari status..."
-                                    emptyMessage="Status tidak ditemukan."
-                                />
-                                <InputError message={errors.status} />
+                            <div className="grid items-start gap-4 @min-[28rem]:grid-cols-[minmax(0,0.8fr)_minmax(9rem,1fr)_minmax(0,1.2fr)]">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="subject-jp-per-class">
+                                        JP per Kelas
+                                    </Label>
+                                    <Input
+                                        id="subject-jp-per-class"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        minLength={1}
+                                        maxLength={2}
+                                        value={form.jp_per_class}
+                                        onChange={(event) => {
+                                            const digitsOnly =
+                                                event.target.value.replace(
+                                                    /\D/g,
+                                                    '',
+                                                );
+
+                                            setForm({
+                                                ...form,
+                                                jp_per_class: digitsOnly
+                                                    ? Number(digitsOnly)
+                                                    : 1,
+                                            });
+                                        }}
+                                    />
+                                    <InputError message={errors.jp_per_class} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="subject-color">
+                                        Warna jadwal
+                                    </Label>
+                                    <div className="flex h-9 items-center gap-2">
+                                        <Input
+                                            id="subject-color"
+                                            type="color"
+                                            value={form.color}
+                                            onChange={(event) =>
+                                                setForm({
+                                                    ...form,
+                                                    color: event.target.value.toUpperCase(),
+                                                })
+                                            }
+                                            className="h-9 w-14 cursor-pointer p-1"
+                                        />
+                                        <span className="text-sm text-muted-foreground">
+                                            {form.color}
+                                        </span>
+                                    </div>
+                                    <InputError message={errors.color} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Status</Label>
+                                    <SearchableCombobox
+                                        value={form.status}
+                                        options={[
+                                            { value: 'active', label: 'Aktif' },
+                                            {
+                                                value: 'inactive',
+                                                label: 'Arsip',
+                                            },
+                                        ]}
+                                        onChange={(value) =>
+                                            setForm({ ...form, status: value })
+                                        }
+                                        placeholder="Pilih status"
+                                        searchPlaceholder="Cari status..."
+                                        emptyMessage="Status tidak ditemukan."
+                                    />
+                                    <InputError message={errors.status} />
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>

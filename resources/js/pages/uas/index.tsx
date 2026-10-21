@@ -678,78 +678,86 @@ export default function UasIndex({
                                 konteks akademik aktif.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4">
-                            <div className="grid gap-2">
-                                <Label>Tahun Ajaran dan Semester aktif</Label>
-                                <div
-                                    aria-label="Tahun Ajaran dan Semester aktif"
-                                    className="pointer-events-none flex h-8 w-full items-center rounded-lg border border-input bg-muted/50 px-2.5 py-1 text-sm text-muted-foreground opacity-75 select-none"
-                                >
-                                    {activeContext
-                                        ? `${activeContext.academic_year} · ${activeContext.academic_period}`
-                                        : 'Belum tersedia'}
-                                </div>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="uas-subject">
-                                    Mata Pelajaran
-                                </Label>
-                                <SearchableCombobox
-                                    value={subjectId}
-                                    options={options}
-                                    onChange={setSubjectId}
-                                    placeholder="Pilih mata pelajaran"
-                                    searchPlaceholder="Cari mata pelajaran..."
-                                    emptyMessage="Mata pelajaran tidak ditemukan."
-                                />
-                                <InputError message={errors.subject_id} />
-                            </div>
-                            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-3">
+                        <div className="@container grid gap-4">
+                            <div className="grid items-start gap-4 @min-[28rem]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)]">
                                 <div className="grid min-w-0 gap-2">
-                                    <Label htmlFor="uas-opens-at-date">
-                                        Tanggal buka (WITA)
-                                    </Label>
-                                    <Input
-                                        className="min-w-0"
-                                        id="uas-opens-at-date"
-                                        type="date"
-                                        value={opensAtDate}
-                                        onChange={(event) =>
-                                            setOpensAtDate(event.target.value)
-                                        }
-                                        aria-invalid={Boolean(
-                                            errors.opens_at_date,
-                                        )}
-                                    />
-                                    <InputError
-                                        message={errors.opens_at_date}
-                                    />
+                                    <Label>Konteks akademik aktif</Label>
+                                    <div
+                                        aria-label="Tahun Ajaran dan Semester aktif"
+                                        className="pointer-events-none flex min-h-9 w-full items-center rounded-lg border border-input bg-muted/50 px-2.5 py-1 text-sm wrap-break-word text-muted-foreground opacity-75 select-none"
+                                    >
+                                        {activeContext
+                                            ? `${activeContext.academic_year} · ${activeContext.academic_period}`
+                                            : 'Belum tersedia'}
+                                    </div>
                                 </div>
                                 <div className="grid min-w-0 gap-2">
-                                    <Label htmlFor="uas-opens-at-time">
-                                        Jam buka
+                                    <Label htmlFor="uas-subject">
+                                        Mata Pelajaran
                                     </Label>
-                                    <Input
-                                        className="min-w-0"
-                                        id="uas-opens-at-time"
-                                        type="time"
-                                        value={opensAtTime}
-                                        onChange={(event) =>
-                                            setOpensAtTime(event.target.value)
-                                        }
-                                        aria-invalid={Boolean(
-                                            errors.opens_at_time,
-                                        )}
+                                    <SearchableCombobox
+                                        value={subjectId}
+                                        options={options}
+                                        onChange={setSubjectId}
+                                        placeholder="Pilih mata pelajaran"
+                                        searchPlaceholder="Cari mata pelajaran..."
+                                        emptyMessage="Mata pelajaran tidak ditemukan."
                                     />
-                                    <InputError
-                                        message={errors.opens_at_time}
-                                    />
+                                    <InputError message={errors.subject_id} />
                                 </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Kosongkan tanggal dan jam agar langsung
-                                tersedia.
-                            </p>
+                            <div className="grid gap-2">
+                                <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] items-start gap-3">
+                                    <div className="grid min-w-0 gap-2">
+                                        <Label htmlFor="uas-opens-at-date">
+                                            Tanggal buka (WITA)
+                                        </Label>
+                                        <Input
+                                            className="min-w-0"
+                                            id="uas-opens-at-date"
+                                            type="date"
+                                            value={opensAtDate}
+                                            onChange={(event) =>
+                                                setOpensAtDate(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            aria-invalid={Boolean(
+                                                errors.opens_at_date,
+                                            )}
+                                        />
+                                        <InputError
+                                            message={errors.opens_at_date}
+                                        />
+                                    </div>
+                                    <div className="grid min-w-0 gap-2">
+                                        <Label htmlFor="uas-opens-at-time">
+                                            Jam buka
+                                        </Label>
+                                        <Input
+                                            className="min-w-0"
+                                            id="uas-opens-at-time"
+                                            type="time"
+                                            value={opensAtTime}
+                                            onChange={(event) =>
+                                                setOpensAtTime(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            aria-invalid={Boolean(
+                                                errors.opens_at_time,
+                                            )}
+                                        />
+                                        <InputError
+                                            message={errors.opens_at_time}
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Kosongkan tanggal dan jam agar langsung
+                                    tersedia.
+                                </p>
+                            </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="uas-link">
                                     URL Google Form
