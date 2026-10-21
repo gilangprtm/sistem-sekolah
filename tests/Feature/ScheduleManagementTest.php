@@ -324,6 +324,70 @@ class ScheduleManagementTest extends TestCase
                 ->where('draftPlan.teaching_assignments.0.rombel_id', $rombels[1]->id));
     }
 
+    public function test_generate_restores_all_saved_rombels_when_returning_to_a_grade_without_rombel_query(): void
+    {
+        $period = $this->activePeriod();
+        $rombels = Rombel::factory()->count(7)->create(['grade_level' => 'VII', 'status' => 'active']);
+        $viiiRombel = Rombel::factory()->create(['grade_level' => 'VIII', 'status' => 'active']);
+        $subject = Subject::factory()->create(['jp_per_class' => 1]);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
+        $selectedIds = $rombels->pluck('id')->all();
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
+            'academic_period_id' => $period->id,
+            'grade' => 'VII',
+            'selected_rombel_ids' => $selectedIds,
+            'custom_slots' => [['day' => 'friday', 'lesson_number' => 1, 'label' => 'Kegiatan VII']],
+            'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombels[0]->id]]],
+        ])->assertRedirect();
+
+        $this->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VII')
+            ->assertInertia(fn ($page) => $page
+                ->where('selectedRombelIds', $selectedIds)
+                ->has('selectedRombels', 7)
+                ->has('draftPlan.teaching_assignments', 1)
+                ->where('draftPlan.custom_slots.0.label', 'Kegiatan VII'));
+        $this->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VIII')
+            ->assertInertia(fn ($page) => $page
+                ->where('grade', 'VIII')
+                ->where('selectedRombelIds', [])
+                ->where('draftPlan', null)
+                ->where('availableRombels.0.id', $viiiRombel->id));
+        $this->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VII')
+            ->assertInertia(fn ($page) => $page
+                ->where('grade', 'VII')
+                ->where('selectedRombelIds', $selectedIds)
+                ->has('selectedRombels', 7)
+                ->where('draftPlan.teaching_assignments.0.rombel_id', $rombels[0]->id)
+                ->has('draftPlan.manual_placements', 1)
+                ->where('draftPlan.custom_slots.0.label', 'Kegiatan VII'));
+    }
+
+    public function test_generate_restores_saved_selection_independently_of_search_and_excludes_inactive_rombels(): void
+    {
+        $period = $this->activePeriod();
+        $rombels = Rombel::factory()->count(3)->create(['grade_level' => 'VII', 'status' => 'active']);
+        $subject = Subject::factory()->create(['jp_per_class' => 1]);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
+
+        $this->actingAs($this->admin())->post('/kurikulum/schedule', [
+            'academic_period_id' => $period->id,
+            'grade' => 'VII',
+            'selected_rombel_ids' => $rombels->pluck('id')->all(),
+            'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombels[0]->id]]],
+        ])->assertRedirect();
+        $rombels[2]->update(['status' => 'inactive']);
+
+        $this->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VII&search=not-found')
+            ->assertInertia(fn ($page) => $page
+                ->has('availableRombels', 0)
+                ->where('selectedRombelIds', [$rombels[0]->id, $rombels[1]->id])
+                ->has('selectedRombels', 2));
+    }
+
     public function test_schedule_grade_delete_removes_only_target_plan_and_is_idempotent(): void
     {
         $period = $this->activePeriod();
@@ -801,6 +865,61 @@ class ScheduleManagementTest extends TestCase
             'schedule_plan_id' => $plan->id,
             'teacher_subject_id' => $second->id,
         ]);
+    }
+
+    public function test_schedule_subject_can_be_removed_and_added_again_without_deleting_master_data(): void
+    {
+        $period = $this->activePeriod();
+        $rombel = Rombel::factory()->create(['grade_level' => 'VII']);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $subjects = Subject::factory()->count(2)->create(['jp_per_class' => 1]);
+        $first = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subjects[0]->id]);
+        $second = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subjects[1]->id]);
+        $payload = [
+            'academic_period_id' => $period->id,
+            'grade' => 'VII',
+            'selected_rombel_ids' => [$rombel->id],
+            'assignments' => [
+                ['teacher_subject_id' => $first->id, 'rombel_ids' => [$rombel->id]],
+                ['teacher_subject_id' => $second->id, 'rombel_ids' => [$rombel->id]],
+            ],
+        ];
+        $this->actingAs($this->admin())->post('/kurikulum/schedule', $payload)
+            ->assertSessionHasNoErrors()->assertRedirect();
+        $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
+
+        $this->post('/kurikulum/schedule', [
+            ...$payload,
+            'source_plan_id' => $plan->id,
+            'assignments' => [$payload['assignments'][0]],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertDatabaseMissing('tr_curriculum_teaching_assignments', [
+            'schedule_plan_id' => $plan->id,
+            'subject_id' => $subjects[1]->id,
+        ]);
+        $this->assertDatabaseMissing('tr_curriculum_schedule_entries', [
+            'schedule_plan_id' => $plan->id,
+            'subject_id' => $subjects[1]->id,
+        ]);
+        $this->assertModelExists($subjects[1]);
+        $this->assertModelExists($second);
+        $this->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VII')
+            ->assertInertia(fn ($page) => $page
+                ->has('subjects', 2)
+                ->has('draftPlan.teaching_assignments', 1)
+                ->where('draftPlan.teaching_assignments.0.teacher_subject_id', $first->id));
+
+        $this->post('/kurikulum/schedule', [...$payload, 'source_plan_id' => $plan->id])
+            ->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertDatabaseHas('tr_curriculum_teaching_assignments', [
+            'schedule_plan_id' => $plan->id,
+            'subject_id' => $subjects[1]->id,
+            'teacher_subject_id' => $second->id,
+        ]);
+        $this->get('/kurikulum/schedule/generate?academic_period_id='.$period->id.'&grade=VII')
+            ->assertInertia(fn ($page) => $page->has('draftPlan.teaching_assignments', 2));
     }
 
     public function test_save_persists_manual_schedule_placements_from_editor(): void

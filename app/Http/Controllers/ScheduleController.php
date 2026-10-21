@@ -443,8 +443,17 @@ class ScheduleController extends Controller
                 ->values()
                 ->all());
         }
+        if ($selectedRombelIds === [] && $draftPlan !== null) {
+            $persistedRombelIds = $draftPlan->getAttribute('selected_rombel_ids');
+            $selectedRombelIds = is_array($persistedRombelIds)
+                ? array_map('intval', $persistedRombelIds)
+                : [];
+        }
         $draftRombelIds = $draftPlan?->teachingAssignments->pluck('rombel_id')->map(fn (int $id): int => $id)->all() ?? [];
-        $selectedRombelIds = array_values(array_unique([...$selectedRombelIds, ...$draftRombelIds]));
+        $selectedRombelIds = array_values(array_intersect(
+            array_unique([...$selectedRombelIds, ...$draftRombelIds]),
+            $periodRombels->pluck('id')->all(),
+        ));
         $selectedRombels = $periodRombels->whereIn('id', $selectedRombelIds)->values();
 
         return Inertia::render('schedules/generate', [

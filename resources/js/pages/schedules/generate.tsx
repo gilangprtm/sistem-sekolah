@@ -1,10 +1,10 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, ChevronsUpDown, Plus, Trash2 } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { ChevronsUpDown, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import SecondaryPageShell from '@/components/admin/secondary-page-shell';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import DataTableToolbar from '@/components/data-table/data-table-toolbar';
-import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,9 +15,9 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import {
     Popover,
     PopoverContent,
@@ -255,13 +256,16 @@ export default function ScheduleGenerate({
     draftPlan,
     scheduleSlotOptions,
 }: Props) {
+    const confirm = useConfirmation();
     const [search, setSearch] = useState(initialSearch);
     const [selectedIds, setSelectedIds] = useState(initialSelectedRombelIds);
     const [open, setOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
-    const [manualPlacements] = useState<Record<string, ManualPlacement>>(() =>
+    const [manualPlacements, setManualPlacements] = useState<
+        Record<string, ManualPlacement>
+    >(() =>
         Object.fromEntries(
             (draftPlan?.manual_placements ?? []).map((placement) => [
                 `${placement.teacher_subject_id}:${placement.rombel_id}`,
@@ -329,7 +333,21 @@ export default function ScheduleGenerate({
             return grouped;
         }, {});
     });
-    const saveAssignments = () => {
+    const [subjectToAdd, setSubjectToAdd] = useState('');
+    const saveAssignments = async () => {
+        if (processing || !selectedIds.length || !subjects.length) {
+            return;
+        }
+
+        if (
+            !(await confirm({
+                title: 'Buat jadwal?',
+                description: `Buat jadwal jenjang ${grade} untuk ${selectedIds.length} rombel terpilih berdasarkan rancangan saat ini?${draftPlan ? ' Jadwal yang sudah tersimpan pada jenjang dan periode ini akan diperbarui.' : ''}`,
+            }))
+        ) {
+            return;
+        }
+
         setProcessing(true);
         setSaveError(null);
         router.post(
@@ -394,18 +412,30 @@ export default function ScheduleGenerate({
             .filter((rombel): rombel is Rombel => Boolean(rombel));
     }, [availableRombels, initialSelectedRombels, selectedIds]);
 
-    const navigate = (nextGrade = grade, nextIds = selectedIds) => {
+    const navigate = () => {
         router.get(
             '/kurikulum/schedule/generate',
             {
                 ...(selectedPeriod
                     ? { academic_period_id: selectedPeriod.id }
                     : {}),
-                grade: nextGrade,
+                grade,
                 ...(search ? { search } : {}),
-                ...(nextIds.length ? { rombel_ids: nextIds } : {}),
+                ...(selectedIds.length ? { rombel_ids: selectedIds } : {}),
             },
             { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+    const selectGrade = (value: string) => {
+        router.get(
+            '/kurikulum/schedule/generate',
+            {
+                ...(selectedPeriod
+                    ? { academic_period_id: selectedPeriod.id }
+                    : {}),
+                grade: value,
+            },
+            { preserveState: false, preserveScroll: true, replace: true },
         );
     };
     const selectPeriod = (value: string) => {
@@ -414,10 +444,8 @@ export default function ScheduleGenerate({
             {
                 academic_period_id: Number(value),
                 grade,
-                ...(search ? { search } : {}),
-                ...(selectedIds.length ? { rombel_ids: selectedIds } : {}),
             },
-            { preserveState: true, preserveScroll: true, replace: true },
+            { preserveState: false, preserveScroll: true, replace: true },
         );
     };
     const toggleRombel = (id: number, checked: boolean | 'indeterminate') => {
@@ -425,6 +453,53 @@ export default function ScheduleGenerate({
             checked === true
                 ? [...new Set([...current, id])]
                 : current.filter((selectedId) => selectedId !== id),
+        );
+    };
+    const selectedSubjects = subjects.filter((subject) =>
+        Object.hasOwn(assignments, subject.id),
+    );
+    const availableSubjects = subjects.filter(
+        (subject) => !Object.hasOwn(assignments, subject.id),
+    );
+    const addSubject = () => {
+        const subjectId = Number(subjectToAdd);
+
+        if (
+            !availableSubjects.some((subject) => subject.id === subjectId) ||
+            processing
+        ) {
+            return;
+        }
+
+        setAssignments((current) => ({
+            ...current,
+            [subjectId]: current[subjectId] ?? [],
+        }));
+        setSubjectToAdd('');
+    };
+    const removeSubject = (subjectId: number) => {
+        if (processing) {
+            return;
+        }
+
+        const teacherSubjectIds = new Set(
+            teacherSubjects
+                .filter((item) => item.subject_id === subjectId)
+                .map((item) => item.id),
+        );
+        setAssignments((current) => {
+            const next = { ...current };
+            delete next[subjectId];
+
+            return next;
+        });
+        setManualPlacements((current) =>
+            Object.fromEntries(
+                Object.entries(current).filter(
+                    ([, placement]) =>
+                        !teacherSubjectIds.has(placement.teacher_subject_id),
+                ),
+            ),
         );
     };
     const teacherOptions = (subjectId: number) =>
@@ -511,22 +586,11 @@ export default function ScheduleGenerate({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Rancang Jadwal" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                    <Button asChild variant="outline" size="icon">
-                        <Link
-                            href="/kurikulum/schedule"
-                            aria-label="Kembali ke jadwal pelajaran"
-                        >
-                            <ArrowLeft />
-                        </Link>
-                    </Button>
-                    <Heading
-                        variant="small"
-                        title="Rancang Jadwal"
-                        description="Tentukan Guru dan Rombel untuk setiap Mata Pelajaran. Pengaturan dapat disimpan sebagai jadwal dan jadwal tersimpan dapat diubah kembali."
-                    />
-                </div>
+            <SecondaryPageShell
+                title="Rancang Jadwal"
+                description="Tentukan Guru dan Rombel untuk setiap Mata Pelajaran. Pengaturan dapat disimpan sebagai jadwal dan jadwal tersimpan dapat diubah kembali."
+                backHref="/kurikulum/schedule"
+            >
                 <div className="grid gap-3 rounded-xl border p-4 md:grid-cols-12 md:items-end">
                     <div className="grid gap-2 md:col-span-4">
                         <Label>Tahun Ajaran & Semester</Label>
@@ -567,32 +631,29 @@ export default function ScheduleGenerate({
                                 router.get(
                                     '/kurikulum/schedule/generate',
                                     { grade: 'VII' },
-                                    { replace: true },
+                                    { preserveState: false, replace: true },
                                 );
                             }}
                         >
                             Atur Ulang
                         </Button>
                     </div>
-                    <div className="grid gap-2 md:col-span-12">
-                        <Label>Jenjang</Label>
-                        <Tabs
-                            value={grade}
-                            onValueChange={(value) => {
-                                setSelectedIds([]);
-                                setAssignments({});
-                                navigate(value, []);
-                            }}
+                </div>
+                <div className="grid gap-2">
+                    <Label>Jenjang</Label>
+                    <Tabs value={grade} onValueChange={selectGrade}>
+                        <TabsList
+                            variant="line"
+                            className="h-11 w-full"
+                            aria-label="Pilih jenjang"
                         >
-                            <TabsList aria-label="Pilih jenjang">
-                                {grades.map((item) => (
-                                    <TabsTrigger key={item} value={item}>
-                                        {item}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                        </Tabs>
-                    </div>
+                            {grades.map((item) => (
+                                <TabsTrigger key={item} value={item}>
+                                    {item}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
                 </div>
                 <DataTableShell>
                     <DataTableToolbar>
@@ -696,9 +757,9 @@ export default function ScheduleGenerate({
                     rancangan. Pengaturan dapat disimpan sebagai jadwal dan
                     jadwal tersimpan dapat diubah kembali.
                 </p>
-            </div>
+            </SecondaryPageShell>
             <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <DialogContent>
+                <ModalShell size="small">
                     <DialogHeader>
                         <DialogTitle>Hapus jadwal jenjang?</DialogTitle>
                         <DialogDescription>
@@ -728,10 +789,13 @@ export default function ScheduleGenerate({
                             Hapus Permanen
                         </Button>
                     </DialogFooter>
-                </DialogContent>
+                </ModalShell>
             </Dialog>
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-hidden sm:!max-w-4xl">
+                <ModalShell
+                    size="medium"
+                    className="flex flex-col overflow-hidden"
+                >
                     <DialogHeader>
                         <DialogTitle>Rancang Pembagian Jadwal</DialogTitle>
                         <DialogDescription>
@@ -740,7 +804,7 @@ export default function ScheduleGenerate({
                             Pelajaran.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
+                    <div className="max-h-[65vh] min-h-0 space-y-3 overflow-y-auto pr-1">
                         <section className="rounded-lg border border-primary/30 bg-primary/5 p-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
@@ -907,7 +971,43 @@ export default function ScheduleGenerate({
                                 </div>
                             )}
                         </section>
-                        {subjects.map((subject) => {
+                        <section className="space-y-3 rounded-lg border p-4">
+                            <div>
+                                <h3 className="font-medium">Mata Pelajaran</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Tambahkan hanya Mata Pelajaran yang
+                                    digunakan. Menghapus dari rancangan tidak
+                                    menghapus data master.
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                <div className="grid min-w-0 flex-1 gap-2">
+                                    <Label>Pilih Mata Pelajaran</Label>
+                                    <SearchableCombobox
+                                        value={subjectToAdd}
+                                        options={availableSubjects.map(
+                                            (subject) => ({
+                                                value: subject.id.toString(),
+                                                label: `${subject.code} · ${subject.name}`,
+                                            }),
+                                        )}
+                                        onChange={setSubjectToAdd}
+                                        placeholder="Pilih Mata Pelajaran"
+                                        searchPlaceholder="Cari Mata Pelajaran..."
+                                        emptyMessage="Tidak ada Mata Pelajaran lain yang tersedia."
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    onClick={addSubject}
+                                    disabled={!subjectToAdd || processing}
+                                >
+                                    <Plus data-icon="inline-start" />
+                                    Tambahkan Mata Pelajaran
+                                </Button>
+                            </div>
+                        </section>
+                        {selectedSubjects.map((subject) => {
                             const subjectAssignments =
                                 assignments[subject.id] ?? [];
 
@@ -927,16 +1027,34 @@ export default function ScheduleGenerate({
                                                     : 'Belum ada Guru yang ditambahkan'}
                                             </p>
                                         </div>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            onClick={() =>
-                                                addTeacherAssignment(subject.id)
-                                            }
-                                        >
-                                            <Plus data-icon="inline-start" />
-                                            Tambah Guru
-                                        </Button>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                onClick={() =>
+                                                    addTeacherAssignment(
+                                                        subject.id,
+                                                    )
+                                                }
+                                                disabled={processing}
+                                            >
+                                                <Plus data-icon="inline-start" />
+                                                Tambah Guru
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    removeSubject(subject.id)
+                                                }
+                                                disabled={processing}
+                                                aria-label={`Hapus Mata Pelajaran ${subject.name} dari rancangan`}
+                                            >
+                                                <Trash2 data-icon="inline-start" />
+                                                Hapus
+                                            </Button>
+                                        </div>
                                     </div>
                                     <div className="mt-3 space-y-3">
                                         {subjectAssignments.map(
@@ -1022,9 +1140,11 @@ export default function ScheduleGenerate({
                                 </section>
                             );
                         })}
-                        {!subjects.length && (
+                        {!selectedSubjects.length && (
                             <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                                Belum ada Mata Pelajaran aktif.
+                                {subjects.length
+                                    ? 'Belum ada Mata Pelajaran dalam rancangan. Pilih Mata Pelajaran lalu klik Tambahkan Mata Pelajaran.'
+                                    : 'Belum ada Mata Pelajaran aktif.'}
                             </div>
                         )}
                     </div>
@@ -1032,12 +1152,20 @@ export default function ScheduleGenerate({
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={saveAssignments}
+                            onClick={() => setOpen(false)}
+                            disabled={processing}
                         >
-                            Simpan
+                            Batal
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={saveAssignments}
+                            disabled={processing}
+                        >
+                            {processing ? 'Menyimpan...' : 'Simpan'}
                         </Button>
                     </DialogFooter>
-                </DialogContent>
+                </ModalShell>
             </Dialog>
         </AppLayout>
     );

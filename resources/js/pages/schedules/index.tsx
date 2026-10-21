@@ -228,9 +228,6 @@ export default function JadwalPelajaranIndex({
     }
 
     viewerQuery.set('grade', grade);
-    selectedRombelIds.forEach((id) =>
-        viewerQuery.append('rombel_ids[]', id.toString()),
-    );
     const generateUrl = `/kurikulum/schedule/generate?${viewerQuery.toString()}`;
     const totalColumns = selectedRombels.length + 3;
 
