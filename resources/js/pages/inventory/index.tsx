@@ -6,6 +6,7 @@ import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     DropdownMenu,
     DropdownMenuItem,
@@ -17,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { formatRupiah } from '@/lib/utils';
-import type { BreadcrumbItem } from '@/types';
+import type { Auth, BreadcrumbItem } from '@/types';
 
 type Item = {
     id: number;
@@ -51,6 +52,7 @@ type Register = {
 };
 
 type Props = {
+    auth: Auth;
     view: 'assets' | 'registers';
     items: {
         data: Item[];
@@ -121,12 +123,15 @@ function FilterCombobox({
 }
 
 export default function InventoryIndex({
+    auth,
     view,
     items,
     registers,
     filters,
     filterOptions,
 }: Props) {
+    const confirm = useConfirmation();
+    const canDelete = auth.permissions?.includes('inventory.delete') ?? false;
     const [selected, setSelected] = useState<number[]>([]);
     const [selectedRegisters, setSelectedRegisters] = useState<number[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
@@ -257,6 +262,26 @@ export default function InventoryIndex({
             cell: (register) => register.condition,
         },
     ];
+
+    const remove = async (item: Item) => {
+        if (
+            !canDelete ||
+            !(await confirm({
+                title: 'Hapus inventaris?',
+                description: `Hapus inventaris "${item.nama_jenis_barang}" (${item.kode_barang})? Semua unit akan ikut terhapus.`,
+            }))
+        ) {
+            return;
+        }
+
+        router.delete(`/inventaris/inventory/${item.id}`, {
+            preserveScroll: true,
+            onSuccess: () =>
+                setSelected((current) =>
+                    current.filter((selectedId) => selectedId !== item.id),
+                ),
+        });
+    };
 
     const filterParams = (): Record<string, string> => {
         const params: Record<string, string> = {};
@@ -567,13 +592,23 @@ export default function InventoryIndex({
                             rowActions={{
                                 label: (item) => `Aksi ${item.kode_barang}`,
                                 render: (item) => (
-                                    <DropdownMenuItem asChild>
-                                        <Link
-                                            href={`/inventaris/inventory/${item.id}`}
-                                        >
-                                            Lihat detail
-                                        </Link>
-                                    </DropdownMenuItem>
+                                    <>
+                                        <DropdownMenuItem asChild>
+                                            <Link
+                                                href={`/inventaris/inventory/${item.id}`}
+                                            >
+                                                Lihat detail
+                                            </Link>
+                                        </DropdownMenuItem>
+                                        {canDelete && (
+                                            <DropdownMenuItem
+                                                variant="destructive"
+                                                onClick={() => remove(item)}
+                                            >
+                                                Hapus
+                                            </DropdownMenuItem>
+                                        )}
+                                    </>
                                 ),
                             }}
                             pagination={{

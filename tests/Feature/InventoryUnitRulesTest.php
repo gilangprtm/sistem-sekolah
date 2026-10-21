@@ -115,6 +115,33 @@ class InventoryUnitRulesTest extends TestCase
         $this->assertDatabaseCount('tr_inventory_units', 0);
     }
 
+    public function test_inventory_viewer_cannot_delete_item_or_units(): void
+    {
+        $viewer = User::factory()->create();
+        $viewer->givePermissionTo('inventory.view');
+        $item = $this->itemWithUnits(1);
+        $unit = $item->units()->firstOrFail();
+
+        $this->actingAs($viewer)
+            ->delete("/inventaris/inventory/{$item->id}")
+            ->assertForbidden();
+
+        $this->assertModelExists($item);
+        $this->assertModelExists($unit);
+    }
+
+    public function test_guest_cannot_delete_item_or_units(): void
+    {
+        $item = $this->itemWithUnits(1);
+        $unit = $item->units()->firstOrFail();
+
+        $this->delete("/inventaris/inventory/{$item->id}")
+            ->assertRedirect('/login');
+
+        $this->assertModelExists($item);
+        $this->assertModelExists($unit);
+    }
+
     public function test_qty_cannot_decrease(): void
     {
         $admin = $this->admin();

@@ -82,6 +82,20 @@ class InventoryListTest extends TestCase
         $this->assertStringNotContainsString("from '@/components/ui/pagination'", $page);
     }
 
+    public function test_asset_actions_offer_permission_gated_delete_with_confirmation(): void
+    {
+        $page = file_get_contents(resource_path('js/pages/inventory/index.tsx'));
+
+        $this->assertIsString($page);
+        $this->assertStringContainsString("import { useConfirmation } from '@/components/ui/confirmation-provider';", $page);
+        $this->assertStringContainsString("auth.permissions?.includes('inventory.delete')", $page);
+        $this->assertStringContainsString("title: 'Hapus inventaris?'", $page);
+        $this->assertStringContainsString('Semua unit akan ikut terhapus.', $page);
+        $this->assertStringContainsString('router.delete(`/inventaris/inventory/${item.id}`', $page);
+        $this->assertStringContainsString('variant="destructive"', $page);
+        $this->assertSame(1, substr_count($page, '{canDelete && ('));
+    }
+
     public function test_legacy_inventory_url_redirects_to_canonical_url_and_preserves_query(): void
     {
         $response = $this->actingAs($this->admin())

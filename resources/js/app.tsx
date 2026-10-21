@@ -1,4 +1,5 @@
 import { createInertiaApp } from '@inertiajs/react';
+import { ConfirmationProvider } from '@/components/ui/confirmation-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import DashboardLayout from '@/layouts/app/dashboard-layout';
@@ -52,7 +53,7 @@ createInertiaApp({
                 <ThemeBootScript />
                 <PreferencesStoreProvider initialValues={initialValues}>
                     <TooltipProvider delayDuration={0}>
-                        {app}
+                        <ConfirmationProvider>{app}</ConfirmationProvider>
                         <Toaster />
                     </TooltipProvider>
                 </PreferencesStoreProvider>
