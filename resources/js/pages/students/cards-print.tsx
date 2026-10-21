@@ -1,8 +1,8 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Download, LoaderCircle } from 'lucide-react';
+import { Head } from '@inertiajs/react';
+import { Download, LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import Heading from '@/components/heading';
+import SecondaryPageShell from '@/components/admin/secondary-page-shell';
 import { StudentCardVisual } from '@/components/student-card-visual';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -211,73 +211,55 @@ export default function StudentCardsPrint({ students, filters }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Unduh Semua Kartu Pelajar" />
-            <div className="flex flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                    <Heading
-                        variant="small"
-                        title="Unduh Semua Kartu Pelajar"
-                        description={`${students.length} kartu siap diunduh sebagai ZIP`}
-                    />
-                    <div className="flex gap-2">
-                        {isDownloading ? (
-                            <Button variant="outline" disabled>
-                                <ArrowLeft />
-                                Kembali
-                            </Button>
-                        ) : (
-                            <Button variant="outline" asChild>
-                                <Link
-                                    href={`/students/cards${backQuery ? `?${backQuery}` : ''}`}
-                                >
-                                    <ArrowLeft />
-                                    Kembali
-                                </Link>
-                            </Button>
-                        )}
-                        <Button
-                            disabled={isDownloading || students.length === 0}
-                            onClick={async () => {
-                                setIsDownloading(true);
+            <SecondaryPageShell
+                title="Unduh Semua Kartu Pelajar"
+                description={`${students.length} kartu siap diunduh sebagai ZIP`}
+                backHref={`/students/cards${backQuery ? `?${backQuery}` : ''}`}
+                backLabel="Kembali ke daftar kartu pelajar"
+                actions={
+                    <Button
+                        disabled={isDownloading || students.length === 0}
+                        onClick={async () => {
+                            setIsDownloading(true);
+                            setDownloadProgress({
+                                completed: 0,
+                                total: students.length,
+                            });
+
+                            try {
+                                await downloadCards(
+                                    students,
+                                    filters,
+                                    (completed, total) =>
+                                        setDownloadProgress({
+                                            completed,
+                                            total,
+                                        }),
+                                );
+                            } catch (error) {
+                                toast.error(
+                                    error instanceof Error
+                                        ? error.message
+                                        : 'Kartu tidak dapat diunduh. Coba lagi.',
+                                );
+                            } finally {
+                                setIsDownloading(false);
                                 setDownloadProgress({
                                     completed: 0,
                                     total: students.length,
                                 });
-
-                                try {
-                                    await downloadCards(
-                                        students,
-                                        filters,
-                                        (completed, total) =>
-                                            setDownloadProgress({
-                                                completed,
-                                                total,
-                                            }),
-                                    );
-                                } catch (error) {
-                                    toast.error(
-                                        error instanceof Error
-                                            ? error.message
-                                            : 'Kartu tidak dapat diunduh. Coba lagi.',
-                                    );
-                                } finally {
-                                    setIsDownloading(false);
-                                    setDownloadProgress({
-                                        completed: 0,
-                                        total: students.length,
-                                    });
-                                }
-                            }}
-                        >
-                            {isDownloading ? (
-                                <LoaderCircle className="animate-spin" />
-                            ) : (
-                                <Download />
-                            )}
-                            {isDownloading ? 'Menyiapkan…' : 'Unduh ZIP'}
-                        </Button>
-                    </div>
-                </div>
-
+                            }
+                        }}
+                    >
+                        {isDownloading ? (
+                            <LoaderCircle className="animate-spin" />
+                        ) : (
+                            <Download />
+                        )}
+                        {isDownloading ? 'Menyiapkan…' : 'Unduh ZIP'}
+                    </Button>
+                }
+            >
                 <Dialog open={isDownloading}>
                     <ModalShell
                         className="text-center"
@@ -307,11 +289,26 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                 </Dialog>
 
                 {students.length > 0 && (
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {students.map(({ student, qrCode }) => (
+                    <section
+                        className="grid gap-3"
+                        aria-labelledby="card-preview-heading"
+                    >
+                        <h2
+                            id="card-preview-heading"
+                            className="text-sm font-medium"
+                        >
+                            Contoh kartu pelajar
+                        </h2>
+                        {students.map(({ student, qrCode }, index) => (
                             <div
                                 key={student.id}
                                 id={`student-card-${student.id}`}
+                                className={
+                                    index === 0
+                                        ? 'w-full max-w-xl'
+                                        : 'pointer-events-none fixed top-0 -left-[10000px] w-[1011px]'
+                                }
+                                aria-hidden={index > 0 ? true : undefined}
                             >
                                 <StudentCardVisual
                                     student={student}
@@ -319,7 +316,7 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                                 />
                             </div>
                         ))}
-                    </div>
+                    </section>
                 )}
 
                 {students.length === 0 ? (
@@ -328,12 +325,14 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                     </div>
                 ) : (
                     <div className="rounded-xl border p-4 text-sm text-muted-foreground">
-                        Semua kartu akan mengikuti template resmi, data siswa,
-                        foto, QR code, dan format tanggal yang sama dengan
-                        halaman kartu individual.
+                        Hanya satu contoh kartu ditampilkan. Unduh ZIP tetap
+                        mencakup seluruh {students.length} siswa sesuai filter,
+                        dengan data dan foto masing-masing. Semua kartu memakai
+                        template resmi yang sama dengan halaman kartu
+                        individual.
                     </div>
                 )}
-            </div>
+            </SecondaryPageShell>
         </AppLayout>
     );
 }

@@ -435,257 +435,290 @@ export default function KantinBarangIndex({
                             urutan per kategori.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-2">
-                        <div className="grid gap-2">
-                            <Label htmlFor="kantin-category-combobox">
-                                Kategori *
-                            </Label>
-                            <Popover
-                                open={categoryOpen}
-                                onOpenChange={setCategoryOpen}
-                            >
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        id="kantin-category-combobox"
-                                        type="button"
-                                        variant="outline"
-                                        role="combobox"
-                                        aria-expanded={categoryOpen}
-                                        className="justify-between font-normal"
+                    <div className="@container py-2">
+                        <div className="grid gap-4">
+                            <div className="grid gap-4 @min-[28rem]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)] @min-[28rem]:items-start">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="kantin-category-combobox">
+                                        Kategori *
+                                    </Label>
+                                    <Popover
+                                        open={categoryOpen}
+                                        onOpenChange={setCategoryOpen}
                                     >
-                                        {form.category_name ||
-                                            'Pilih atau ketik kategori'}
-                                        <ChevronsUpDown className="opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                    align="start"
-                                    className="w-[var(--radix-popover-trigger-width)] min-w-0 p-0"
-                                >
-                                    <Command>
-                                        <CommandInput
-                                            placeholder="Cari atau ketik kategori..."
-                                            value={form.category_name}
-                                            onValueChange={(value) =>
-                                                setForm((current) => ({
-                                                    ...current,
-                                                    category_id: '',
-                                                    category_name: value,
-                                                }))
-                                            }
-                                        />
-                                        <CommandList>
-                                            <CommandEmpty>
-                                                {form.category_name.trim()
-                                                    ? `Buat kategori “${form.category_name.trim()}”`
-                                                    : 'Kategori tidak ditemukan.'}
-                                            </CommandEmpty>
-                                            {categories.map((category) => (
-                                                <CommandItem
-                                                    key={category.id}
-                                                    value={category.name}
-                                                    onSelect={() => {
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                id="kantin-category-combobox"
+                                                type="button"
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={categoryOpen}
+                                                className="w-full min-w-0 justify-between font-normal"
+                                            >
+                                                <span className="truncate">
+                                                    {form.category_name ||
+                                                        'Pilih atau ketik kategori'}
+                                                </span>
+                                                <ChevronsUpDown className="shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent
+                                            align="start"
+                                            className="w-[var(--radix-popover-trigger-width)] min-w-0 p-0"
+                                        >
+                                            <Command>
+                                                <CommandInput
+                                                    placeholder="Cari atau ketik kategori..."
+                                                    value={form.category_name}
+                                                    onValueChange={(value) =>
                                                         setForm((current) => ({
                                                             ...current,
-                                                            category_id: String(
-                                                                category.id,
-                                                            ),
+                                                            category_id: '',
                                                             category_name:
-                                                                category.name,
-                                                        }));
-                                                        setCategoryOpen(false);
-                                                    }}
-                                                >
-                                                    {category.name}
-                                                    <Check
-                                                        className={cn(
-                                                            'ml-auto',
-                                                            form.category_id ===
-                                                                String(
-                                                                    category.id,
-                                                                )
-                                                                ? 'opacity-100'
-                                                                : 'opacity-0',
-                                                        )}
-                                                    />
-                                                </CommandItem>
-                                            ))}
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                            <InputError
-                                id="kantin-category-error"
-                                role="alert"
-                                message={
-                                    errors.category_id || errors.category_name
-                                }
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="kantin-name">Nama Barang *</Label>
-                            <Input
-                                id="kantin-name"
-                                aria-describedby={
-                                    errors.name
-                                        ? 'kantin-name-error'
-                                        : undefined
-                                }
-                                aria-invalid={Boolean(errors.name)}
-                                value={form.name}
-                                onChange={(event) =>
-                                    setForm((current) => ({
-                                        ...current,
-                                        name: event.target.value,
-                                    }))
-                                }
-                            />
-                            <InputError
-                                id="kantin-name-error"
-                                role="alert"
-                                message={errors.name}
-                            />
-                        </div>
-                        <div className="grid gap-2 md:grid-cols-2">
-                            <div className="grid gap-2">
-                                <Label htmlFor="kantin-brand">Brand</Label>
-                                <Input
-                                    id="kantin-brand"
-                                    value={form.brand}
-                                    onChange={(event) =>
-                                        setForm((current) => ({
-                                            ...current,
-                                            brand: event.target.value,
-                                        }))
-                                    }
-                                />
-                                <InputError
-                                    id="kantin-brand-error"
-                                    role="alert"
-                                    message={errors.brand}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="kantin-satuan">Satuan *</Label>
-                                <SearchableCombobox
-                                    value={form.satuan}
-                                    options={satuanOptions}
-                                    onChange={(value) =>
-                                        setForm((current) => ({
-                                            ...current,
-                                            satuan: value,
-                                        }))
-                                    }
-                                    placeholder="Pilih satuan"
-                                    searchPlaceholder="Cari satuan..."
-                                    emptyMessage="Satuan tidak ditemukan."
-                                />
-                                <InputError
-                                    id="kantin-satuan-error"
-                                    role="alert"
-                                    message={errors.satuan}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="kantin-harga">Harga *</Label>
-                            <Input
-                                id="kantin-harga"
-                                aria-describedby={
-                                    errors.harga
-                                        ? 'kantin-harga-error'
-                                        : undefined
-                                }
-                                aria-invalid={Boolean(errors.harga)}
-                                inputMode="numeric"
-                                value={form.harga}
-                                onChange={(event) =>
-                                    setForm((current) => ({
-                                        ...current,
-                                        harga: formatCurrencyInput(
-                                            event.target.value,
-                                            current.harga,
-                                        ),
-                                    }))
-                                }
-                                placeholder="Contoh: 5.000"
-                            />
-                            <InputError
-                                id="kantin-harga-error"
-                                role="alert"
-                                message={errors.harga}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="kantin-image">Gambar Produk</Label>
-                            {editing?.image_url &&
-                                !form.remove_image &&
-                                !form.image && (
-                                    <img
-                                        src={editing.image_url}
-                                        alt={editing.name}
-                                        className="h-32 w-full rounded-lg object-cover"
+                                                                value,
+                                                        }))
+                                                    }
+                                                />
+                                                <CommandList>
+                                                    <CommandEmpty>
+                                                        {form.category_name.trim()
+                                                            ? `Buat kategori “${form.category_name.trim()}”`
+                                                            : 'Kategori tidak ditemukan.'}
+                                                    </CommandEmpty>
+                                                    {categories.map(
+                                                        (category) => (
+                                                            <CommandItem
+                                                                key={
+                                                                    category.id
+                                                                }
+                                                                value={
+                                                                    category.name
+                                                                }
+                                                                onSelect={() => {
+                                                                    setForm(
+                                                                        (
+                                                                            current,
+                                                                        ) => ({
+                                                                            ...current,
+                                                                            category_id:
+                                                                                String(
+                                                                                    category.id,
+                                                                                ),
+                                                                            category_name:
+                                                                                category.name,
+                                                                        }),
+                                                                    );
+                                                                    setCategoryOpen(
+                                                                        false,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                {category.name}
+                                                                <Check
+                                                                    className={cn(
+                                                                        'ml-auto',
+                                                                        form.category_id ===
+                                                                            String(
+                                                                                category.id,
+                                                                            )
+                                                                            ? 'opacity-100'
+                                                                            : 'opacity-0',
+                                                                    )}
+                                                                />
+                                                            </CommandItem>
+                                                        ),
+                                                    )}
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <InputError
+                                        id="kantin-category-error"
+                                        role="alert"
+                                        message={
+                                            errors.category_id ||
+                                            errors.category_name
+                                        }
                                     />
-                                )}
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    id="kantin-image"
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    onChange={(event) =>
-                                        setForm((current) => ({
-                                            ...current,
-                                            image:
-                                                event.target.files?.[0] ?? null,
-                                            remove_image: false,
-                                        }))
-                                    }
-                                />
-                                {editing?.image_url && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        aria-label="Hapus gambar"
-                                        onClick={() =>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="kantin-name">
+                                        Nama Barang *
+                                    </Label>
+                                    <Input
+                                        id="kantin-name"
+                                        aria-describedby={
+                                            errors.name
+                                                ? 'kantin-name-error'
+                                                : undefined
+                                        }
+                                        aria-invalid={Boolean(errors.name)}
+                                        value={form.name}
+                                        onChange={(event) =>
                                             setForm((current) => ({
                                                 ...current,
-                                                image: null,
-                                                remove_image: true,
+                                                name: event.target.value,
                                             }))
                                         }
-                                    >
-                                        <X className="size-4" />
-                                    </Button>
-                                )}
+                                    />
+                                    <InputError
+                                        id="kantin-name-error"
+                                        role="alert"
+                                        message={errors.name}
+                                    />
+                                </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                JPG, PNG, atau WebP. Maksimal 1 MB (1024 KB).
-                            </p>
-                            <InputError
-                                id="kantin-image-error"
-                                role="alert"
-                                message={errors.image}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="kantin-description">
-                                Deskripsi
-                            </Label>
-                            <Textarea
-                                id="kantin-description"
-                                value={form.description}
-                                onChange={(event) =>
-                                    setForm((current) => ({
-                                        ...current,
-                                        description: event.target.value,
-                                    }))
-                                }
-                            />
-                            <InputError
-                                id="kantin-description-error"
-                                role="alert"
-                                message={errors.description}
-                            />
+                            <div className="grid items-start gap-4 @min-[20rem]:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] @min-[28rem]:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="kantin-brand">Brand</Label>
+                                    <Input
+                                        id="kantin-brand"
+                                        value={form.brand}
+                                        onChange={(event) =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                brand: event.target.value,
+                                            }))
+                                        }
+                                    />
+                                    <InputError
+                                        id="kantin-brand-error"
+                                        role="alert"
+                                        message={errors.brand}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="kantin-satuan">
+                                        Satuan *
+                                    </Label>
+                                    <SearchableCombobox
+                                        value={form.satuan}
+                                        options={satuanOptions}
+                                        onChange={(value) =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                satuan: value,
+                                            }))
+                                        }
+                                        placeholder="Pilih satuan"
+                                        searchPlaceholder="Cari satuan..."
+                                        emptyMessage="Satuan tidak ditemukan."
+                                    />
+                                    <InputError
+                                        id="kantin-satuan-error"
+                                        role="alert"
+                                        message={errors.satuan}
+                                    />
+                                </div>
+                                <div className="grid gap-2 @min-[20rem]:col-span-2 @min-[28rem]:col-span-1">
+                                    <Label htmlFor="kantin-harga">
+                                        Harga *
+                                    </Label>
+                                    <Input
+                                        id="kantin-harga"
+                                        aria-describedby={
+                                            errors.harga
+                                                ? 'kantin-harga-error'
+                                                : undefined
+                                        }
+                                        aria-invalid={Boolean(errors.harga)}
+                                        inputMode="numeric"
+                                        value={form.harga}
+                                        onChange={(event) =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                harga: formatCurrencyInput(
+                                                    event.target.value,
+                                                    current.harga,
+                                                ),
+                                            }))
+                                        }
+                                        placeholder="Contoh: 5.000"
+                                    />
+                                    <InputError
+                                        id="kantin-harga-error"
+                                        role="alert"
+                                        message={errors.harga}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="kantin-image">
+                                    Gambar Produk
+                                </Label>
+                                {editing?.image_url &&
+                                    !form.remove_image &&
+                                    !form.image && (
+                                        <img
+                                            src={editing.image_url}
+                                            alt={editing.name}
+                                            className="h-32 w-full rounded-lg object-cover"
+                                        />
+                                    )}
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <Input
+                                        id="kantin-image"
+                                        className="min-w-0 flex-1"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        onChange={(event) =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                image:
+                                                    event.target.files?.[0] ??
+                                                    null,
+                                                remove_image: false,
+                                            }))
+                                        }
+                                    />
+                                    {editing?.image_url && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            aria-label="Hapus gambar"
+                                            className="shrink-0"
+                                            onClick={() =>
+                                                setForm((current) => ({
+                                                    ...current,
+                                                    image: null,
+                                                    remove_image: true,
+                                                }))
+                                            }
+                                        >
+                                            <X className="size-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    JPG, PNG, atau WebP. Maksimal 1 MB (1024
+                                    KB).
+                                </p>
+                                <InputError
+                                    id="kantin-image-error"
+                                    role="alert"
+                                    message={errors.image}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="kantin-description">
+                                    Deskripsi
+                                </Label>
+                                <Textarea
+                                    id="kantin-description"
+                                    value={form.description}
+                                    onChange={(event) =>
+                                        setForm((current) => ({
+                                            ...current,
+                                            description: event.target.value,
+                                        }))
+                                    }
+                                />
+                                <InputError
+                                    id="kantin-description-error"
+                                    role="alert"
+                                    message={errors.description}
+                                />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

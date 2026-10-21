@@ -1,8 +1,8 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, Download, LoaderCircle } from 'lucide-react';
+import { Head, usePage } from '@inertiajs/react';
+import { Download, LoaderCircle } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import Heading from '@/components/heading';
+import SecondaryPageShell from '@/components/admin/secondary-page-shell';
 import { StudentCardVisual } from '@/components/student-card-visual';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
@@ -65,28 +65,14 @@ export default function StudentCard({ student, qrCode }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Kartu Pelajar - ${student.full_name}`} />
-            <div className="flex flex-1 flex-col gap-4 rounded-xl p-4 print:p-0">
-                <div className="flex items-center justify-between gap-4 print:hidden">
-                    <div className="flex min-w-0 items-center gap-3">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            asChild
-                            aria-label="Kembali ke daftar kartu pelajar"
-                            title="Kembali"
-                        >
-                            <Link href="/students/cards">
-                                <ArrowLeft aria-hidden="true" />
-                            </Link>
-                        </Button>
-                        <Heading
-                            variant="small"
-                            title="Kartu Pelajar"
-                            description={`Kartu pelajar untuk ${student.full_name}`}
-                        />
-                    </div>
-                    <div className="flex gap-2">
-                        {canPrint && (
+            <div className="contents print:[&>div]:p-0 print:[&>div>header]:hidden">
+                <SecondaryPageShell
+                    title="Kartu Pelajar"
+                    description={`Kartu pelajar untuk ${student.full_name}`}
+                    backHref="/students/cards"
+                    backLabel="Kembali ke daftar kartu pelajar"
+                    actions={
+                        canPrint && (
                             <Button
                                 disabled={isDownloading}
                                 onClick={async () => {
@@ -123,19 +109,19 @@ export default function StudentCard({ student, qrCode }: Props) {
                                 )}
                                 {isDownloading ? 'Menyiapkan…' : 'Unduh Kartu'}
                             </Button>
-                        )}
+                        )
+                    }
+                >
+                    <div className="flex justify-center print:block">
+                        <StudentCardVisual
+                            ref={cardRef}
+                            student={student}
+                            qrCode={qrCode}
+                            barcodeValue={barcodeValue}
+                            className="max-w-[1011px] print:rounded-none print:shadow-none"
+                        />
                     </div>
-                </div>
-
-                <div className="flex justify-center print:block">
-                    <StudentCardVisual
-                        ref={cardRef}
-                        student={student}
-                        qrCode={qrCode}
-                        barcodeValue={barcodeValue}
-                        className="max-w-[1011px] print:rounded-none print:shadow-none"
-                    />
-                </div>
+                </SecondaryPageShell>
             </div>
         </AppLayout>
     );

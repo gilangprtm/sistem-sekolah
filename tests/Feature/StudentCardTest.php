@@ -153,10 +153,10 @@ class StudentCardTest extends TestCase
         $this->assertStringNotContainsString("import { Checkbox } from '@/components/ui/checkbox';", $cardsSource);
         $this->assertStringNotContainsString("import DataTableToolbar from '@/components/data-table/data-table-toolbar';", $cardsSource);
         $this->assertStringNotContainsString('<TableHead>', $cardsSource);
-        $this->assertStringContainsString('href="/students/cards"', $cardSource);
-        $this->assertStringContainsString('size="icon"', $cardSource);
-        $this->assertStringContainsString('aria-label="Kembali ke daftar kartu pelajar"', $cardSource);
-        $this->assertStringContainsString('title="Kembali"', $cardSource);
+        $this->assertStringContainsString("import SecondaryPageShell from '@/components/admin/secondary-page-shell';", $cardSource);
+        $this->assertStringContainsString('backHref="/students/cards"', $cardSource);
+        $this->assertStringContainsString('backLabel="Kembali ke daftar kartu pelajar"', $cardSource);
+        $this->assertStringContainsString('actions={', $cardSource);
         $this->assertStringContainsString('renderStudentCardPng', $cardSource);
         $this->assertStringContainsString('saveStudentCardBlob', $cardSource);
         $this->assertStringContainsString('saveStudentCardBlob', $cardSource);
@@ -309,6 +309,9 @@ class StudentCardTest extends TestCase
         $this->assertStringContainsString('return `${nis?.trim() || \'-\'} / ${nisn?.trim() || \'-\'}`;', $visualSource);
         $this->assertStringContainsString('application/zip', $source);
         $this->assertStringContainsString('downloadCards', $source);
+        $this->assertStringContainsString('Contoh kartu pelajar', $source);
+        $this->assertStringContainsString('index === 0', $source);
+        $this->assertStringContainsString('aria-hidden={index > 0 ? true : undefined}', $source);
         $this->assertStringContainsString("import { StudentCardVisual } from '@/components/student-card-visual';", $source);
         $this->assertStringContainsString('aria-live="polite"', $source);
         $this->assertStringContainsString('Menyiapkan kartu pelajar', $source);
