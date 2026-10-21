@@ -17,12 +17,12 @@ import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import ModalShell from '@/components/ui/modal-shell';
 import {
     Table,
     TableBody,
@@ -467,7 +467,7 @@ export default function JadwalPelajaranIndex({
                     }
                 }}
             >
-                <DialogContent className="sm:max-w-md">
+                <ModalShell>
                     <DialogHeader>
                         <div className="flex items-center gap-3">
                             <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
@@ -488,7 +488,7 @@ export default function JadwalPelajaranIndex({
                             Mengerti
                         </Button>
                     </DialogFooter>
-                </DialogContent>
+                </ModalShell>
             </Dialog>
         </AppLayout>
     );

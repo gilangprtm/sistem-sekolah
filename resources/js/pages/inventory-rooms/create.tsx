@@ -1,14 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, PackageSearch, Plus, Search } from 'lucide-react';
+import { PackageSearch, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
+import SecondaryPageShell from '@/components/admin/secondary-page-shell';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
-import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -16,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import { Textarea } from '@/components/ui/textarea';
 import { useInventoryRoomUnitSelection } from '@/hooks/use-inventory-room-unit-selection';
 import AppLayout from '@/layouts/app-layout';
@@ -182,22 +182,23 @@ export default function InventoryRoomsCreate({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Tambah Ruangan Inventaris" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                    <Button asChild variant="outline" size="icon">
-                        <Link
-                            href="/inventaris/inventory-rooms"
-                            aria-label="Kembali ke daftar ruangan inventaris"
-                        >
-                            <ArrowLeft />
-                        </Link>
-                    </Button>
-                    <Heading
-                        variant="small"
-                        title="Tambah Ruangan Inventaris"
-                        description="Buat ruangan dan pilih register yang ditempatkan saat ini"
-                    />
-                </div>
+            <SecondaryPageShell
+                title="Tambah Ruangan Inventaris"
+                description="Buat ruangan dan pilih register yang ditempatkan saat ini"
+                backHref="/inventaris/inventory-rooms"
+                footerActions={
+                    <>
+                        <Button asChild variant="outline">
+                            <Link href="/inventaris/inventory-rooms">
+                                Batal
+                            </Link>
+                        </Button>
+                        <Button onClick={submit} disabled={processing}>
+                            {processing ? 'Menyimpan...' : 'Simpan Ruangan'}
+                        </Button>
+                    </>
+                }
+            >
                 <div className="grid gap-4 rounded-xl border p-4 md:p-6">
                     <section className="grid gap-4 border-b pb-6">
                         <div className="grid gap-2">
@@ -302,20 +303,10 @@ export default function InventoryRoomsCreate({
                             }}
                         />
                     </section>
-                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                        <Button asChild variant="outline">
-                            <Link href="/inventaris/inventory-rooms">
-                                Batal
-                            </Link>
-                        </Button>
-                        <Button onClick={submit} disabled={processing}>
-                            {processing ? 'Menyimpan...' : 'Simpan Ruangan'}
-                        </Button>
-                    </div>
                 </div>
-            </div>
+            </SecondaryPageShell>
             <Dialog open={lookupOpen} onOpenChange={setLookupOpen}>
-                <DialogContent className="w-[calc(100%-2rem)] max-w-none sm:max-w-none xl:max-w-[90vw] 2xl:max-w-[1600px]">
+                <ModalShell size="extra-large">
                     <DialogHeader>
                         <DialogTitle>Tambah Register</DialogTitle>
                         <DialogDescription>
@@ -415,7 +406,7 @@ export default function InventoryRoomsCreate({
                             OK ({lookupSelectedUnits.length})
                         </Button>
                     </DialogFooter>
-                </DialogContent>
+                </ModalShell>
             </Dialog>
         </AppLayout>
     );

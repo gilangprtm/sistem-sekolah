@@ -7,7 +7,6 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogHeader,
     DialogTitle,
@@ -17,6 +16,7 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from '@/components/ui/input-otp';
+import ModalShell from '@/components/ui/modal-shell';
 import { Spinner } from '@/components/ui/spinner';
 import { useAppearance } from '@/hooks/use-appearance';
 import { useClipboard } from '@/hooks/use-clipboard';
@@ -324,7 +324,7 @@ export default function TwoFactorSetupModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="sm:max-w-md">
+            <ModalShell>
                 <DialogHeader className="flex items-center justify-center">
                     <GridScanIcon />
                     <DialogTitle>{modalConfig.title}</DialogTitle>
@@ -349,7 +349,7 @@ export default function TwoFactorSetupModal({
                         />
                     )}
                 </div>
-            </DialogContent>
+            </ModalShell>
         </Dialog>
     );
 }

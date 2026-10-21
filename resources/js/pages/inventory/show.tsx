@@ -1,11 +1,12 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import Heading from '@/components/heading';
+import SecondaryPageShell from '@/components/admin/secondary-page-shell';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
     DialogDescription,
@@ -197,11 +198,14 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
         );
     };
 
-    const remove = () => {
+    const confirm = useConfirmation();
+
+    const remove = async () => {
         if (
-            !confirm(
-                `Hapus inventaris "${item.nama_jenis_barang}" (${item.kode_barang})? Semua unit akan ikut terhapus.`,
-            )
+            !(await confirm({
+                title: 'Hapus inventaris?',
+                description: `Hapus inventaris "${item.nama_jenis_barang}" (${item.kode_barang})? Semua unit akan ikut terhapus.`,
+            }))
         ) {
             return;
         }
@@ -220,26 +224,17 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
             ]}
         >
             <Head title={`${item.kode_barang} — ${item.nama_jenis_barang}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <Button asChild variant="outline" size="icon">
-                            <Link href="/inventaris/inventory">
-                                <ArrowLeft />
-                            </Link>
-                        </Button>
-                        <Heading
-                            variant="small"
-                            title={`${item.kode_barang} — ${item.nama_jenis_barang}`}
-                            description="Detail kelompok barang & unit"
-                        />
-                    </div>
+            <SecondaryPageShell
+                title={`${item.kode_barang} — ${item.nama_jenis_barang}`}
+                description="Detail kelompok barang & unit"
+                backHref="/inventaris/inventory"
+                actions={
                     <Button variant="destructive" onClick={remove}>
                         <Trash2 />
                         Hapus
                     </Button>
-                </div>
-
+                }
+            >
                 <div className="grid items-start gap-4 lg:grid-cols-3">
                     <section className="grid gap-3 rounded-xl border p-4">
                         <h3 className="text-sm font-semibold">
@@ -621,7 +616,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
                         </div>
                     </div>
                 </div>
-            </div>
+            </SecondaryPageShell>
         </AppLayout>
     );
 }

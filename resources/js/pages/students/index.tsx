@@ -9,9 +9,9 @@ import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -20,6 +20,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import type { Auth, BreadcrumbItem } from '@/types';
@@ -64,6 +65,7 @@ export default function StudentsIndex({
     filters,
     filterOptions,
 }: Props) {
+    const confirm = useConfirmation();
     const canAutoLink = ['student.update', 'student.assign-account'].every(
         (permission) => auth.permissions?.includes(permission),
     );
@@ -186,8 +188,13 @@ export default function StudentsIndex({
         );
     };
 
-    const remove = (student: Student) => {
-        if (!confirm(`Hapus data Siswa "${student.full_name}"?`)) {
+    const remove = async (student: Student) => {
+        if (
+            !(await confirm({
+                title: 'Hapus siswa?',
+                description: `Hapus data Siswa "${student.full_name}"?`,
+            }))
+        ) {
             return;
         }
 
@@ -421,7 +428,7 @@ export default function StudentsIndex({
                         }
                     }}
                 >
-                    <DialogContent
+                    <ModalShell
                         showCloseButton={!autoLinkProcessing}
                         onEscapeKeyDown={(event) => {
                             if (autoLinkProcessing) {
@@ -467,7 +474,7 @@ export default function StudentsIndex({
                                     : 'Hubungkan Otomatis'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
                 <Dialog
                     open={importDialogOpen}
@@ -477,7 +484,7 @@ export default function StudentsIndex({
                         }
                     }}
                 >
-                    <DialogContent
+                    <ModalShell
                         showCloseButton={!importProcessing}
                         onEscapeKeyDown={(event) => {
                             if (importProcessing) {
@@ -550,7 +557,7 @@ export default function StudentsIndex({
                                     : 'Import Excel'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

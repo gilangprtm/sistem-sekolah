@@ -23,9 +23,9 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -34,6 +34,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import {
     Popover,
     PopoverContent,
@@ -204,8 +205,15 @@ export default function KantinBarangIndex({
         }
     };
 
-    const archive = (barang: Barang) => {
-        if (confirm(`Arsipkan barang "${barang.name}"?`)) {
+    const confirm = useConfirmation();
+
+    const archive = async (barang: Barang) => {
+        if (
+            await confirm({
+                title: 'Arsipkan barang?',
+                description: `Arsipkan barang "${barang.name}"?`,
+            })
+        ) {
             router.post(
                 `/kantin/barang/${barang.id}/archive`,
                 {},
@@ -410,7 +418,7 @@ export default function KantinBarangIndex({
                 />
             </div>
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+                <ModalShell size="medium">
                     {requestError && (
                         <Alert variant="destructive" role="alert">
                             <AlertCircle />
@@ -695,7 +703,7 @@ export default function KantinBarangIndex({
                                   : 'Simpan'}
                         </Button>
                     </DialogFooter>
-                </DialogContent>
+                </ModalShell>
             </Dialog>
         </AppLayout>
     );

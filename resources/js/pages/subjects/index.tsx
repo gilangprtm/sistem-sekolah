@@ -7,9 +7,9 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -18,6 +18,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -110,8 +111,15 @@ export default function SubjectsIndex({
         }
     };
 
-    const archive = (subject: Subject) => {
-        if (confirm(`Arsipkan mata pelajaran "${subject.name}"?`)) {
+    const confirm = useConfirmation();
+
+    const archive = async (subject: Subject) => {
+        if (
+            await confirm({
+                title: 'Arsipkan mata pelajaran?',
+                description: `Arsipkan mata pelajaran "${subject.name}"?`,
+            })
+        ) {
             router.post(
                 `/kurikulum/subjects/${subject.id}/archive`,
                 {},
@@ -286,7 +294,7 @@ export default function SubjectsIndex({
                     }}
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>
                                 {editing
@@ -406,7 +414,7 @@ export default function SubjectsIndex({
                             </Button>
                             <Button onClick={submit}>Simpan</Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

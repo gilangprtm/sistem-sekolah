@@ -9,7 +9,6 @@ import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -18,6 +17,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import {
     Select,
     SelectContent,
@@ -440,7 +440,7 @@ export default function AcademicYearsIndex({
                 />
 
                 <Dialog open={yearDialogOpen} onOpenChange={closeYearDialog}>
-                    <DialogContent className="sm:max-w-lg">
+                    <ModalShell size="medium">
                         <DialogHeader>
                             <DialogTitle>
                                 {editingYear
@@ -518,14 +518,14 @@ export default function AcademicYearsIndex({
                                 Simpan Tahun Ajaran
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
 
                 <Dialog
                     open={semesterDialogOpen}
                     onOpenChange={closeSemesterDialog}
                 >
-                    <DialogContent className="sm:max-w-lg">
+                    <ModalShell size="medium">
                         <DialogHeader>
                             <DialogTitle>
                                 {period?.id
@@ -608,7 +608,7 @@ export default function AcademicYearsIndex({
                                 Simpan Semester
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

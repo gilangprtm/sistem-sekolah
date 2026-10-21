@@ -5,12 +5,12 @@ import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import ModalShell from '@/components/ui/modal-shell';
 import { formatWitaDateTime } from '@/lib/date-time';
 
 type UasLink = {
@@ -239,7 +239,7 @@ export default function StudentUas({
                         }
                     }}
                 >
-                    <DialogContent className="w-[calc(100%-2rem)] rounded-2xl sm:max-w-md">
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>Mulai ujian</DialogTitle>
                         </DialogHeader>
@@ -283,7 +283,7 @@ export default function StudentUas({
                                 </Button>
                             )}
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
 
                 <Dialog
@@ -294,7 +294,7 @@ export default function StudentUas({
                         }
                     }}
                 >
-                    <DialogContent className="w-[calc(100%-2rem)] rounded-2xl sm:max-w-sm">
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>Jadwal Ujian</DialogTitle>
                             <DialogDescription>
@@ -313,7 +313,7 @@ export default function StudentUas({
                             </span>{' '}
                             WITA.
                         </p>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </SecondaryPageShell>
         </>

@@ -4,12 +4,12 @@ import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import ModalShell from '@/components/ui/modal-shell';
 const FIRST_INTERRUPTION_WARNING =
     'Kamu telah keluar aplikasi, kamu tidak akan bisa mengikuti ujian jika tetap keluar dari aplikasi';
 const SECOND_INTERRUPTION_WARNING =
@@ -431,7 +431,7 @@ export default function StudentExam({
                             }
                         }}
                     >
-                        <DialogContent>
+                        <ModalShell>
                             <DialogHeader>
                                 <DialogTitle>Selesaikan ujian?</DialogTitle>
                             </DialogHeader>
@@ -467,7 +467,7 @@ export default function StudentExam({
                                         : 'Selesai'}
                                 </Button>
                             </DialogFooter>
-                        </DialogContent>
+                        </ModalShell>
                     </Dialog>
                     <Dialog
                         open={warning !== ''}
@@ -477,7 +477,7 @@ export default function StudentExam({
                             }
                         }}
                     >
-                        <DialogContent>
+                        <ModalShell>
                             <DialogHeader>
                                 <DialogTitle>Peringatan ujian</DialogTitle>
                             </DialogHeader>
@@ -492,7 +492,7 @@ export default function StudentExam({
                                     Mengerti
                                 </Button>
                             </DialogFooter>
-                        </DialogContent>
+                        </ModalShell>
                     </Dialog>
                 </main>
             </SecondaryPageShell>

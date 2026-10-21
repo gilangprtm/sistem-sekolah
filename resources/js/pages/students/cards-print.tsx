@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import Heading from '@/components/heading';
 import { StudentCardVisual } from '@/components/student-card-visual';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
 import { renderStudentCardPng } from '@/lib/student-card-export';
 import type { BreadcrumbItem } from '@/types';
@@ -276,42 +278,33 @@ export default function StudentCardsPrint({ students, filters }: Props) {
                     </div>
                 </div>
 
-                {isDownloading && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
-                        role="presentation"
+                <Dialog open={isDownloading}>
+                    <ModalShell
+                        className="text-center"
+                        showCloseButton={false}
+                        onEscapeKeyDown={(event) => event.preventDefault()}
+                        onPointerDownOutside={(event) => event.preventDefault()}
                     >
-                        <div
-                            className="w-full max-w-sm rounded-xl bg-background p-6 text-center shadow-xl ring-1 ring-foreground/10"
-                            role="dialog"
-                            aria-modal="true"
-                            aria-labelledby="bulk-download-title"
-                            aria-describedby="bulk-download-status"
+                        <LoaderCircle
+                            className="mx-auto size-10 animate-spin text-primary"
+                            aria-hidden="true"
+                        />
+                        <DialogTitle id="bulk-download-title">
+                            Menyiapkan kartu pelajar
+                        </DialogTitle>
+                        <DialogDescription
+                            id="bulk-download-status"
+                            className="mt-2 text-sm text-muted-foreground"
+                            role="status"
+                            aria-live="polite"
                         >
-                            <LoaderCircle
-                                className="mx-auto size-10 animate-spin text-primary"
-                                aria-hidden="true"
-                            />
-                            <h2
-                                id="bulk-download-title"
-                                className="mt-4 text-base font-semibold"
-                            >
-                                Menyiapkan kartu pelajar
-                            </h2>
-                            <p
-                                id="bulk-download-status"
-                                className="mt-2 text-sm text-muted-foreground"
-                                role="status"
-                                aria-live="polite"
-                            >
-                                Membuat {downloadProgress.total} kartu ({' '}
-                                {downloadProgress.completed} dari{' '}
-                                {downloadProgress.total} selesai). Jangan tutup
-                                halaman ini.
-                            </p>
-                        </div>
-                    </div>
-                )}
+                            Membuat {downloadProgress.total} kartu ({' '}
+                            {downloadProgress.completed} dari{' '}
+                            {downloadProgress.total} selesai). Jangan tutup
+                            halaman ini.
+                        </DialogDescription>
+                    </ModalShell>
+                </Dialog>
 
                 {students.length > 0 && (
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

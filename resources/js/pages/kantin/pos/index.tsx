@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useMemo, useState } from 'react';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import { formatRupiah } from '@/lib/utils';
 
 type Category = { id: number; name: string };
@@ -32,6 +33,7 @@ type IdentifiedStudent = {
 type PinChallenge = { token: string };
 
 export default function KantinPos({ categories, products }: Props) {
+    const confirm = useConfirmation();
     const [student, setStudent] = useState<IdentifiedStudent | null>(null);
     const [pinChallenge, setPinChallenge] = useState<PinChallenge | null>(null);
     const [pin, setPin] = useState('');
@@ -321,9 +323,10 @@ export default function KantinPos({ categories, products }: Props) {
     async function exitPos() {
         if (
             count > 0 &&
-            !window.confirm(
-                'Keluar dari POS? Barang di keranjang akan dihapus.',
-            )
+            !(await confirm({
+                title: 'Keluar dari POS?',
+                description: 'Barang di keranjang akan dihapus.',
+            }))
         ) {
             return;
         }

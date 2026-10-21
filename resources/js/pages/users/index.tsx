@@ -8,9 +8,9 @@ import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -19,6 +19,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import type { Auth, BreadcrumbItem } from '@/types';
@@ -56,6 +57,7 @@ type UsersPageProps = {
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Users', href: '/users' }];
 
 export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
+    const confirm = useConfirmation();
     const { auth } = usePage<UsersPageProps>().props;
     const [selected, setSelected] = useState<number[]>([]);
     const [search, setSearch] = useState(filters.search ?? '');
@@ -167,8 +169,13 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
         );
     };
 
-    const remove = (user: UserItem) => {
-        if (!confirm(`Hapus user "${user.name}"? Tindakan ini permanen.`)) {
+    const remove = async (user: UserItem) => {
+        if (
+            !(await confirm({
+                title: 'Hapus user?',
+                description: `Hapus user "${user.name}"? Tindakan ini permanen.`,
+            }))
+        ) {
             return;
         }
 
@@ -370,7 +377,7 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                         }
                     }}
                 >
-                    <DialogContent
+                    <ModalShell
                         showCloseButton={!processing}
                         onEscapeKeyDown={(event) => {
                             if (processing) {
@@ -437,11 +444,11 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                                 {processing ? 'Mengimpor...' : 'Import CSV'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
 
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>
                                 {editing
@@ -540,7 +547,7 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                                 {processing ? 'Menyimpan...' : 'Simpan'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

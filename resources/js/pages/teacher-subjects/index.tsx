@@ -7,9 +7,9 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -18,6 +18,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -73,8 +74,15 @@ export default function TeacherSubjectsIndex({
             onSuccess: () => setOpen(false),
             onError: setErrors,
         });
-    const remove = (relation: Relation) => {
-        if (confirm(`Hapus relasi ${relation.code}?`)) {
+    const confirm = useConfirmation();
+
+    const remove = async (relation: Relation) => {
+        if (
+            await confirm({
+                title: 'Hapus relasi?',
+                description: `Hapus relasi ${relation.code}?`,
+            })
+        ) {
             router.delete(`/kurikulum/teacher-subjects/${relation.id}`, {
                 preserveScroll: true,
             });
@@ -213,7 +221,7 @@ export default function TeacherSubjectsIndex({
                     }}
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>
                                 Tambah Guru Mata Pelajaran
@@ -286,7 +294,7 @@ export default function TeacherSubjectsIndex({
                             </Button>
                             <Button onClick={submit}>Simpan</Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

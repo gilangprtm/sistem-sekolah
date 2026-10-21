@@ -5,6 +5,8 @@ import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import ModalShell from '@/components/ui/modal-shell';
 import { formatWitaDateTime } from '@/lib/date-time';
 import { formatRupiah } from '@/lib/utils';
 import { index as kantinPos } from '@/routes/kantin/pos';
@@ -303,93 +305,94 @@ export default function StudentKantin({
                     )}
                 </section>
 
-                {pinOpen && (
-                    <div
-                        className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="student-kantin-pin-title"
+                <Dialog
+                    open={pinOpen}
+                    onOpenChange={(open) => {
+                        if (has_kantin_pin && !processing) {
+                            setPinOpen(open);
+                        }
+                    }}
+                >
+                    <ModalShell
+                        showCloseButton={false}
+                        onEscapeKeyDown={(event) => event.preventDefault()}
+                        onPointerDownOutside={(event) => event.preventDefault()}
                     >
-                        <div className="w-full max-w-sm rounded-2xl bg-background p-5 shadow-xl">
-                            <h2
-                                id="student-kantin-pin-title"
-                                className="text-lg font-semibold"
-                            >
-                                Buat PIN Kantin
-                            </h2>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                Masukkan password saat ini dan PIN 6 digit untuk
-                                transaksi Kantin.
-                            </p>
-                            <div className="mt-4 grid gap-3">
-                                <PasswordInput
-                                    value={currentPassword}
-                                    onChange={(event) =>
-                                        setCurrentPassword(event.target.value)
-                                    }
-                                    placeholder="Password saat ini"
-                                    autoComplete="current-password"
-                                    aria-label="Password saat ini"
-                                />
-                                <InputError message={errors.current_password} />
-                                <PasswordInput
-                                    value={pin}
-                                    onChange={(event) =>
-                                        setPin(
-                                            event.target.value
-                                                .replace(/\D/g, '')
-                                                .slice(0, 6),
-                                        )
-                                    }
-                                    placeholder="PIN 6 digit"
-                                    inputMode="numeric"
-                                    autoComplete="new-password"
-                                    aria-label="PIN 6 digit"
-                                />
-                                <InputError message={errors.pin} />
-                                <PasswordInput
-                                    value={pinConfirmation}
-                                    onChange={(event) =>
-                                        setPinConfirmation(
-                                            event.target.value
-                                                .replace(/\D/g, '')
-                                                .slice(0, 6),
-                                        )
-                                    }
-                                    placeholder="Konfirmasi PIN"
-                                    inputMode="numeric"
-                                    autoComplete="new-password"
-                                    aria-label="Konfirmasi PIN"
-                                />
-                                <InputError message={errors.pin_confirmation} />
-                            </div>
-                            <div className="mt-5 flex justify-end gap-2">
-                                {has_kantin_pin && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => setPinOpen(false)}
-                                        disabled={processing}
-                                    >
-                                        Batal
-                                    </Button>
-                                )}
+                        <DialogTitle id="student-kantin-pin-title">
+                            Buat PIN Kantin
+                        </DialogTitle>
+                        <DialogDescription>
+                            Masukkan password saat ini dan PIN 6 digit untuk
+                            transaksi Kantin.
+                        </DialogDescription>
+                        <div className="mt-4 grid gap-3">
+                            <PasswordInput
+                                value={currentPassword}
+                                onChange={(event) =>
+                                    setCurrentPassword(event.target.value)
+                                }
+                                placeholder="Password saat ini"
+                                autoComplete="current-password"
+                                aria-label="Password saat ini"
+                            />
+                            <InputError message={errors.current_password} />
+                            <PasswordInput
+                                value={pin}
+                                onChange={(event) =>
+                                    setPin(
+                                        event.target.value
+                                            .replace(/\D/g, '')
+                                            .slice(0, 6),
+                                    )
+                                }
+                                placeholder="PIN 6 digit"
+                                inputMode="numeric"
+                                autoComplete="new-password"
+                                aria-label="PIN 6 digit"
+                            />
+                            <InputError message={errors.pin} />
+                            <PasswordInput
+                                value={pinConfirmation}
+                                onChange={(event) =>
+                                    setPinConfirmation(
+                                        event.target.value
+                                            .replace(/\D/g, '')
+                                            .slice(0, 6),
+                                    )
+                                }
+                                placeholder="Konfirmasi PIN"
+                                inputMode="numeric"
+                                autoComplete="new-password"
+                                aria-label="Konfirmasi PIN"
+                            />
+                            <InputError message={errors.pin_confirmation} />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                            {has_kantin_pin && (
                                 <Button
                                     type="button"
-                                    onClick={submitPin}
-                                    disabled={
-                                        processing ||
-                                        currentPassword.length === 0 ||
-                                        pin.length !== 6 ||
-                                        pinConfirmation.length !== 6
-                                    }
+                                    variant="outline"
+                                    onClick={() => setPinOpen(false)}
+                                    disabled={processing}
                                 >
-                                    {processing ? 'Menyimpan...' : 'Simpan PIN'}
+                                    Batal
                                 </Button>
-                            </div>
+                            )}
+                            <Button
+                                type="button"
+                                onClick={submitPin}
+                                disabled={
+                                    processing ||
+                                    currentPassword.length === 0 ||
+                                    pin.length !== 6 ||
+                                    pinConfirmation.length !== 6
+                                }
+                            >
+                                {processing ? 'Menyimpan...' : 'Simpan PIN'}
+                            </Button>
                         </div>
-                    </div>
-                )}
+                    </ModalShell>
+                </Dialog>
             </SecondaryPageShell>
         </>
     );

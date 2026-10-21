@@ -6,6 +6,7 @@ import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -109,10 +110,17 @@ export default function TeachersIndex({
         navigate({ ...filterParams(), page, per_page: teachers.per_page });
     };
 
-    const remove = (teacher: Teacher) => {
+    const confirm = useConfirmation();
+
+    const remove = async (teacher: Teacher) => {
         const type = teacher.staff_type === 'guru' ? 'Guru' : 'Staff';
 
-        if (!confirm(`Hapus data ${type} "${teacher.full_name}"?`)) {
+        if (
+            !(await confirm({
+                title: `Hapus ${type}?`,
+                description: `Hapus data ${type} "${teacher.full_name}"?`,
+            }))
+        ) {
             return;
         }
 

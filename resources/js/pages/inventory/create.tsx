@@ -1,7 +1,7 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, Check, ChevronsUpDown, ImagePlus, X } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { Check, ChevronsUpDown, ImagePlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import Heading from '@/components/heading';
+import SecondaryPageShell from '@/components/admin/secondary-page-shell';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -126,23 +126,31 @@ export default function InventoryCreate({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Tambah Inventaris" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                    <Button asChild variant="outline" size="icon">
-                        <Link
-                            href="/inventaris/inventory"
-                            aria-label="Kembali ke daftar inventaris"
+            <SecondaryPageShell
+                title="Tambah Inventaris"
+                description="Input data kelompok barang baru (register dibuat otomatis)"
+                backHref="/inventaris/inventory"
+                footerActions={
+                    <>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                router.visit('/inventaris/inventory')
+                            }
                         >
-                            <ArrowLeft />
-                        </Link>
-                    </Button>
-                    <Heading
-                        variant="small"
-                        title="Tambah Inventaris"
-                        description="Input data kelompok barang baru (register dibuat otomatis)"
-                    />
-                </div>
-
+                            Batal
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={submit}
+                            disabled={processing}
+                        >
+                            {processing ? 'Menyimpan...' : 'Simpan'}
+                        </Button>
+                    </>
+                }
+            >
                 <div className="rounded-xl border p-6">
                     <div className="grid min-w-0 gap-6">
                         <section className="grid min-w-0 gap-4 border-b pb-6">
@@ -757,27 +765,9 @@ export default function InventoryCreate({
                                 <InputError message={errors.keterangan} />
                             </div>
                         </section>
-                        <div className="flex flex-col-reverse justify-end gap-2 border-t pt-4 sm:flex-row">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() =>
-                                    router.visit('/inventaris/inventory')
-                                }
-                            >
-                                Batal
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={submit}
-                                disabled={processing}
-                            >
-                                {processing ? 'Menyimpan...' : 'Simpan'}
-                            </Button>
-                        </div>
                     </div>
                 </div>
-            </div>
+            </SecondaryPageShell>
         </AppLayout>
     );
 }

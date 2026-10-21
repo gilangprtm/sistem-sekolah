@@ -4,9 +4,9 @@ import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import {
     Table,
     TableBody,
@@ -42,6 +43,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function CategoriesIndex({ categories }: Props) {
+    const confirm = useConfirmation();
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Category | null>(null);
     const [form, setForm] = useState({ name: '', description: '' });
@@ -86,11 +88,12 @@ export default function CategoriesIndex({ categories }: Props) {
         }
     };
 
-    const remove = (category: Category) => {
+    const remove = async (category: Category) => {
         if (
-            !confirm(
-                `Hapus kategori "${category.name}"? Item terkait akan tetap ada tanpa kategori.`,
-            )
+            !(await confirm({
+                title: 'Hapus kategori?',
+                description: `Hapus kategori "${category.name}"? Item terkait akan tetap ada tanpa kategori.`,
+            }))
         ) {
             return;
         }
@@ -169,7 +172,7 @@ export default function CategoriesIndex({ categories }: Props) {
                     </Table>
                 </div>
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>
                                 {editing ? 'Edit Kategori' : 'Tambah Kategori'}
@@ -221,7 +224,7 @@ export default function CategoriesIndex({ categories }: Props) {
                                 {processing ? 'Menyimpan...' : 'Simpan'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

@@ -8,13 +8,13 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogClose,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 
 export default function DeleteUser() {
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -43,7 +43,7 @@ export default function DeleteUser() {
                             Delete account
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <ModalShell>
                         <DialogTitle>
                             Are you sure you want to delete your account?
                         </DialogTitle>
@@ -112,7 +112,7 @@ export default function DeleteUser() {
                                 </>
                             )}
                         </Form>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </div>

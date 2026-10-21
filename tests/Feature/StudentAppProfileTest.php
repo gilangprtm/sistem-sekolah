@@ -253,7 +253,7 @@ class StudentAppProfileTest extends TestCase
         );
         $this->assertIsString($preferencesSource);
         $this->assertStringContainsString('Preferensi tampilan', $preferencesSource);
-        $this->assertStringContainsString('DialogContent', $preferencesSource);
+        $this->assertStringContainsString('ModalShell', $preferencesSource);
         $this->assertStringContainsString('Theme Preset', $preferencesSource);
         $this->assertStringContainsString('Fonts', $preferencesSource);
         $this->assertStringContainsString('Theme Mode', $preferencesSource);
@@ -391,7 +391,7 @@ class StudentAppProfileTest extends TestCase
         $this->assertStringContainsString('variant="destructive"', $source);
         $this->assertStringContainsString('Batal', $source);
         $this->assertStringContainsString('StudentPreferencesControl', $source);
-        $this->assertStringContainsString('DialogContent', $source);
+        $this->assertStringContainsString('ModalShell', $source);
         $this->assertStringContainsString('action="/student/profile/password"', $source);
         $this->assertStringContainsString('name="current_password"', $source);
         $this->assertStringContainsString('name="password_confirmation"', $source);

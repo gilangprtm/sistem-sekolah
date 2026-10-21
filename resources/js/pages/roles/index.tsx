@@ -8,9 +8,9 @@ import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -19,6 +19,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 
 import AppLayout from '@/layouts/app-layout';
 import type { Auth, BreadcrumbItem } from '@/types';
@@ -165,8 +166,15 @@ export default function RolesIndex({
         }
     };
 
-    const remove = (role: RoleItem) => {
-        if (!confirm(`Hapus role "${role.name}"?`)) {
+    const confirm = useConfirmation();
+
+    const remove = async (role: RoleItem) => {
+        if (
+            !(await confirm({
+                title: 'Hapus role?',
+                description: `Hapus role "${role.name}"?`,
+            }))
+        ) {
             return;
         }
 
@@ -362,7 +370,7 @@ export default function RolesIndex({
                     }}
                 />
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogContent className="max-h-[85vh] overflow-y-auto">
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>
                                 {editing
@@ -502,7 +510,7 @@ export default function RolesIndex({
                                 {processing ? 'Menyimpan...' : 'Simpan'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

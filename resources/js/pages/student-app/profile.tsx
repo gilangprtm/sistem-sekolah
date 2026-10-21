@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogClose,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -27,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import { logout } from '@/routes';
 
 type Student = {
@@ -316,7 +316,7 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                                         Keluar
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent>
+                                <ModalShell>
                                     <DialogHeader>
                                         <DialogTitle>
                                             Keluar dari akun?
@@ -341,7 +341,7 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                                             </Link>
                                         </Button>
                                     </DialogFooter>
-                                </DialogContent>
+                                </ModalShell>
                             </Dialog>
                         </div>
                     </div>
@@ -455,7 +455,7 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                         setPasswordDialogOpen(open);
                     }}
                 >
-                    <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>Ganti password</DialogTitle>
                             <DialogDescription>
@@ -564,7 +564,7 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                                 );
                             }}
                         </Form>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
 
                 <div className="flex items-start gap-3 rounded-2xl border bg-card p-4 text-sm text-muted-foreground">

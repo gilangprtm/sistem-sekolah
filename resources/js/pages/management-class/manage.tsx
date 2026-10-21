@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -18,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -401,7 +401,7 @@ export default function ManagementClassManage({
             </div>
 
             <Dialog open={lookupOpen} onOpenChange={setLookupOpen}>
-                <DialogContent className="max-w-4xl">
+                <ModalShell size="large">
                     <DialogHeader>
                         <DialogTitle>Tambah Siswa</DialogTitle>
                         <DialogDescription>
@@ -507,7 +507,7 @@ export default function ManagementClassManage({
                             OK ({lookupSelectedIds.length})
                         </Button>
                     </DialogFooter>
-                </DialogContent>
+                </ModalShell>
             </Dialog>
         </AppLayout>
     );

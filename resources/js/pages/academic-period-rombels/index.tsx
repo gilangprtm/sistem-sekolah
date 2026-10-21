@@ -7,15 +7,16 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -57,6 +58,7 @@ export default function AcademicPeriodRombelsIndex({
     usages,
     availableRombels,
 }: Props) {
+    const confirm = useConfirmation();
     const [open, setOpen] = useState(false);
     const [rombelId, setRombelId] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -169,11 +171,12 @@ export default function AcademicPeriodRombelsIndex({
                         render: (usage) => (
                             <DropdownMenuItem
                                 variant="destructive"
-                                onClick={() => {
+                                onClick={async () => {
                                     if (
-                                        confirm(
-                                            `Lepas penggunaan ${usage.rombel.name}?`,
-                                        )
+                                        await confirm({
+                                            title: 'Lepas penggunaan rombel?',
+                                            description: `Lepas penggunaan ${usage.rombel.name}?`,
+                                        })
                                     ) {
                                         router.delete(
                                             `/kurikulum/academic-period-rombels/${usage.id}`,
@@ -188,7 +191,7 @@ export default function AcademicPeriodRombelsIndex({
                     }}
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>Tambah Penggunaan Rombel</DialogTitle>
                             <DialogDescription>
@@ -230,7 +233,7 @@ export default function AcademicPeriodRombelsIndex({
                                 Simpan
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

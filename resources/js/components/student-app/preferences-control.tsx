@@ -3,13 +3,13 @@ import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import {
     Select,
     SelectContent,
@@ -65,7 +65,7 @@ export default function StudentPreferencesControl() {
                     <Settings aria-hidden="true" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[85dvh] gap-3 overflow-y-auto p-3 sm:max-w-md [&_[data-slot=dialog-close]]:min-h-11 [&_[data-slot=dialog-close]]:min-w-11">
+            <ModalShell className="gap-3 p-3 [&_[data-slot=dialog-close]]:min-h-11 [&_[data-slot=dialog-close]]:min-w-11">
                 <DialogHeader className="gap-1">
                     <DialogTitle className="text-sm">
                         Preferensi tampilan
@@ -171,7 +171,7 @@ export default function StudentPreferencesControl() {
                         </ToggleGroup>
                     </div>
                 </div>
-            </DialogContent>
+            </ModalShell>
         </Dialog>
     );
 }

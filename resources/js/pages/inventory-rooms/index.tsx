@@ -6,9 +6,9 @@ import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -17,6 +17,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import {
     Select,
     SelectContent,
@@ -152,11 +153,14 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
         });
     };
 
-    const remove = (room: Room) => {
+    const confirm = useConfirmation();
+
+    const remove = async (room: Room) => {
         if (
-            !confirm(
-                `Hapus ruangan "${room.name}"? Unit yang ditempatkan di ruangan ini akan menjadi tanpa ruangan.`,
-            )
+            !(await confirm({
+                title: 'Hapus ruangan?',
+                description: `Hapus ruangan "${room.name}"? Unit yang ditempatkan di ruangan ini akan menjadi tanpa ruangan.`,
+            }))
         ) {
             return;
         }
@@ -301,7 +305,7 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
                 />
 
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>Tambah Ruangan</DialogTitle>
                             <DialogDescription>
@@ -367,7 +371,7 @@ export default function InventoryRoomsIndex({ rooms, filters }: Props) {
                                 {processing ? 'Menyimpan...' : 'Simpan'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

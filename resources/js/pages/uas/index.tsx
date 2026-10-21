@@ -9,7 +9,6 @@ import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -18,6 +17,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -434,7 +434,7 @@ export default function UasIndex({
                         }
                     }}
                 >
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>Monitoring Siswa Terkunci</DialogTitle>
                             <DialogDescription>
@@ -497,7 +497,7 @@ export default function UasIndex({
                                     : undefined
                             }
                         />
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
                 <Dialog
                     open={unlockTarget !== null}
@@ -509,7 +509,7 @@ export default function UasIndex({
                         }
                     }}
                 >
-                    <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>Buka ujian siswa</DialogTitle>
                             <DialogDescription>
@@ -606,7 +606,7 @@ export default function UasIndex({
                                 {unlockProcessing ? 'Membuka...' : 'Buka'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
                 <Dialog
                     open={deleteTarget !== null}
@@ -616,7 +616,7 @@ export default function UasIndex({
                         }
                     }}
                 >
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>
                                 Hapus data {deleteTarget?.category}?
@@ -663,10 +663,10 @@ export default function UasIndex({
                                 Hapus Permanen
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent className="sm:max-w-lg">
+                    <ModalShell size="medium">
                         <DialogHeader>
                             <DialogTitle>
                                 {editing
@@ -781,7 +781,7 @@ export default function UasIndex({
                                 {processing ? 'Menyimpan...' : 'Simpan'}
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>

@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -19,6 +18,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { formatWitaDateTime } from '@/lib/date-time';
@@ -507,7 +507,7 @@ export default function KantinSaldoIndex({
                     }
                 }}
             >
-                <DialogContent className="sm:max-w-lg">
+                <ModalShell size="medium">
                     <DialogHeader>
                         <DialogTitle>Detail Transaksi</DialogTitle>
                         <DialogDescription>
@@ -604,11 +604,11 @@ export default function KantinSaldoIndex({
                             Tutup
                         </Button>
                     </DialogFooter>
-                </DialogContent>
+                </ModalShell>
             </Dialog>
             {canTopUp && (
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogContent className="sm:max-w-lg">
+                    <ModalShell size="medium">
                         <DialogHeader>
                             <DialogTitle>Top Up Saldo</DialogTitle>
                             <DialogDescription>
@@ -661,7 +661,7 @@ export default function KantinSaldoIndex({
                                 Simpan Top Up
                             </Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             )}
         </AppLayout>

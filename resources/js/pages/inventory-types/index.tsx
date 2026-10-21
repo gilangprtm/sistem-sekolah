@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
@@ -45,8 +46,15 @@ export default function InventoryTypesIndex({
         }
     };
 
-    const remove = (type: InventoryType) => {
-        if (confirm(`Hapus jenis “${type.name}”?`)) {
+    const confirm = useConfirmation();
+
+    const remove = async (type: InventoryType) => {
+        if (
+            await confirm({
+                title: 'Hapus jenis?',
+                description: `Hapus jenis “${type.name}”?`,
+            })
+        ) {
             router.delete(`/inventory-types/${type.id}`, {
                 preserveScroll: true,
             });

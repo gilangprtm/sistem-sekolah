@@ -7,9 +7,9 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -18,6 +18,7 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -49,6 +50,7 @@ export default function RombelsIndex({
     filters,
     filterOptions,
 }: Props) {
+    const confirm = useConfirmation();
     const [search, setSearch] = useState(filters.search ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
     const [selected, setSelected] = useState<number[]>([]);
@@ -234,16 +236,20 @@ export default function RombelsIndex({
                                 {rombel.status === 'active' && (
                                     <DropdownMenuItem
                                         variant="destructive"
-                                        onClick={() =>
-                                            confirm(
-                                                `Arsipkan rombel "${rombel.name}"?`,
-                                            ) &&
-                                            router.post(
-                                                `/kurikulum/rombels/${rombel.id}/archive`,
-                                                {},
-                                                { preserveScroll: true },
-                                            )
-                                        }
+                                        onClick={async () => {
+                                            if (
+                                                await confirm({
+                                                    title: 'Arsipkan rombel?',
+                                                    description: `Arsipkan rombel "${rombel.name}"?`,
+                                                })
+                                            ) {
+                                                router.post(
+                                                    `/kurikulum/rombels/${rombel.id}/archive`,
+                                                    {},
+                                                    { preserveScroll: true },
+                                                );
+                                            }
+                                        }}
                                     >
                                         Arsipkan
                                     </DropdownMenuItem>
@@ -269,7 +275,7 @@ export default function RombelsIndex({
                     }}
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent>
+                    <ModalShell>
                         <DialogHeader>
                             <DialogTitle>
                                 {editing ? 'Edit Rombel' : 'Tambah Rombel'}
@@ -353,7 +359,7 @@ export default function RombelsIndex({
                             </Button>
                             <Button onClick={submit}>Simpan</Button>
                         </DialogFooter>
-                    </DialogContent>
+                    </ModalShell>
                 </Dialog>
             </div>
         </AppLayout>
