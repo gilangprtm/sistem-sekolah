@@ -114,6 +114,8 @@ class TeacherHomeroomTest extends TestCase
                 ->has('attendanceStudents', 2)
                 ->where('attendanceStudents.0.full_name', 'Ani')
                 ->where('attendanceStudents.1.full_name', 'Budi')
+                ->where('attendanceStudents.0.status', 'A')
+                ->where('attendanceStudents.0.version', 0)
                 ->missing('attendanceStudents.0.address')
                 ->where('attendanceStudents.0.phone', '081234567890')
                 ->where('attendanceStudents.0.parent_phone', '+62 812-2222-3333'));
@@ -153,7 +155,8 @@ class TeacherHomeroomTest extends TestCase
                 ->has('attendanceStudents', 3)
                 ->where('attendanceStudents.0.full_name', 'Ani')
                 ->where('attendanceStudents.1.full_name', 'Made')
-                ->where('attendanceStudents.2.full_name', 'Zaki'));
+                ->where('attendanceStudents.2.full_name', 'Zaki')
+                ->where('attendanceStudents.0.status', 'A'));
     }
 
     public function test_student_table_uses_the_shared_data_table_pattern(): void
@@ -202,7 +205,9 @@ class TeacherHomeroomTest extends TestCase
         $this->assertIsString($page);
         $this->assertIsString($shell);
         $this->assertStringContainsString("import ModalShell from '@/components/ui/modal-shell';", $page);
-        $this->assertSame(2, substr_count($page, '<ModalShell size="small">'));
+        $this->assertSame(1, substr_count($page, '<ModalShell size="small">'));
+        $attendance = file_get_contents(resource_path('js/components/teachers/student-attendance.tsx'));
+        $this->assertStringContainsString('<ModalShell size="small">', $attendance);
         $this->assertSame(1, substr_count($page, 'size="large"'));
         $this->assertStringNotContainsString('<DialogContent', $page);
         $this->assertStringContainsString("size?: 'small' | 'medium' | 'large' | 'extra-large';", $shell);
@@ -228,26 +233,17 @@ class TeacherHomeroomTest extends TestCase
         $this->assertStringContainsString('<TabsContent value="data-siswa">', $page);
         $this->assertStringContainsString('<TabsContent value="tempat-duduk">', $page);
         $this->assertMatchesRegularExpression('/<TabsContent\s+value="absen-hari-ini"/', $page);
-        $this->assertStringContainsString('data={attendanceStudents}', $page);
-        $this->assertStringContainsString("header: 'Keterangan'", $page);
-        $this->assertStringContainsString('setAttendancePreview(', $page);
-        $this->assertMatchesRegularExpression("/attendancePreview\\s*\\[\\s*student\\.id\\s*\\]\\s*\\?\\?\\s*'A'/", $page);
-        $this->assertStringContainsString('onSelect={() =>', $page);
-        $this->assertStringContainsString('<DialogTitle>Absen Siswa</DialogTitle>', $page);
-        $this->assertStringContainsString('options={attendanceOptions}', $page);
-        $this->assertStringContainsString('value={attendanceStudent.status}', $page);
-        $this->assertStringContainsString('searchPlaceholder="Cari keterangan absen…"', $page);
+        $this->assertStringContainsString('<StudentAttendance', $page);
+        $attendance = file_get_contents(resource_path('js/components/teachers/student-attendance.tsx'));
+        $this->assertIsString($attendance);
+        $this->assertStringContainsString('<DataTableShell', $attendance);
+        $this->assertStringContainsString('<DialogTitle>Absen Siswa</DialogTitle>', $attendance);
+        $this->assertStringContainsString('searchPlaceholder="Cari keterangan absen…"', $attendance);
         foreach (['H' => 'Hadir', 'I' => 'Izin', 'S' => 'Sakit', 'D' => 'Dispensasi', 'A' => 'Alpa'] as $code => $label) {
-            $this->assertStringContainsString("{ value: '{$code}', label: '{$label}' }", $page);
+            $this->assertStringContainsString("{ value: '{$code}', label: '{$label}' }", $attendance);
         }
-        $this->assertMatchesRegularExpression('/<DropdownMenuItem\s+onSelect=\{.*?setAttendanceStudent\(\{.*?\}\).*?>\s*Absen\s*<\/DropdownMenuItem>/s', $page);
-        $this->assertMatchesRegularExpression('/setAttendancePreview\(\(current\) => \(\{\s*\.\.\.current,\s*\[attendanceStudent\.id\]:\s*attendanceStudent\.status,/', $page);
-        $this->assertStringContainsString('setAttendanceStudent(null)', $page);
-        $this->assertStringContainsString('Perubahan hanya untuk pratinjau', $page);
-        $this->assertStringNotContainsString('aria-pressed=', $page);
-        $this->assertStringContainsString('bg-red-600', $page);
-        $this->assertStringContainsString('statusStyles[status]', $page);
-        $this->assertStringContainsString('formatWitaDate(new Date().toISOString())', $page);
+        $this->assertStringNotContainsString('attendancePreview', $page);
+        $this->assertStringNotContainsString('pratinjau', $page);
         $this->assertStringNotContainsString('Pratinjau tampilan · seluruh siswa diurutkan', $page);
         $this->assertStringNotContainsString('statuses.map(', $page);
     }

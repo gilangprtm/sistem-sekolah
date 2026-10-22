@@ -50,7 +50,7 @@ export default function SecondaryPageShell({
             </header>
             {children}
             {footerActions && (
-                <footer className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end [&>*]:w-full [&>*]:sm:w-auto">
+                <footer className="flex flex-col gap-2 border-t pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:flex-row sm:justify-end [&>*]:w-full [&>*]:sm:w-auto">
                     {footerActions}
                 </footer>
             )}

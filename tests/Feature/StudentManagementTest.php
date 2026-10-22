@@ -401,6 +401,8 @@ class StudentManagementTest extends TestCase
         $this->assertTrue($archive->open($path));
         $sheet = $archive->getFromName('xl/worksheets/sheet1.xml');
         $this->assertIsString($sheet);
+        $this->assertFalse(str_contains($sheet, '<cols>'));
+        $this->assertFalse($archive->locateName('xl/styles.xml') !== false);
         $data = '';
 
         foreach ($rows as $rowIndex => $row) {

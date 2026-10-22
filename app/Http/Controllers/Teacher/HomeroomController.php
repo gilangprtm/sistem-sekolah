@@ -8,6 +8,7 @@ use App\Models\HomeroomAssignment;
 use App\Models\HomeroomSeat;
 use App\Models\Student;
 use App\Models\StudentPlacement;
+use App\Services\StudentAttendanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -15,7 +16,7 @@ use Inertia\Response;
 
 class HomeroomController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, StudentAttendanceService $attendanceService): Response
     {
         $academicYear = AcademicYear::query()
             ->where('status', 'active')
@@ -59,16 +60,15 @@ class HomeroomController extends Controller
                 'students' => $roster,
             ];
 
-            $attendanceStudents = Student::query()
-                ->where('status', 'active')
-                ->whereIn('id', StudentPlacement::query()
-                    ->select('student_id')
-                    ->where('academic_year_id', $academicYear->id)
-                    ->where('rombel_id', $assignment->rombel_id)
-                    ->where('status', 'active'))
-                ->orderBy('full_name')
-                ->orderBy('id')
-                ->get(['id', 'full_name', 'phone', 'parent_phone']);
+            $attendanceContext = $attendanceService->context($request->user(), [
+                'source' => 'homeroom',
+                'date' => now('Asia/Makassar')->toDateString(),
+            ]);
+            $attendanceStudents = $attendanceService->rows(
+                $attendanceContext['year_id'],
+                $attendanceContext['date'],
+                $attendanceContext['roster'],
+            );
 
             $students = StudentPlacement::query()
                 ->with('student:id,nis,nisn,tahun_angkatan,full_name,gender,birth_place,birth_date,address,phone,mother_name,father_name,mother_occupation,father_occupation,parent_phone')
@@ -108,6 +108,8 @@ class HomeroomController extends Controller
             'homeroom' => $assignment?->rombel?->only(['id', 'code', 'name', 'grade_level', 'parallel_code']),
             'students' => $students,
             'attendanceStudents' => $attendanceStudents,
+            'attendanceDate' => now('Asia/Makassar')->toDateString(),
+            'canManageAttendance' => $request->user()->can('teacher.attendance.manage'),
             'seating' => $seating,
             'canManageSeating' => $request->user()->can('teacher.homeroom.seating.manage'),
             'filters' => $request->only(['per_page']),

@@ -26,6 +26,7 @@ createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
+            case name === 'teacher/documents/agenda-report':
             case name.startsWith('errors/'):
             case name === 'welcome' || name.startsWith('kantin/pos/'):
                 return null;

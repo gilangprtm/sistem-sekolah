@@ -98,11 +98,11 @@ export function AssistantWidget() {
     }
 
     return (
-        <div className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-3 sm:right-6 sm:bottom-6">
+        <div className="pointer-events-none fixed right-4 bottom-4 z-50 flex flex-col items-end gap-3 sm:right-6 sm:bottom-6">
             {open && (
                 <section
                     aria-label="Chatbot Sistem Sekolah"
-                    className="fixed inset-0 flex h-dvh w-full flex-col overflow-hidden border bg-background shadow-xl sm:inset-auto sm:right-0 sm:bottom-0 sm:h-[min(42rem,calc(100vh-3rem))] sm:w-[min(28rem,calc(100vw-3rem))] sm:rounded-xl"
+                    className="pointer-events-auto fixed inset-0 flex h-dvh w-full flex-col overflow-hidden border bg-background shadow-xl sm:inset-auto sm:right-0 sm:bottom-0 sm:h-[min(42rem,calc(100vh-3rem))] sm:w-[min(28rem,calc(100vw-3rem))] sm:rounded-xl"
                 >
                     <header className="flex items-center justify-between border-b px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -211,7 +211,7 @@ export function AssistantWidget() {
             {!open && (
                 <Button
                     size="icon"
-                    className="size-14 rounded-full shadow-lg"
+                    className="pointer-events-auto size-14 rounded-full shadow-lg"
                     onClick={() => setOpen(true)}
                     aria-label="Buka chatbot"
                 >

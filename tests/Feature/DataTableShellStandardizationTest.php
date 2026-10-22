@@ -19,6 +19,22 @@ class DataTableShellStandardizationTest extends TestCase
         ];
     }
 
+    public function test_agenda_history_uses_the_data_table_action_column_without_inline_print_form(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/teacher/agenda/index.tsx'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString('<DataTableShell', $source);
+        $this->assertStringContainsString('rowActions={{', $source);
+        $this->assertStringContainsString('selection={{', $source);
+        $this->assertStringContainsString('selectedKeys: selectedAgendas', $source);
+        $this->assertStringContainsString('onSelectionChange: setSelectedAgendas', $source);
+        $this->assertStringContainsString('Pilih semua agenda di halaman ini', $source);
+        $this->assertStringNotContainsString("header: 'Agenda'", $source);
+        $this->assertStringNotContainsString('Cetak laporan Agenda', $source);
+        $this->assertStringNotContainsString('agendaReport', $source);
+    }
+
     public function test_management_pages_use_the_generic_data_table_shell_without_manual_tables(): void
     {
         foreach ($this->managementTablePages() as $page) {

@@ -7,7 +7,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use RuntimeException;
 use SimpleXMLElement;
 use ZipArchive;
 
@@ -310,93 +309,8 @@ final class StudentCsvImporter
             ['Nomor Induk Siswa', 'Nomor Induk Siswa Nasional', 'Tahun angkatan', 'Nama lengkap', 'Jenis kelamin (L/P)', 'Tempat lahir', 'Tanggal lahir (YYYY-MM-DD)', 'Alamat', 'Telepon siswa', 'Nama ibu', 'Nama ayah', 'Pekerjaan ibu', 'Pekerjaan ayah', 'Telepon orangtua', 'Status (active/inactive)'],
             ['NIS-001', '1234567890', '2024', 'Siti Aminah', 'P', 'Denpasar', '2012-01-02', 'Jl. Melati', '081234567890', 'Ibu Siti', 'Bapak Amin', 'Guru', 'Wiraswasta', '081298765432', 'active'],
         ];
-        $temporaryPath = tempnam(sys_get_temp_dir(), 'student-template-');
 
-        if ($temporaryPath === false) {
-            throw new RuntimeException('Template Excel tidak dapat dibuat.');
-        }
-
-        try {
-            $archive = new ZipArchive;
-
-            if ($archive->open($temporaryPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                throw new RuntimeException('Template Excel tidak dapat dibuat.');
-            }
-
-            $archive->addFromString('[Content_Types].xml', $this->xlsxContentTypes());
-            $archive->addFromString('_rels/.rels', $this->xlsxRootRelationships());
-            $archive->addFromString('xl/workbook.xml', $this->xlsxWorkbook());
-            $archive->addFromString('xl/_rels/workbook.xml.rels', $this->xlsxWorkbookRelationships());
-            $archive->addFromString('xl/worksheets/sheet1.xml', $this->xlsxSheet($rows));
-            $archive->close();
-
-            $content = file_get_contents($temporaryPath);
-
-            if ($content === false) {
-                throw new RuntimeException('Template Excel tidak dapat dibaca.');
-            }
-
-            return $content;
-        } finally {
-            @unlink($temporaryPath);
-        }
-    }
-
-    /**
-     * @param  array<int, array<int, string>>  $rows
-     */
-    private function xlsxSheet(array $rows): string
-    {
-        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
-        $xml .= '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
-
-        foreach ($rows as $rowIndex => $row) {
-            $number = $rowIndex + 1;
-            $xml .= '<row r="'.$number.'">';
-
-            foreach ($row as $columnIndex => $value) {
-                $reference = $this->xlsxColumnName($columnIndex + 1).$number;
-                $escaped = htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
-                $xml .= '<c r="'.$reference.'" t="inlineStr"><is><t>'.$escaped.'</t></is></c>';
-            }
-
-            $xml .= '</row>';
-        }
-
-        return $xml.'</sheetData></worksheet>';
-    }
-
-    private function xlsxColumnName(int $number): string
-    {
-        $name = '';
-
-        while ($number > 0) {
-            $remainder = ($number - 1) % 26;
-            $name = chr(65 + $remainder).$name;
-            $number = intdiv($number - 1, 26);
-        }
-
-        return $name;
-    }
-
-    private function xlsxContentTypes(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>';
-    }
-
-    private function xlsxRootRelationships(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
-    }
-
-    private function xlsxWorkbook(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Master Siswa" sheetId="1" r:id="rId1"/></sheets></workbook>';
-    }
-
-    private function xlsxWorkbookRelationships(): string
-    {
-        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>';
+        return app(XlsxWriter::class)->write($rows, 'Master Siswa');
     }
 
     /**

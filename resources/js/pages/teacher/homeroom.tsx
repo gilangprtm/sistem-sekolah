@@ -14,6 +14,7 @@ import { useState } from 'react';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
+import StudentAttendance from '@/components/teachers/student-attendance';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,9 +34,9 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import ModalShell from '@/components/ui/modal-shell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
-import { formatWitaDate } from '@/lib/date-time';
 import { update as updateSeating } from '@/routes/teacher/homeroom/seating';
 import type { BreadcrumbItem } from '@/types';
+import type { AttendanceRow } from '@/types/student-attendance';
 
 type AcademicYear = {
     id: number;
@@ -80,12 +81,9 @@ type Props = {
     academicYear: AcademicYear | null;
     homeroom: Homeroom | null;
     students: PaginatedStudents | null;
-    attendanceStudents: Array<{
-        id: number;
-        full_name: string | null;
-        phone: string | null;
-        parent_phone: string | null;
-    }> | null;
+    attendanceStudents: AttendanceRow[] | null;
+    attendanceDate: string;
+    canManageAttendance: boolean;
     filters: { per_page?: number };
     hasTeacherProfile: boolean;
     canManageSeating: boolean;
@@ -412,28 +410,14 @@ export default function HomeroomPage({
     homeroom,
     students,
     attendanceStudents,
+    attendanceDate,
+    canManageAttendance,
     filters,
     hasTeacherProfile,
     canManageSeating,
     seating,
 }: Props) {
     const [selected, setSelected] = useState<number[]>([]);
-    const [attendancePreview, setAttendancePreview] = useState<
-        Partial<Record<number, 'H' | 'I' | 'S' | 'D' | 'A'>>
-    >({});
-    const [attendanceStudent, setAttendanceStudent] = useState<
-        | (NonNullable<Props['attendanceStudents']>[number] & {
-              status: 'H' | 'I' | 'S' | 'D' | 'A';
-          })
-        | null
-    >(null);
-    const attendanceOptions = [
-        { value: 'H', label: 'Hadir' },
-        { value: 'I', label: 'Izin' },
-        { value: 'S', label: 'Sakit' },
-        { value: 'D', label: 'Dispensasi' },
-        { value: 'A', label: 'Alpa' },
-    ];
     const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
     const [editingSeat, setEditingSeat] = useState<number | null>(null);
     const [seatError, setSeatError] = useState<string | null>(null);
@@ -820,173 +804,21 @@ export default function HomeroomPage({
                             value="absen-hari-ini"
                             className="space-y-4"
                         >
-                            <div>
-                                <h2 className="font-semibold">
-                                    Absen Hari Ini
-                                </h2>
-                                <p className="text-sm text-muted-foreground">
-                                    {formatWitaDate(new Date().toISOString())}
-                                    {' · '}
-                                    {attendanceStudents?.length ?? 0} siswa
-                                </p>
-                            </div>
                             {attendanceStudents && (
-                                <DataTableShell
-                                    data={attendanceStudents}
-                                    columns={[
-                                        {
-                                            id: 'number',
-                                            header: 'No.',
-                                            headerClassName: 'w-16',
-                                            cell: (_student, index) =>
-                                                index + 1,
-                                        },
-                                        {
-                                            id: 'name',
-                                            header: 'Nama',
-                                            cell: (student) =>
-                                                student.full_name ?? '—',
-                                            cellClassName: 'font-medium',
-                                        },
-                                        {
-                                            id: 'status',
-                                            header: 'Keterangan',
-                                            cell: (student) => {
-                                                const status =
-                                                    attendancePreview[
-                                                        student.id
-                                                    ] ?? 'A';
-                                                const statusStyles = {
-                                                    H: 'bg-emerald-600 text-white border-transparent',
-                                                    I: 'bg-amber-500 text-white border-transparent',
-                                                    S: 'bg-sky-600 text-white border-transparent',
-                                                    D: 'bg-violet-600 text-white border-transparent',
-                                                    A: 'bg-red-600 text-white border-transparent',
-                                                } as const;
-
-                                                return (
-                                                    <span
-                                                        className={`grid size-8 place-items-center rounded-md border text-xs font-semibold ${statusStyles[status]}`}
-                                                        aria-label={`Keterangan ${student.full_name ?? 'siswa'}: ${status}`}
-                                                        title={status}
-                                                    >
-                                                        {status}
-                                                    </span>
-                                                );
-                                            },
-                                        },
-                                    ]}
-                                    getRowKey={(student) => student.id}
-                                    emptyState="Belum ada siswa aktif di kelas ini."
-                                    rowActions={{
-                                        label: (student) =>
-                                            `Aksi ${student.full_name ?? 'siswa'}`,
-                                        render: (student) => (
-                                            <>
-                                                <DropdownMenuItem
-                                                    onSelect={() =>
-                                                        setAttendanceStudent({
-                                                            ...student,
-                                                            status:
-                                                                attendancePreview[
-                                                                    student.id
-                                                                ] ?? 'A',
-                                                        })
-                                                    }
-                                                >
-                                                    Absen
-                                                </DropdownMenuItem>
-                                                <StudentActionItems
-                                                    student={student}
-                                                />
-                                            </>
-                                        ),
-                                    }}
+                                <StudentAttendance
+                                    rows={attendanceStudents}
+                                    source="homeroom"
+                                    date={attendanceDate}
+                                    canManage={canManageAttendance}
+                                    emptyMessage="Belum ada siswa aktif di kelas ini."
+                                    contactActions={(student) => (
+                                        <StudentActionItems student={student} />
+                                    )}
                                 />
                             )}
                         </TabsContent>
                     </Tabs>
                 )}
-
-                <Dialog
-                    open={attendanceStudent !== null}
-                    onOpenChange={(open) => {
-                        if (!open) {
-                            setAttendanceStudent(null);
-                        }
-                    }}
-                >
-                    <ModalShell size="small">
-                        <DialogHeader>
-                            <DialogTitle>Absen Siswa</DialogTitle>
-                            <DialogDescription>
-                                {attendanceStudent?.full_name ?? 'Siswa'} ·{' '}
-                                {formatWitaDate(new Date().toISOString())}
-                            </DialogDescription>
-                        </DialogHeader>
-                        {attendanceStudent && (
-                            <>
-                                <div
-                                    className="space-y-2"
-                                    role="group"
-                                    aria-label="Keterangan absen"
-                                >
-                                    <p className="text-sm font-medium">
-                                        Keterangan
-                                    </p>
-                                    <SearchableCombobox
-                                        value={attendanceStudent.status}
-                                        options={attendanceOptions}
-                                        placeholder="Pilih keterangan absen"
-                                        searchPlaceholder="Cari keterangan absen…"
-                                        onChange={(value) => {
-                                            if (
-                                                value === 'H' ||
-                                                value === 'I' ||
-                                                value === 'S' ||
-                                                value === 'D' ||
-                                                value === 'A'
-                                            ) {
-                                                setAttendanceStudent({
-                                                    ...attendanceStudent,
-                                                    status: value,
-                                                });
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Perubahan hanya untuk pratinjau dan belum
-                                    disimpan ke sistem absensi.
-                                </p>
-                                <div className="flex justify-end gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() =>
-                                            setAttendanceStudent(null)
-                                        }
-                                    >
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        onClick={() => {
-                                            setAttendancePreview((current) => ({
-                                                ...current,
-                                                [attendanceStudent.id]:
-                                                    attendanceStudent.status,
-                                            }));
-                                            setAttendanceStudent(null);
-                                        }}
-                                    >
-                                        Terapkan
-                                    </Button>
-                                </div>
-                            </>
-                        )}
-                    </ModalShell>
-                </Dialog>
 
                 <Dialog
                     open={editingSeat !== null}

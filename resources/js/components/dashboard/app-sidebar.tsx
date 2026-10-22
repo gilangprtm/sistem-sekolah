@@ -5,10 +5,12 @@ import {
     CalendarDays,
     ClipboardList,
     DoorOpen,
+    Files,
     GraduationCap,
     LayoutDashboard,
     LayoutGrid,
     Lock,
+    NotebookPen,
     NotebookTabs,
     PackageSearch,
     School,
@@ -30,6 +32,7 @@ import {
 } from '@/components/ui/sidebar';
 import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
+import { index as documentsIndex } from '@/routes/teacher/documents';
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 
 import { NavMain } from './nav-main';
@@ -90,6 +93,15 @@ export function AppSidebar({
     const studentAffairsItems: NavMainItem[] = [];
     const canteenItems: NavMainItem[] = [];
 
+    if (can('teacher.agenda.manage')) {
+        teacherItems.push({
+            id: 'teacher-agenda',
+            title: 'Agenda Guru',
+            url: '/guru/agenda',
+            icon: NotebookPen,
+        });
+    }
+
     if (can('teacher.homeroom.view')) {
         teacherItems.push({
             id: 'teacher-homeroom',
@@ -98,6 +110,13 @@ export function AppSidebar({
             icon: NotebookTabs,
         });
     }
+
+    teacherItems.push({
+        id: 'teacher-documents',
+        title: 'Dokumen',
+        url: documentsIndex.url(),
+        icon: Files,
+    });
 
     if (can('student.card.view')) {
         studentAffairsItems.push({

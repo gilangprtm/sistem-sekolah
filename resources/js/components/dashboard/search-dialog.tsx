@@ -14,6 +14,7 @@ import {
     CommandList,
     CommandSeparator,
 } from '@/components/ui/command';
+import { index as documentsIndex } from '@/routes/teacher/documents';
 
 type SearchItem = {
     id: string;
@@ -118,6 +119,12 @@ const searchItems: SearchItem[] = [
         icon: CreditCard,
     },
     {
+        id: 'teacher-documents',
+        group: 'Guru',
+        label: 'Dokumen',
+        url: documentsIndex.url(),
+    },
+    {
         id: 'teacher-homeroom',
         group: 'Guru',
         label: 'Wali Kelas',
@@ -211,6 +218,10 @@ export function SearchDialog() {
 
         if (item.id === 'teachers') {
             return can('teacher.view');
+        }
+
+        if (item.id === 'teacher-documents') {
+            return true;
         }
 
         if (item.id === 'teacher-homeroom') {

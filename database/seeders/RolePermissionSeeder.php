@@ -36,6 +36,9 @@ class RolePermissionSeeder extends Seeder
         'student.delete',
         'student.assign-account',
         'teacher.view',
+        'teacher.document.manage',
+        'teacher.agenda.manage',
+        'teacher.attendance.manage',
         'teacher.homeroom.view',
         'teacher.homeroom.seating.manage',
         'teacher.create',
@@ -157,15 +160,22 @@ class RolePermissionSeeder extends Seeder
 
         // Role lain tanpa permission khusus (fase selanjutnya)
         Role::findByName('Guru', 'web')->syncPermissions([
+            'teacher.agenda.manage',
+            'teacher.attendance.manage',
             'teacher.homeroom.view',
             'teacher.homeroom.seating.manage',
         ]);
         Role::findByName('Admin Perpustakaan', 'web')->syncPermissions([]);
         Role::findByName('Siswa', 'web')->syncPermissions([]);
 
+        foreach (self::ROLES as $role) {
+            Role::findByName($role, 'web')->givePermissionTo('teacher.document.manage');
+        }
+
         // Kesiswaan hanya mengelola akses kartu pelajar, tanpa CRUD master siswa.
         Role::findByName('Kesiswaan', 'web')->syncPermissions([
             'student.card.view',
+            'teacher.document.manage',
         ]);
     }
 }
