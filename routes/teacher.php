@@ -8,6 +8,7 @@ use App\Http\Controllers\Teacher\DocumentController;
 use App\Http\Controllers\Teacher\HomeroomController;
 use App\Http\Controllers\Teacher\HomeroomSeatingController;
 use App\Http\Controllers\Teacher\StudentAttendanceController;
+use App\Http\Controllers\Teacher\StudentNoteController;
 use Illuminate\Support\Facades\Route;
 
 foreach (DocumentModule::cases() as $module) {
@@ -33,6 +34,12 @@ Route::get('/guru/kehadiran/unduh', AttendanceReportController::class)
 Route::put('/guru/kehadiran', [StudentAttendanceController::class, 'update'])
     ->middleware(['auth', 'verified', 'can:teacher.attendance.manage'])
     ->name('teacher.attendance.update');
+
+Route::middleware(['auth', 'verified'])->prefix('guru/siswa/{student}/catatan')->name('teacher.student-notes.')
+    ->group(function (): void {
+        Route::get('/', [StudentNoteController::class, 'index'])->middleware('can:viewAny,App\\Models\\TeacherStudentNote')->name('index');
+        Route::post('/', [StudentNoteController::class, 'store'])->middleware('can:create,App\\Models\\TeacherStudentNote')->name('store');
+    });
 
 Route::middleware(['auth', 'verified', 'can:teacher.agenda.manage'])
     ->prefix('guru/agenda')->name('teacher.agenda.')->group(function (): void {

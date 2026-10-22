@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             TeacherDocumentPermissionSeeder::class,
             TeacherAgendaPermissionSeeder::class,
             StudentAttendancePermissionSeeder::class,
+            TeacherStudentNotePermissionSeeder::class,
             RombelSeeder::class,
             KantinSeeder::class,
         ]);

@@ -10,7 +10,6 @@ use App\Models\Student;
 use App\Models\StudentPlacement;
 use App\Services\StudentAttendanceService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -40,25 +39,7 @@ class HomeroomController extends Controller
         $seating = null;
 
         if ($assignment !== null) {
-            $roster = StudentPlacement::query()
-                ->with('student:id,full_name,photo_path')
-                ->where('academic_year_id', $academicYear->id)
-                ->where('rombel_id', $assignment->rombel_id)
-                ->where('status', 'active')
-                ->whereHas('student', fn ($query) => $query->where('status', 'active'))
-                ->get()
-                ->map(fn (StudentPlacement $placement): array => [
-                    'id' => $placement->student->id,
-                    'full_name' => $placement->student->full_name,
-                    'photo_url' => $placement->student->photo_path === null
-                        ? null
-                        : Storage::disk('public')->url($placement->student->photo_path),
-                ])->values();
-
-            $seating = [
-                ...HomeroomSeat::snapshot($academicYear->id, $assignment->rombel_id),
-                'students' => $roster,
-            ];
+            $seating = HomeroomSeat::layout($academicYear->id, $assignment->rombel_id);
 
             $attendanceContext = $attendanceService->context($request->user(), [
                 'source' => 'homeroom',

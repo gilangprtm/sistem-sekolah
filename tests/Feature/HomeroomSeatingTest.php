@@ -105,7 +105,11 @@ class HomeroomSeatingTest extends TestCase
     public function test_seating_ui_wires_assignment_touch_drag_swap_clear_and_unseated_only_search(): void
     {
         $source = file_get_contents(resource_path('js/pages/teacher/homeroom.tsx'));
+        $layout = file_get_contents(resource_path('js/components/teachers/classroom-seating.tsx'));
         $this->assertIsString($source);
+        $this->assertIsString($layout);
+        $this->assertStringContainsString('<ClassroomSeating', $source);
+        $source .= $layout;
         $this->assertStringContainsString('length: 4', $source);
         $this->assertStringContainsString('length: 5', $source);
         $this->assertStringContainsString('Meja Guru', $source);

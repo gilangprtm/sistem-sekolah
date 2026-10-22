@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Teacher;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveTeacherAgendaRequest;
 use App\Models\AcademicPeriod;
+use App\Models\HomeroomSeat;
 use App\Models\Teacher;
 use App\Models\TeacherAgenda;
+use App\Models\TeacherStudentNote;
 use App\Services\StudentAttendanceService;
 use App\Services\TeacherAgendaService;
 use Illuminate\Http\RedirectResponse;
@@ -73,8 +75,10 @@ class AgendaController extends Controller
                 'date' => $date,
                 ...$context,
                 'material' => '',
+                'seating' => HomeroomSeat::layout($period->academic_year_id, $context['snapshot']['rombel_id']),
                 'attendance' => $attendance->rows($period->academic_year_id, $date, $context['students']),
                 'canManageAttendance' => $request->user()->can('teacher.attendance.manage'),
+                'canViewStudentNotes' => $request->user()->can('viewAny', TeacherStudentNote::class),
             ],
         ]);
     }
@@ -119,6 +123,8 @@ class AgendaController extends Controller
     public function edit(Request $request, TeacherAgenda $agenda, StudentAttendanceService $attendance): Response
     {
         $this->ensureOwner($request, $agenda);
+        $yearId = AcademicPeriod::query()->findOrFail($agenda->academic_period_id)->academic_year_id;
+        $rombelId = $agenda->schedule_snapshot['rombel_id'] ?? null;
 
         return Inertia::render('teacher/agenda/form', [
             'agenda' => [
@@ -128,8 +134,10 @@ class AgendaController extends Controller
                 'context_token' => $this->editToken($agenda),
                 'snapshot' => $agenda->schedule_snapshot,
                 'material' => $agenda->material,
-                'attendance' => $attendance->rows(AcademicPeriod::query()->findOrFail($agenda->academic_period_id)->academic_year_id, $agenda->agenda_date->toDateString(), $agenda->attendance),
+                'seating' => $rombelId === null ? null : HomeroomSeat::layout($yearId, $rombelId),
+                'attendance' => $attendance->rows($yearId, $agenda->agenda_date->toDateString(), $agenda->attendance),
                 'canManageAttendance' => $request->user()->can('teacher.attendance.manage'),
+                'canViewStudentNotes' => $request->user()->can('viewAny', TeacherStudentNote::class),
             ],
         ]);
     }

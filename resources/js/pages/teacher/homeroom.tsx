@@ -2,20 +2,18 @@ import {
     DndContext,
     MouseSensor,
     TouchSensor,
-    useDraggable,
-    useDroppable,
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { Head, router } from '@inertiajs/react';
-import { Armchair, Grip } from 'lucide-react';
 import { useState } from 'react';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
+import ClassroomSeating from '@/components/teachers/classroom-seating';
+import type { SeatingLayout } from '@/components/teachers/classroom-seating';
 import StudentAttendance from '@/components/teachers/student-attendance';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -87,117 +85,8 @@ type Props = {
     filters: { per_page?: number };
     hasTeacherProfile: boolean;
     canManageSeating: boolean;
-    seating: {
-        version: string;
-        seats: Array<{ seat_number: number; student_id: number }>;
-        students: Array<{
-            id: number;
-            full_name: string | null;
-            photo_url: string | null;
-        }>;
-    } | null;
+    seating: SeatingLayout | null;
 };
-
-type SeatStudent = NonNullable<Props['seating']>['students'][number];
-
-function ClassroomSeat({
-    number,
-    student,
-    disabled,
-    onSelect,
-}: {
-    number: number;
-    student?: SeatStudent;
-    disabled: boolean;
-    onSelect: () => void;
-}) {
-    const { setNodeRef: setDropRef, isOver } = useDroppable({
-        id: number,
-        disabled,
-    });
-    const {
-        setNodeRef: setDragRef,
-        attributes,
-        listeners,
-        transform,
-        isDragging,
-    } = useDraggable({
-        id: number,
-        disabled: disabled || !student,
-    });
-
-    return (
-        <div
-            ref={setDropRef}
-            className={`relative min-w-0 rounded-xl border bg-card p-2 ${isOver ? 'border-primary bg-primary/10 ring-2 ring-primary' : ''}`}
-        >
-            <button
-                ref={setDragRef}
-                type="button"
-                disabled={disabled}
-                onClick={onSelect}
-                {...attributes}
-                {...listeners}
-                style={{
-                    transform: transform
-                        ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-                        : undefined,
-                    opacity: isDragging ? 0.4 : 1,
-                }}
-                className="relative z-10 grid h-44 w-full touch-manipulation grid-rows-[minmax(0,1fr)_2rem_1rem] items-center justify-items-center gap-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-                aria-label={`Meja ${number}: ${student?.full_name ?? 'Kosong'}. Pilih atau ganti siswa.`}
-            >
-                {student ? (
-                    <Avatar
-                        className={
-                            student.photo_url
-                                ? 'aspect-[2/3] h-auto w-full max-w-20 overflow-hidden rounded-md after:rounded-md'
-                                : 'size-12'
-                        }
-                    >
-                        <AvatarImage
-                            src={student.photo_url ?? undefined}
-                            alt={student.full_name ?? 'Siswa'}
-                            draggable={false}
-                            className="aspect-auto rounded-md object-top"
-                        />
-                        <AvatarFallback
-                            className={
-                                student.photo_url ? 'rounded-md' : undefined
-                            }
-                        >
-                            {(student.full_name ?? 'S')
-                                .split(' ')
-                                .map((word) => word[0])
-                                .slice(0, 2)
-                                .join('')}
-                        </AvatarFallback>
-                    </Avatar>
-                ) : (
-                    <Armchair
-                        className="size-8 text-muted-foreground"
-                        aria-hidden="true"
-                    />
-                )}
-                <span className="line-clamp-2 w-full text-center text-xs font-medium">
-                    {student?.full_name ?? `Meja ${number}`}
-                </span>
-                {student && (
-                    <Grip
-                        className="size-4 text-muted-foreground"
-                        aria-hidden="true"
-                    />
-                )}
-            </button>
-            <span
-                className="absolute top-1 left-1 z-20 rounded bg-background/80 px-1 text-[10px] text-muted-foreground"
-                aria-hidden="true"
-            >
-                {number}
-            </span>
-        </div>
-    );
-}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Wali Kelas', href: '/guru/wali-kelas' },
@@ -665,139 +554,52 @@ export default function HomeroomPage({
                         </TabsContent>
 
                         <TabsContent value="tempat-duduk">
-                            <section
-                                className="space-y-4"
-                                aria-labelledby="seating-heading"
-                            >
-                                <div>
-                                    <h2
-                                        id="seating-heading"
-                                        className="font-semibold"
-                                    >
-                                        Denah Tempat Duduk
-                                    </h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        4 pasang di depan · 5 pasang ke belakang
-                                        per kelompok · 40 meja siswa
-                                    </p>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Sentuh meja untuk memilih, mengganti,
-                                        atau mengosongkan siswa. Geser foto
-                                        untuk memindahkan atau menukar tempat;
-                                        pada layar sentuh, tahan foto sebentar
-                                        lalu geser. Perubahan tersimpan
-                                        otomatis.
-                                    </p>
-                                </div>
-                                <p className="text-sm" aria-live="polite">
-                                    {seatSaving
-                                        ? 'Menyimpan denah…'
-                                        : `${seatedIds.size} siswa sudah duduk · ${unseatedStudents.length} belum mendapat tempat`}
-                                </p>
-                                {seatError && (
-                                    <div
-                                        role="alert"
-                                        className="rounded-lg border border-destructive p-3 text-sm text-destructive"
-                                    >
-                                        {seatError}{' '}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                router.reload({
-                                                    only: ['seating'],
-                                                })
-                                            }
-                                        >
-                                            Muat ulang denah
-                                        </Button>
-                                    </div>
-                                )}
-                                {!canManageSeating && (
-                                    <p className="text-sm text-muted-foreground">
-                                        Anda hanya dapat melihat denah tempat
-                                        duduk.
-                                    </p>
-                                )}
-                                <div
-                                    className="overflow-x-auto rounded-xl border bg-muted/20 p-4"
-                                    tabIndex={0}
-                                    role="region"
-                                    aria-label="Denah 40 meja siswa; geser mendatar pada layar kecil"
+                            {seating && (
+                                <DndContext
+                                    sensors={seatSensors}
+                                    onDragEnd={handleSeatDragEnd}
                                 >
-                                    <div className="min-w-[860px] space-y-6">
-                                        <div className="grid grid-cols-4 gap-10">
-                                            <div className="col-start-4 rounded-lg border bg-muted px-6 py-4 text-center text-sm font-semibold">
-                                                Meja Guru · Depan kelas
-                                            </div>
-                                        </div>
-                                        <DndContext
-                                            sensors={seatSensors}
-                                            onDragEnd={handleSeatDragEnd}
-                                        >
-                                            <div className="grid grid-cols-4 gap-10">
-                                                {Array.from(
-                                                    { length: 4 },
-                                                    (_, group) => (
-                                                        <div
-                                                            key={group}
-                                                            className="grid grid-cols-2 gap-x-2 gap-y-5"
-                                                            aria-label={`Kelompok meja ${group + 1}`}
+                                    <ClassroomSeating
+                                        seating={seating}
+                                        disabled={
+                                            !canManageSeating || seatSaving
+                                        }
+                                        saving={seatSaving}
+                                        onSelectSeat={setEditingSeat}
+                                        notice={
+                                            <>
+                                                {seatError && (
+                                                    <div
+                                                        role="alert"
+                                                        className="rounded-lg border border-destructive p-3 text-sm text-destructive"
+                                                    >
+                                                        {seatError}{' '}
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                router.reload({
+                                                                    only: [
+                                                                        'seating',
+                                                                    ],
+                                                                })
+                                                            }
                                                         >
-                                                            {Array.from(
-                                                                { length: 5 },
-                                                                (_, depth) =>
-                                                                    [0, 1].map(
-                                                                        (
-                                                                            side,
-                                                                        ) => {
-                                                                            const number =
-                                                                                depth *
-                                                                                    8 +
-                                                                                group *
-                                                                                    2 +
-                                                                                side +
-                                                                                1;
-
-                                                                            return (
-                                                                                <ClassroomSeat
-                                                                                    key={
-                                                                                        number
-                                                                                    }
-                                                                                    number={
-                                                                                        number
-                                                                                    }
-                                                                                    student={seating?.students.find(
-                                                                                        ({
-                                                                                            id,
-                                                                                        }) =>
-                                                                                            id ===
-                                                                                            activeAssignments[
-                                                                                                number
-                                                                                            ],
-                                                                                    )}
-                                                                                    disabled={
-                                                                                        !canManageSeating ||
-                                                                                        seatSaving
-                                                                                    }
-                                                                                    onSelect={() =>
-                                                                                        setEditingSeat(
-                                                                                            number,
-                                                                                        )
-                                                                                    }
-                                                                                />
-                                                                            );
-                                                                        },
-                                                                    ),
-                                                            )}
-                                                        </div>
-                                                    ),
+                                                            Muat ulang denah
+                                                        </Button>
+                                                    </div>
                                                 )}
-                                            </div>
-                                        </DndContext>
-                                    </div>
-                                </div>
-                            </section>
+                                                {!canManageSeating && (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Anda hanya dapat melihat
+                                                        denah tempat duduk.
+                                                    </p>
+                                                )}
+                                            </>
+                                        }
+                                    />
+                                </DndContext>
+                            )}
                         </TabsContent>
 
                         <TabsContent

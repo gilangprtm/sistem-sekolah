@@ -39,6 +39,8 @@ class RolePermissionSeeder extends Seeder
         'teacher.document.manage',
         'teacher.agenda.manage',
         'teacher.attendance.manage',
+        'teacher.student-note.view',
+        'teacher.student-note.create',
         'teacher.homeroom.view',
         'teacher.homeroom.seating.manage',
         'teacher.create',
@@ -162,6 +164,8 @@ class RolePermissionSeeder extends Seeder
         Role::findByName('Guru', 'web')->syncPermissions([
             'teacher.agenda.manage',
             'teacher.attendance.manage',
+            'teacher.student-note.view',
+            'teacher.student-note.create',
             'teacher.homeroom.view',
             'teacher.homeroom.seating.manage',
         ]);

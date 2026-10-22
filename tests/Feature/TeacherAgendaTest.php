@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
+use App\Models\HomeroomSeat;
 use App\Models\Rombel;
 use App\Models\ScheduleEntry;
 use App\Models\SchedulePlan;
@@ -18,6 +19,7 @@ use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\TeacherAgendaPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -133,6 +135,10 @@ class TeacherAgendaTest extends TestCase
         $this->place($context, $inactive);
         $form = $this->newForm($context);
         $this->assertCount(2, $form['attendance']);
+        $this->assertSame(2, count($form['seating']['students']));
+        $this->assertSame([], $form['seating']['seats']);
+        $this->assertTrue($form['canViewStudentNotes']);
+        $this->assertSame('Ani', $form['seating']['students'][0]['full_name']);
         $this->assertSame('Ani', $form['attendance'][0]['full_name']);
         $this->assertSame('A', $form['attendance'][0]['status']);
         $this->assertArrayNotHasKey('address', $form['attendance'][0]);
@@ -154,6 +160,40 @@ class TeacherAgendaTest extends TestCase
             ->where('blocks.0.agenda_id', $agenda->id)->where('history.total', 1));
     }
 
+    public function test_agenda_tabs_keep_attendance_and_use_the_shared_seating_in_read_only_mode(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/teacher/agenda/form.tsx'));
+        $this->assertIsString($source);
+        $this->assertStringContainsString('variant="line"', $source);
+        $this->assertStringContainsString('defaultValue="daftar-hadir"', $source);
+        $this->assertStringContainsString('value="tempat-duduk"', $source);
+        $this->assertStringContainsString('Daftar Hadir', $source);
+        $this->assertStringContainsString('<StudentAttendance', $source);
+        $this->assertStringContainsString('<ClassroomSeating', $source);
+        $this->assertStringContainsString('seating={agenda.seating}', $source);
+        $this->assertStringContainsString('readOnly', $source);
+        $this->assertStringNotContainsString('DndContext', $source);
+        $this->assertStringNotContainsString('updateSeating', $source);
+        $this->assertStringNotContainsString('onSelectSeat', $source);
+    }
+
+    public function test_agenda_notes_visibility_is_permission_scoped_for_new_and_saved_agendas(): void
+    {
+        $context = $this->schedule();
+        $form = $this->newForm($context);
+        $this->post('/guru/agenda', $this->payload($form))->assertRedirect();
+        $agenda = TeacherAgenda::query()->sole();
+        $this->get(route('teacher.agenda.edit', $agenda))->assertInertia(fn ($page) => $page
+            ->where('agenda.canViewStudentNotes', true));
+        $context['user']->removeRole('Guru');
+        $context['user']->givePermissionTo('teacher.agenda.manage');
+
+        $this->get(route('teacher.agenda.edit', $agenda))->assertInertia(fn ($page) => $page
+            ->where('agenda.canViewStudentNotes', false));
+        $next = $this->newForm($context, '2026-10-26');
+        $this->assertFalse($next['canViewStudentNotes']);
+    }
+
     public function test_same_block_cannot_be_saved_twice_but_next_week_is_a_new_agenda(): void
     {
         $context = $this->schedule();
@@ -166,6 +206,86 @@ class TeacherAgendaTest extends TestCase
         $this->post('/guru/agenda', $this->payload($next))->assertRedirect();
 
         $this->assertDatabaseCount('tr_teacher_agendas', 2);
+    }
+
+    public function test_agenda_displays_seating_scoped_to_its_saved_class_and_school_year_and_cannot_modify_it(): void
+    {
+        $context = $this->schedule();
+        $this->post('/guru/agenda', $this->payload($this->newForm($context)))->assertRedirect();
+        $agenda = TeacherAgenda::query()->sole();
+        $user = $context['user'];
+        $year = $context['year'];
+        $rombel = $context['rombel'];
+        $student = $context['students'][0];
+        $otherClass = Rombel::factory()->create();
+        $otherStudent = Student::factory()->create();
+        $this->place([
+            'year' => $year,
+            'rombel' => $otherClass,
+        ], $otherStudent);
+        HomeroomSeat::query()->create([
+            'academic_year_id' => $year->id,
+            'rombel_id' => $rombel->id,
+            'seat_number' => 1,
+            'student_id' => $student->id,
+        ]);
+        HomeroomSeat::query()->create([
+            'academic_year_id' => $year->id,
+            'rombel_id' => $otherClass->id,
+            'seat_number' => 2,
+            'student_id' => $otherStudent->id,
+        ]);
+        $oldYear = AcademicYear::query()->create(['year' => '2025/2026', 'status' => 'inactive']);
+        HomeroomSeat::query()->create([
+            'academic_year_id' => $oldYear->id,
+            'rombel_id' => $rombel->id,
+            'seat_number' => 3,
+            'student_id' => $student->id,
+        ]);
+        $student->update(['photo_path' => 'students/agenda-seat.jpg']);
+        $context['plan']->delete();
+        $context['period']->update(['status' => 'inactive']);
+        $year->update(['status' => 'inactive']);
+        AcademicYear::query()->create(['year' => '2027/2028', 'status' => 'active']);
+
+        $response = $this->actingAs($user)->get(route('teacher.agenda.edit', $agenda));
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('agenda.seating.seats.0.seat_number', 1)
+            ->where('agenda.seating.seats.0.student_id', $student->id)
+            ->has('agenda.seating.seats', 1)
+            ->has('agenda.seating.students', 2)
+            ->where('agenda.seating.students.0.id', $student->id)
+            ->where('agenda.seating.students.0.photo_url', Storage::disk('public')->url('students/agenda-seat.jpg'))
+            ->missing('agenda.seating.students.0.address')
+            ->missing('agenda.seating.students.0.photo_path'));
+        $form = $response->viewData('page')['props']['agenda'];
+        $this->put(route('teacher.agenda.update', $agenda), [
+            'agenda_date' => $agenda->agenda_date->format('Y-m-d'),
+            'block_key' => $agenda->block_key,
+            'context_token' => $form['context_token'],
+            'material' => 'Materi tetap dapat diubah',
+            'seating' => ['seats' => [['seat_number' => 1, 'student_id' => $otherStudent->id]]],
+        ])->assertRedirect(route('teacher.agenda.edit', $agenda));
+        $this->assertDatabaseHas('tr_teacher_homeroom_seats', [
+            'academic_year_id' => $year->id,
+            'rombel_id' => $rombel->id,
+            'seat_number' => 1,
+            'student_id' => $student->id,
+        ]);
+        $this->assertDatabaseMissing('tr_teacher_homeroom_seats', [
+            'academic_year_id' => $year->id,
+            'rombel_id' => $rombel->id,
+            'student_id' => $otherStudent->id,
+        ]);
+        $this->assertSame('Materi tetap dapat diubah', $agenda->fresh()->material);
+
+        HomeroomSeat::query()->where('academic_year_id', $year->id)
+            ->where('rombel_id', $rombel->id)->where('student_id', $student->id)
+            ->update(['seat_number' => 8]);
+        $this->get(route('teacher.agenda.edit', $agenda))->assertInertia(fn ($page) => $page
+            ->where('agenda.seating.seats.0.seat_number', 8)
+            ->where('agenda.seating.seats.0.student_id', $student->id));
     }
 
     public function test_history_survives_schedule_deletion_and_remains_editable_after_period_and_roster_change(): void
