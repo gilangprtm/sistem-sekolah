@@ -168,14 +168,11 @@ class RolePermissionSeeder extends Seeder
         Role::findByName('Admin Perpustakaan', 'web')->syncPermissions([]);
         Role::findByName('Siswa', 'web')->syncPermissions([]);
 
-        foreach (self::ROLES as $role) {
-            Role::findByName($role, 'web')->givePermissionTo('teacher.document.manage');
-        }
-
         // Kesiswaan hanya mengelola akses kartu pelajar, tanpa CRUD master siswa.
         Role::findByName('Kesiswaan', 'web')->syncPermissions([
             'student.card.view',
-            'teacher.document.manage',
         ]);
+
+        $this->call(ModuleDocumentPermissionSeeder::class);
     }
 }

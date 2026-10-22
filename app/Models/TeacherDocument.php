@@ -9,8 +9,10 @@ class TeacherDocument extends Model
 {
     protected $table = 'tr_teacher_documents';
 
+    protected $attributes = ['module' => 'teacher'];
+
     protected $fillable = [
-        'teacher_document_folder_id', 'created_by', 'name', 'original_name', 'disk', 'path', 'mime_type', 'visibility', 'size',
+        'teacher_document_folder_id', 'created_by', 'module', 'name', 'original_name', 'disk', 'path', 'mime_type', 'visibility', 'size',
     ];
 
     /** @return BelongsTo<TeacherDocumentFolder, $this> */

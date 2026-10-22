@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\DocumentModule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,8 +10,9 @@ class StoreTeacherDocumentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('teacher.document.manage') === true
-            || $this->user()?->hasRole('Super Admin') === true;
+        $module = DocumentModule::tryFrom(explode('.', $this->route()?->getName() ?? '')[0]);
+
+        return $module !== null && $this->user() !== null && $module->canManage($this->user());
     }
 
     /** @return array<string, array<int, mixed>> */

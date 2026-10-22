@@ -32,13 +32,19 @@ import {
 } from '@/components/ui/sidebar';
 import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
-import { index as documentsIndex } from '@/routes/teacher/documents';
+
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
 
 type PageProps = {
+    documentNavigation?: {
+        id: string;
+        key: string;
+        group: string;
+        url: string;
+    }[];
     auth?: {
         user?: {
             name: string;
@@ -57,7 +63,7 @@ export function AppSidebar({
     variant?: 'sidebar' | 'floating' | 'inset';
     collapsible?: 'offcanvas' | 'icon' | 'none';
 }) {
-    const { auth } = usePage<PageProps>().props;
+    const { auth, documentNavigation = [] } = usePage<PageProps>().props;
     const permissions = auth?.permissions ?? [];
     const roles = auth?.roles ?? [];
     const isSuperAdmin = roles.includes('Super Admin');
@@ -110,13 +116,6 @@ export function AppSidebar({
             icon: NotebookTabs,
         });
     }
-
-    teacherItems.push({
-        id: 'teacher-documents',
-        title: 'Dokumen',
-        url: documentsIndex.url(),
-        icon: Files,
-    });
 
     if (can('student.card.view')) {
         studentAffairsItems.push({
@@ -274,6 +273,24 @@ export function AppSidebar({
             title: 'Roles & Permissions',
             url: '/roles',
             icon: Lock,
+        });
+    }
+
+    const documentGroups = {
+        inventory: inventoryItems,
+        curriculum: curriculumItems,
+        teacher: teacherItems,
+        student_affairs: studentAffairsItems,
+        canteen: canteenItems,
+        administration: adminItems,
+    };
+
+    for (const item of documentNavigation) {
+        documentGroups[item.key as keyof typeof documentGroups]?.push({
+            id: item.id,
+            title: 'Dokumen',
+            url: item.url,
+            icon: Files,
         });
     }
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\DocumentModule;
 use App\Http\Controllers\Teacher\AgendaController;
 use App\Http\Controllers\Teacher\AgendaReportController;
 use App\Http\Controllers\Teacher\AttendanceReportController;
@@ -9,15 +10,17 @@ use App\Http\Controllers\Teacher\HomeroomSeatingController;
 use App\Http\Controllers\Teacher\StudentAttendanceController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified'])->prefix('guru/dokumen')->name('teacher.documents.')->group(function (): void {
-    Route::get('/', [DocumentController::class, 'index'])->name('index');
-    Route::post('/folders', [DocumentController::class, 'storeFolder'])->name('folders.store');
-    Route::delete('/folders/{folder}', [DocumentController::class, 'destroyFolder'])->name('folders.destroy');
-    Route::post('/files', [DocumentController::class, 'storeDocument'])->name('store');
-    Route::get('/files/{document}/view', [DocumentController::class, 'view'])->name('view');
-    Route::get('/files/{document}/download', [DocumentController::class, 'download'])->name('download');
-    Route::delete('/files/{document}', [DocumentController::class, 'destroy'])->name('destroy');
-});
+foreach (DocumentModule::cases() as $module) {
+    Route::middleware(['auth', 'verified'])->prefix($module->prefix())->name($module->value.'.documents.')->group(function (): void {
+        Route::get('/', [DocumentController::class, 'index'])->name('index');
+        Route::post('/folders', [DocumentController::class, 'storeFolder'])->name('folders.store');
+        Route::delete('/folders/{folder}', [DocumentController::class, 'destroyFolder'])->name('folders.destroy');
+        Route::post('/files', [DocumentController::class, 'storeDocument'])->name('store');
+        Route::get('/files/{document}/view', [DocumentController::class, 'view'])->name('view');
+        Route::get('/files/{document}/download', [DocumentController::class, 'download'])->name('download');
+        Route::delete('/files/{document}', [DocumentController::class, 'destroy'])->name('destroy');
+    });
+}
 
 Route::get('/guru/agenda/cetak', AgendaReportController::class)
     ->middleware(['auth', 'verified', 'can:teacher.agenda.manage'])->name('teacher.agenda.report');

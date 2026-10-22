@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\DocumentModule;
 use App\Models\AcademicYear;
 use App\Models\HomeroomAssignment;
 use App\Models\Rombel;
@@ -42,9 +43,9 @@ class TeacherDocumentTest extends TestCase
         $this->assertModelExists($file);
     }
 
-    public function test_permission_seeder_is_additive_idempotent_and_available_to_all_existing_roles(): void
+    public function test_permission_seeder_is_additive_idempotent_and_scoped_to_the_teacher_role(): void
     {
-        $role = Role::findByName('Siswa', 'web');
+        $role = Role::findByName('Guru', 'web');
         $role->givePermissionTo('student.card.view');
         $role->revokePermissionTo('teacher.document.manage');
 
@@ -53,6 +54,7 @@ class TeacherDocumentTest extends TestCase
 
         $this->assertTrue($role->fresh()->hasPermissionTo('teacher.document.manage'));
         $this->assertTrue($role->fresh()->hasPermissionTo('student.card.view'));
+        $this->assertFalse(Role::findByName('Siswa', 'web')->hasPermissionTo('teacher.document.manage'));
     }
 
     public function test_listing_and_search_never_expose_another_users_private_items(): void
@@ -79,6 +81,7 @@ class TeacherDocumentTest extends TestCase
         $child = $this->folder($owner, $root, 'public');
         $file = $this->document($owner, $child, 'public');
         $other = $this->user('Staff');
+        $other->givePermissionTo('teacher.document.manage');
 
         $this->actingAs($other)->get(route('teacher.documents.index', ['folder' => $child->id]))->assertNotFound();
         $this->get(route('teacher.documents.download', $file))->assertNotFound();
@@ -97,6 +100,7 @@ class TeacherDocumentTest extends TestCase
         Storage::fake('local');
         $owner = $this->user();
         $contributor = $this->user('Siswa');
+        $contributor->givePermissionTo('teacher.document.manage');
         $root = $this->folder($owner, null, 'public');
         $this->actingAs($contributor)->post(route('teacher.documents.folders.store'), [
             'name' => 'Kontribusi', 'parent_id' => $root->id, 'visibility' => 'private', 'created_by' => $owner->id,
@@ -166,6 +170,7 @@ class TeacherDocumentTest extends TestCase
         $file = $this->document($this->user(), null, 'public');
         Storage::disk('local')->put($file->path, 'pdf');
         $viewer = User::factory()->create();
+        $viewer->givePermissionTo('teacher.document.view');
         $this->actingAs($viewer)->get(route('teacher.documents.download', $file))->assertDownload('rapport.pdf');
         $this->post(route('teacher.documents.folders.store'), ['name' => 'Tanpa izin', 'visibility' => 'public'])->assertForbidden();
         $this->delete(route('teacher.documents.destroy', $file))->assertForbidden();
@@ -411,13 +416,13 @@ class TeacherDocumentTest extends TestCase
         $private = $this->document($owner);
         $public = $this->document($owner, null, 'public');
         $policy = app(TeacherDocumentPolicy::class);
-        $this->assertTrue($policy->view($owner, $private)->allowed());
-        $this->assertTrue($policy->delete($owner, $private)->allowed());
-        $this->assertTrue($policy->view($viewer, $private)->denied());
-        $this->assertTrue($policy->view($viewer, $public)->allowed());
-        $this->assertTrue($policy->delete($viewer, $public)->denied());
-        $this->assertTrue($policy->view($admin, $private)->allowed());
-        $this->assertTrue($policy->delete($admin, $private)->allowed());
+        $this->assertTrue($policy->view($owner, $private, DocumentModule::Teacher)->allowed());
+        $this->assertTrue($policy->delete($owner, $private, DocumentModule::Teacher)->allowed());
+        $this->assertTrue($policy->view($viewer, $private, DocumentModule::Teacher)->denied());
+        $this->assertTrue($policy->view($viewer, $public, DocumentModule::Teacher)->allowed());
+        $this->assertTrue($policy->delete($viewer, $public, DocumentModule::Teacher)->denied());
+        $this->assertTrue($policy->view($admin, $private, DocumentModule::Teacher)->allowed());
+        $this->assertTrue($policy->delete($admin, $private, DocumentModule::Teacher)->allowed());
     }
 
     private function imageUpload(): UploadedFile
@@ -429,6 +434,7 @@ class TeacherDocumentTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole($role);
+        $user->givePermissionTo('teacher.document.view');
 
         return $user;
     }

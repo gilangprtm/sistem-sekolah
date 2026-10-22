@@ -57,15 +57,6 @@ import { formatWitaDate, witaDateKey } from '@/lib/date-time';
 import { cn } from '@/lib/utils';
 import { download as downloadAgenda } from '@/routes/teacher/agenda';
 import { download as downloadAttendance } from '@/routes/teacher/attendance/report';
-import {
-    destroy as deleteFile,
-    index,
-    store,
-} from '@/routes/teacher/documents';
-import {
-    destroy as destroyFolder,
-    store as storeFolder,
-} from '@/routes/teacher/documents/folders';
 
 type FolderRow = {
     id: number;
@@ -73,6 +64,7 @@ type FolderRow = {
     visibility: 'private' | 'public';
     owner: string;
     url: string;
+    deleteUrl: string;
     fileCount: number;
     size: number;
     createdAt: string;
@@ -89,16 +81,20 @@ type FileRow = {
     canDelete: boolean;
     viewUrl: string;
     downloadUrl: string;
+    deleteUrl: string;
     createdAt: string;
 };
 type Props = {
+    module: { key: string; label: string };
+    documentRoutes: { index: string; store: string; storeFolder: string };
     folder: null | {
         id: number;
         name: string;
         visibility: 'private' | 'public';
         owner: string;
-        breadcrumbs: { id: number; name: string }[];
+        breadcrumbs: { id: number; name: string; url: string }[];
         canDelete: boolean;
+        deleteUrl: string;
     };
     folders: {
         data: FolderRow[];
@@ -187,15 +183,20 @@ const fileIcon = (mime: string) =>
 const fileType = (file: FileRow): string =>
     file.originalName.split('.').pop()?.toUpperCase() ?? 'File';
 const visibilityLabel = (visibility: 'private' | 'public') =>
-    visibility === 'private' ? 'Pribadi' : 'Publik · pengguna aplikasi';
+    visibility === 'private' ? 'Pribadi' : 'Publik · pengguna modul';
 
 export default function TeacherDocuments(props: Props) {
     return (
-        <TeacherDocumentsContent key={props.folder?.id ?? 'root'} {...props} />
+        <TeacherDocumentsContent
+            key={`${props.module.key}-${props.folder?.id ?? 'root'}`}
+            {...props}
+        />
     );
 }
 
 function TeacherDocumentsContent({
+    module,
+    documentRoutes,
     folder,
     folders,
     documents,
@@ -330,7 +331,7 @@ function TeacherDocumentsContent({
     const searchNow = (event: React.FormEvent) => {
         event.preventDefault();
         router.get(
-            index.url(),
+            documentRoutes.index,
             {
                 folder: folder?.id,
                 search: query || undefined,
@@ -345,7 +346,7 @@ function TeacherDocumentsContent({
         setSelectedSort('name');
         setSelectedVisibility('all');
         router.get(
-            index.url(),
+            documentRoutes.index,
             { folder: folder?.id, sort: 'name', visibility: 'all' },
             { preserveState: true, replace: true },
         );
@@ -357,7 +358,7 @@ function TeacherDocumentsContent({
                 description: `Dokumen “${file.name}” akan dihapus permanen.`,
             })
         ) {
-            router.delete(deleteFile.url(file.id));
+            router.delete(file.deleteUrl);
         }
     };
     const removeFolder = async () => {
@@ -369,7 +370,7 @@ function TeacherDocumentsContent({
                     'Super Admin dapat menghapus folder beserta seluruh isi dan kontribusi pengguna lain.',
             }))
         ) {
-            router.delete(destroyFolder.url(folder.id));
+            router.delete(folder.deleteUrl);
         }
     };
     const removeListedFolder = async (item: FolderRow) => {
@@ -379,12 +380,12 @@ function TeacherDocumentsContent({
                 description: `Folder “${item.name}” akan dihapus permanen. Pengguna biasa hanya dapat menghapus folder kosong; Super Admin dapat menghapus seluruh isinya.`,
             })
         ) {
-            router.delete(destroyFolder.url(item.id));
+            router.delete(item.deleteUrl);
         }
     };
     const addFolder = (event: React.FormEvent) => {
         event.preventDefault();
-        folderForm.post(storeFolder.url(), {
+        folderForm.post(documentRoutes.storeFolder, {
             onSuccess: () => {
                 folderForm.reset();
                 setFolderOpen(false);
@@ -398,7 +399,7 @@ function TeacherDocumentsContent({
             return;
         }
 
-        uploadForm.post(store.url(), {
+        uploadForm.post(documentRoutes.store, {
             forceFormData: true,
             onSuccess: () => {
                 uploadForm.reset();
@@ -413,7 +414,7 @@ function TeacherDocumentsContent({
 
     return (
         <AppLayout>
-            <Head title="Dokumen Guru" />
+            <Head title={`Dokumen ${module.label}`} />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
@@ -427,14 +428,8 @@ function TeacherDocumentsContent({
                                 <Link
                                     href={
                                         folder.breadcrumbs.length > 1
-                                            ? index.url({
-                                                  query: {
-                                                      folder: folder.breadcrumbs.at(
-                                                          -2,
-                                                      )?.id,
-                                                  },
-                                              })
-                                            : index.url()
+                                            ? folder.breadcrumbs.at(-2)!.url
+                                            : documentRoutes.index
                                     }
                                 >
                                     <ArrowLeft />
@@ -443,8 +438,8 @@ function TeacherDocumentsContent({
                         )}
                         <Heading
                             variant="small"
-                            title={folder?.name ?? 'Dokumen'}
-                            description="File disimpan privat dan hanya diakses melalui pemeriksaan izin aplikasi."
+                            title={folder?.name ?? `Dokumen ${module.label}`}
+                            description={`Dokumen khusus modul ${module.label}. Publik hanya untuk pengguna yang memiliki akses modul ini.`}
                         />
                     </div>
                     <div className="flex flex-wrap gap-2">

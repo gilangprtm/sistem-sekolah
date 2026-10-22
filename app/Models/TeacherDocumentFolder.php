@@ -10,7 +10,9 @@ class TeacherDocumentFolder extends Model
 {
     protected $table = 'm_teacher_document_folders';
 
-    protected $fillable = ['parent_id', 'created_by', 'name', 'visibility'];
+    protected $attributes = ['module' => 'teacher'];
+
+    protected $fillable = ['parent_id', 'created_by', 'module', 'name', 'visibility'];
 
     /** @return BelongsTo<TeacherDocumentFolder, $this> */
     public function parent(): BelongsTo
@@ -45,6 +47,7 @@ class TeacherDocumentFolder extends Model
             abort_if(isset($lineage[$current->id]), 409, 'Struktur folder tidak valid.');
             $lineage[$current->id] = $current;
             $current = $current->parent_id === null ? null : $current->parent;
+            abort_if($current !== null && $current->module !== $this->module, 404);
         }
 
         return array_reverse(array_values($lineage));

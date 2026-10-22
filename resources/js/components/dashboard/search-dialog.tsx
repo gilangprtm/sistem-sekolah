@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 
-import { CreditCard, Search } from 'lucide-react';
+import { CreditCard, Files, Search } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,6 @@ import {
     CommandList,
     CommandSeparator,
 } from '@/components/ui/command';
-import { index as documentsIndex } from '@/routes/teacher/documents';
 
 type SearchItem = {
     id: string;
@@ -119,12 +118,6 @@ const searchItems: SearchItem[] = [
         icon: CreditCard,
     },
     {
-        id: 'teacher-documents',
-        group: 'Guru',
-        label: 'Dokumen',
-        url: documentsIndex.url(),
-    },
-    {
         id: 'teacher-homeroom',
         group: 'Guru',
         label: 'Wali Kelas',
@@ -172,8 +165,9 @@ function groupBy(items: SearchItem[]) {
 }
 
 export function SearchDialog() {
-    const { auth } = usePage<{
+    const { auth, documentNavigation = [] } = usePage<{
         auth?: { permissions?: string[]; roles?: string[] };
+        documentNavigation?: { id: string; group: string; url: string }[];
     }>().props;
     const permissions = auth?.permissions ?? [];
     const isSuperAdmin = auth?.roles?.includes('Super Admin') ?? false;
@@ -220,10 +214,6 @@ export function SearchDialog() {
             return can('teacher.view');
         }
 
-        if (item.id === 'teacher-documents') {
-            return true;
-        }
-
         if (item.id === 'teacher-homeroom') {
             return can('teacher.homeroom.view');
         }
@@ -258,6 +248,13 @@ export function SearchDialog() {
 
         return true;
     });
+    availableItems.push(
+        ...documentNavigation.map((item) => ({
+            ...item,
+            label: 'Dokumen',
+            icon: Files,
+        })),
+    );
     const recommendations = getAvailableItems(availableItems);
 
     const [open, setOpen] = React.useState(false);

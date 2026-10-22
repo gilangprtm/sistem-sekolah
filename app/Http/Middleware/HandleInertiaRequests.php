@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\DocumentModule;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -58,6 +59,12 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $request->user()?->getAllPermissions()->pluck('name'),
                 'roles' => $request->user()?->getRoleNames(),
             ],
+            'documentNavigation' => fn (): array => $request->user() === null ? [] : collect(DocumentModule::cases())
+                ->filter(fn (DocumentModule $module): bool => $module->canView($request->user()))
+                ->map(fn (DocumentModule $module): array => [
+                    'id' => $module->value.'-documents', 'key' => $module->value, 'group' => $module->label(),
+                    'url' => route($module->routeName()),
+                ])->values()->all(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'preferences' => $preferences,
         ];
