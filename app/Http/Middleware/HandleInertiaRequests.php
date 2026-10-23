@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\DocumentModule;
 use App\Models\CounselingNote;
+use App\Models\StudentViolation;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -60,6 +61,7 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $request->user()?->getAllPermissions()->pluck('name'),
                 'roles' => $request->user()?->getRoleNames(),
             ],
+            'canAccessStudentViolations' => fn (): bool => $request->user()?->can('viewAny', StudentViolation::class) ?? false,
             'canAccessCounseling' => fn (): bool => $request->user()?->can('viewAny', CounselingNote::class) ?? false,
             'documentNavigation' => fn (): array => $request->user() === null ? [] : collect(DocumentModule::cases())
                 ->filter(fn (DocumentModule $module): bool => $module->canView($request->user()))

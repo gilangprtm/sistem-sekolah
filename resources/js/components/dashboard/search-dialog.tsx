@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 
-import { ClipboardCheck, CreditCard, Files, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -15,24 +15,29 @@ import {
     CommandSeparator,
 } from '@/components/ui/command';
 import { index as counselingNotes } from '@/routes/counseling/notes';
+import { index as studentViolations } from '@/routes/student-affairs/violations';
 
 type SearchItem = {
     id: string;
     group: string;
     label: string;
     url: string;
-    icon?: React.ComponentType<{ className?: string }>;
     disabled?: boolean;
     newTab?: boolean;
 };
 
 const searchItems: SearchItem[] = [
     {
+        id: 'student-violations',
+        group: 'Kesiswaan',
+        label: 'Pelanggaran Siswa',
+        url: studentViolations.url(),
+    },
+    {
         id: 'counseling-notes',
         group: 'Konseling',
         label: 'Catatan Konseling',
         url: counselingNotes.url(),
-        icon: ClipboardCheck,
     },
     {
         id: 'dashboard',
@@ -123,7 +128,6 @@ const searchItems: SearchItem[] = [
         group: 'Kesiswaan',
         label: 'Kartu Pelajar',
         url: '/students/cards',
-        icon: CreditCard,
     },
     {
         id: 'teacher-homeroom',
@@ -177,16 +181,22 @@ export function SearchDialog() {
         auth,
         documentNavigation = [],
         canAccessCounseling = false,
+        canAccessStudentViolations = false,
     } = usePage<{
         auth?: { permissions?: string[]; roles?: string[] };
         documentNavigation?: { id: string; group: string; url: string }[];
         canAccessCounseling?: boolean;
+        canAccessStudentViolations?: boolean;
     }>().props;
     const permissions = auth?.permissions ?? [];
     const isSuperAdmin = auth?.roles?.includes('Super Admin') ?? false;
     const can = (permission: string) =>
         isSuperAdmin || permissions.includes(permission);
     const availableItems = searchItems.filter((item) => {
+        if (item.id === 'student-violations') {
+            return canAccessStudentViolations;
+        }
+
         if (item.id === 'counseling-notes') {
             return canAccessCounseling;
         }
@@ -269,7 +279,6 @@ export function SearchDialog() {
         ...documentNavigation.map((item) => ({
             ...item,
             label: 'Dokumen',
-            icon: Files,
         })),
     );
     const recommendations = getAvailableItems(availableItems);
@@ -323,10 +332,7 @@ export function SearchDialog() {
                             value={`${item.group} ${item.label}`}
                             onSelect={() => handleSelect(item)}
                         >
-                            <span className="flex min-w-0 items-center gap-2">
-                                {item.icon && <item.icon />}
-                                <span className="truncate">{item.label}</span>
-                            </span>
+                            <span className="truncate">{item.label}</span>
                         </CommandItem>
                     ))}
                 </CommandGroup>

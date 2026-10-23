@@ -2,11 +2,22 @@
 
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\CounselingNoteController;
+use App\Http\Controllers\StudentViolationController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/assistant/chat', [AssistantController::class, 'chat'])->name('assistant.chat');
+});
+
+Route::middleware(['auth', 'verified'])->prefix('kesiswaan/pelanggaran')->name('student-affairs.violations.')->group(function (): void {
+    Route::get('/', [StudentViolationController::class, 'index'])->middleware('can:viewAny,App\\Models\\StudentViolation')->name('index');
+    Route::get('/siswa', [StudentViolationController::class, 'students'])->middleware('can:viewAny,App\\Models\\StudentViolation')->name('students');
+    Route::get('/jenis', [StudentViolationController::class, 'categories'])->middleware('can:viewAny,App\\Models\\StudentViolation')->name('categories');
+    Route::get('/{student_violation}', [StudentViolationController::class, 'show'])->middleware('can:view,student_violation')->name('show');
+    Route::post('/', [StudentViolationController::class, 'store'])->middleware('can:create,App\\Models\\StudentViolation')->name('store');
+    Route::put('/{student_violation}', [StudentViolationController::class, 'update'])->middleware('can:update,student_violation')->name('update');
+    Route::delete('/{student_violation}', [StudentViolationController::class, 'destroy'])->middleware('can:delete,student_violation')->name('destroy');
 });
 
 Route::middleware(['auth', 'verified'])->prefix('konseling/catatan')->name('counseling.notes.')->group(function (): void {

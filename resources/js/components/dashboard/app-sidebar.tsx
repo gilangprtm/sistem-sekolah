@@ -34,6 +34,7 @@ import {
 import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
 import { index as counselingNotes } from '@/routes/counseling/notes';
+import { index as studentViolations } from '@/routes/student-affairs/violations';
 
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 
@@ -48,6 +49,7 @@ type PageProps = {
         url: string;
     }[];
     canAccessCounseling?: boolean;
+    canAccessStudentViolations?: boolean;
     auth?: {
         user?: {
             name: string;
@@ -70,6 +72,7 @@ export function AppSidebar({
         auth,
         documentNavigation = [],
         canAccessCounseling = false,
+        canAccessStudentViolations = false,
     } = usePage<PageProps>().props;
     const permissions = auth?.permissions ?? [];
     const roles = auth?.roles ?? [];
@@ -132,6 +135,15 @@ export function AppSidebar({
             title: 'Wali Kelas',
             url: '/guru/wali-kelas',
             icon: NotebookTabs,
+        });
+    }
+
+    if (canAccessStudentViolations) {
+        studentAffairsItems.push({
+            id: 'student-violations',
+            title: 'Pelanggaran Siswa',
+            url: studentViolations.url(),
+            icon: ClipboardList,
         });
     }
 
