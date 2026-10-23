@@ -126,15 +126,6 @@ export function AppSidebar({
         });
     }
 
-    if (can('inventory.dashboard.view')) {
-        inventoryItems.push({
-            id: 'inventory-dashboard',
-            title: 'Dashboard Inventaris',
-            url: '/inventaris/inventory/dashboard',
-            icon: LayoutDashboard,
-        });
-    }
-
     if (can('inventory.view')) {
         inventoryItems.push({
             id: 'inventory',
@@ -297,7 +288,7 @@ export function AppSidebar({
     const navGroups = [
         { id: 1, label: 'Umum', items: dashboardItems },
         ...(inventoryItems.length > 0
-            ? [{ id: 2, label: 'Inventaris', items: inventoryItems }]
+            ? [{ id: 2, label: 'Sarpras', items: inventoryItems }]
             : []),
         ...(curriculumItems.length > 0
             ? [{ id: 3, label: 'Kurikulum', items: curriculumItems }]
