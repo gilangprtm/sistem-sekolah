@@ -23,7 +23,7 @@ class ModuleDocumentPermissionSeeder extends Seeder
         }
 
         $rolesByModule = [
-            DocumentModule::Inventory->value => ['Admin Inventaris'],
+            DocumentModule::Inventory->value => ['Sarpras'],
             DocumentModule::Curriculum->value => [],
             DocumentModule::Teacher->value => ['Guru'],
             DocumentModule::StudentAffairs->value => ['Kesiswaan'],

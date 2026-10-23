@@ -22,7 +22,7 @@ class InventoryRoomTest extends TestCase
     private function admin(): User
     {
         $user = User::factory()->create();
-        $user->assignRole('Admin Inventaris');
+        $user->assignRole('Sarpras');
 
         return $user;
     }

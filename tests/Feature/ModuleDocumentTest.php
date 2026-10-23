@@ -97,7 +97,7 @@ class ModuleDocumentTest extends TestCase
         $this->assertTrue(Role::findByName('Super Admin', 'web')->hasPermissionTo('curriculum.document.view'));
         $this->assertTrue(Role::findByName('Super Admin', 'web')->hasPermissionTo('administration.document.manage'));
         $this->assertTrue(Role::findByName('Guru', 'web')->hasPermissionTo('teacher.document.manage'));
-        $this->assertTrue(Role::findByName('Admin Inventaris', 'web')->hasPermissionTo('inventory.document.manage'));
+        $this->assertTrue(Role::findByName('Sarpras', 'web')->hasPermissionTo('inventory.document.manage'));
         $this->assertTrue(Role::findByName('Kesiswaan', 'web')->hasPermissionTo('student_affairs.document.manage'));
         $this->assertFalse(Role::findByName('Guru', 'web')->hasPermissionTo('curriculum.document.view'));
         $this->assertFalse(Role::findByName('Siswa', 'web')->hasPermissionTo('teacher.document.view'));

@@ -78,7 +78,7 @@ class ApiCategoryTest extends TestCase
     public function test_keterangan_only_update_does_not_require_assignment_permission(): void
     {
         $user = User::factory()->create();
-        $user->assignRole('Admin Inventaris');
+        $user->assignRole('Sarpras');
         $user->roles()->first()->revokePermissionTo('inventory.category.assign');
         $token = $user->createToken('test')->plainTextToken;
         $item = InventoryItem::factory()->create();

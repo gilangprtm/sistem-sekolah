@@ -3,6 +3,7 @@ import {
     BookOpen,
     CreditCard,
     CalendarDays,
+    ClipboardCheck,
     ClipboardList,
     DoorOpen,
     Files,
@@ -32,6 +33,7 @@ import {
 } from '@/components/ui/sidebar';
 import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
+import { index as counselingNotes } from '@/routes/counseling/notes';
 
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 
@@ -45,6 +47,7 @@ type PageProps = {
         group: string;
         url: string;
     }[];
+    canAccessCounseling?: boolean;
     auth?: {
         user?: {
             name: string;
@@ -63,7 +66,11 @@ export function AppSidebar({
     variant?: 'sidebar' | 'floating' | 'inset';
     collapsible?: 'offcanvas' | 'icon' | 'none';
 }) {
-    const { auth, documentNavigation = [] } = usePage<PageProps>().props;
+    const {
+        auth,
+        documentNavigation = [],
+        canAccessCounseling = false,
+    } = usePage<PageProps>().props;
     const permissions = auth?.permissions ?? [];
     const roles = auth?.roles ?? [];
     const isSuperAdmin = roles.includes('Super Admin');
@@ -82,6 +89,17 @@ export function AppSidebar({
 
     const effectiveVariant = isSynced ? sidebarVariant : variant;
     const effectiveCollapsible = isSynced ? sidebarCollapsible : collapsible;
+
+    const counselingItems: NavMainItem[] = [];
+
+    if (canAccessCounseling) {
+        counselingItems.push({
+            id: 'counseling-notes',
+            title: 'Catatan Konseling',
+            url: counselingNotes.url(),
+            icon: ClipboardCheck,
+        });
+    }
 
     const dashboardItems: NavMainItem[] = [
         {
@@ -295,6 +313,9 @@ export function AppSidebar({
             : []),
         ...(teacherItems.length > 0
             ? [{ id: 4, label: 'Guru', items: teacherItems }]
+            : []),
+        ...(counselingItems.length > 0
+            ? [{ id: 9, label: 'Konseling', items: counselingItems }]
             : []),
         ...(studentAffairsItems.length > 0
             ? [{ id: 5, label: 'Kesiswaan', items: studentAffairsItems }]

@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 
-import { CreditCard, Files, Search } from 'lucide-react';
+import { ClipboardCheck, CreditCard, Files, Search } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
     CommandList,
     CommandSeparator,
 } from '@/components/ui/command';
+import { index as counselingNotes } from '@/routes/counseling/notes';
 
 type SearchItem = {
     id: string;
@@ -26,6 +27,13 @@ type SearchItem = {
 };
 
 const searchItems: SearchItem[] = [
+    {
+        id: 'counseling-notes',
+        group: 'Konseling',
+        label: 'Catatan Konseling',
+        url: counselingNotes.url(),
+        icon: ClipboardCheck,
+    },
     {
         id: 'dashboard',
         group: 'Navigasi',
@@ -165,15 +173,24 @@ function groupBy(items: SearchItem[]) {
 }
 
 export function SearchDialog() {
-    const { auth, documentNavigation = [] } = usePage<{
+    const {
+        auth,
+        documentNavigation = [],
+        canAccessCounseling = false,
+    } = usePage<{
         auth?: { permissions?: string[]; roles?: string[] };
         documentNavigation?: { id: string; group: string; url: string }[];
+        canAccessCounseling?: boolean;
     }>().props;
     const permissions = auth?.permissions ?? [];
     const isSuperAdmin = auth?.roles?.includes('Super Admin') ?? false;
     const can = (permission: string) =>
         isSuperAdmin || permissions.includes(permission);
     const availableItems = searchItems.filter((item) => {
+        if (item.id === 'counseling-notes') {
+            return canAccessCounseling;
+        }
+
         if (item.id === 'inventory') {
             return can('inventory.view');
         }

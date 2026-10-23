@@ -81,7 +81,7 @@ class RoleManagementTest extends TestCase
                     ->where('filters.module', 'inventory')
                     ->where('filters.per_page', '1')
                     ->where('filterOptions.modules', fn ($modules) => $modules->contains('value', 'inventory'))
-                    ->where('roles.data.0.name', 'Admin Inventaris');
+                    ->where('roles.data.0.name', 'Sarpras');
             });
     }
 

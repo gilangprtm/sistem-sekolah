@@ -14,7 +14,7 @@ class RolePermissionSeeder extends Seeder
      */
     private const ROLES = [
         'Super Admin',
-        'Admin Inventaris',
+        'Sarpras',
         'Guru',
         'Admin Perpustakaan',
         'Siswa',
@@ -109,6 +109,8 @@ class RolePermissionSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(SarprasRoleSeeder::class);
+
         // Flush cache permission Spatie (penting saat cache driver = redis,
         // agar syncPermissions tidak melihat cache stale).
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -130,9 +132,9 @@ class RolePermissionSeeder extends Seeder
         $superAdmin = Role::findByName('Super Admin', 'web');
         $superAdmin->syncPermissions(self::PERMISSIONS);
 
-        // Admin Inventaris mendapat permission inventaris
-        $adminInventaris = Role::findByName('Admin Inventaris', 'web');
-        $adminInventaris->syncPermissions([
+        // Sarpras mendapat permission inventaris
+        $sarpras = Role::findByName('Sarpras', 'web');
+        $sarpras->syncPermissions([
             'inventory.view',
             'inventory.create',
             'inventory.delete',
@@ -157,7 +159,7 @@ class RolePermissionSeeder extends Seeder
             'inventory.room.assign',
         ]);
 
-        // Permission Kantin tidak diberikan implicit ke Admin Inventaris.
+        // Permission Kantin tidak diberikan implicit ke Sarpras.
         // Role mapping Kantin menunggu assignment eksplisit dari pengelola role.
 
         // Role lain tanpa permission khusus (fase selanjutnya)

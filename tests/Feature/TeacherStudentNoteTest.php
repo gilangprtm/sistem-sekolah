@@ -225,7 +225,7 @@ class TeacherStudentNoteTest extends TestCase
         $this->assertTrue($role->fresh()->hasPermissionTo('teacher.student-note.view'));
         $this->assertTrue($role->fresh()->hasPermissionTo('teacher.student-note.create'));
         $this->assertSame(2, Permission::query()->whereIn('name', ['teacher.student-note.view', 'teacher.student-note.create'])->count());
-        foreach (['Siswa', 'Staff', 'Kesiswaan', 'Admin Inventaris', 'Admin Perpustakaan'] as $name) {
+        foreach (['Siswa', 'Staff', 'Kesiswaan', 'Sarpras', 'Admin Perpustakaan'] as $name) {
             $this->assertFalse(Role::findByName($name, 'web')->hasPermissionTo('teacher.student-note.view'));
             $this->assertFalse(Role::findByName($name, 'web')->hasPermissionTo('teacher.student-note.create'));
         }
