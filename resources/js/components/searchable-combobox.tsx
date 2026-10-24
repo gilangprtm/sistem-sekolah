@@ -25,6 +25,10 @@ type Props = {
     emptyMessage?: string;
     className?: string;
     onSearchChange?: (value: string) => void;
+    id?: string;
+    disabled?: boolean;
+    'aria-invalid'?: boolean;
+    'aria-describedby'?: string;
 };
 
 export default function SearchableCombobox({
@@ -36,6 +40,10 @@ export default function SearchableCombobox({
     emptyMessage = 'Tidak ditemukan.',
     className = 'w-full',
     onSearchChange,
+    id,
+    disabled = false,
+    'aria-invalid': ariaInvalid,
+    'aria-describedby': ariaDescribedBy,
 }: Props) {
     const [open, setOpen] = useState(false);
     const selected = options.find((option) => option.value === value);
@@ -44,9 +52,13 @@ export default function SearchableCombobox({
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
+                    id={id}
                     type="button"
                     variant="outline"
                     role="combobox"
+                    disabled={disabled}
+                    aria-invalid={ariaInvalid}
+                    aria-describedby={ariaDescribedBy}
                     aria-expanded={open}
                     className={`${className} justify-between font-normal`}
                 >

@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
+    BookOpenCheck,
     CreditCard,
     CalendarDays,
     ClipboardCheck,
@@ -11,6 +12,7 @@ import {
     LayoutDashboard,
     LayoutGrid,
     Lock,
+    LibraryBig,
     NotebookPen,
     NotebookTabs,
     PackageSearch,
@@ -34,6 +36,11 @@ import {
 import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
 import { index as counselingNotes } from '@/routes/counseling/notes';
+import {
+    design as lmsDesign,
+    management as lmsManagement,
+    myCourses as lmsMyCourses,
+} from '@/routes/lms';
 import { index as studentViolations } from '@/routes/student-affairs/violations';
 
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
@@ -49,6 +56,7 @@ type PageProps = {
         url: string;
     }[];
     canAccessCounseling?: boolean;
+    canDesignLmsCourses?: boolean;
     canAccessStudentViolations?: boolean;
     auth?: {
         user?: {
@@ -72,6 +80,7 @@ export function AppSidebar({
         auth,
         documentNavigation = [],
         canAccessCounseling = false,
+        canDesignLmsCourses = false,
         canAccessStudentViolations = false,
     } = usePage<PageProps>().props;
     const permissions = auth?.permissions ?? [];
@@ -116,6 +125,32 @@ export function AppSidebar({
     const adminItems: NavMainItem[] = [];
     const teacherItems: NavMainItem[] = [];
     const curriculumItems: NavMainItem[] = [];
+    const lmsItems: NavMainItem[] = [];
+
+    if (canDesignLmsCourses) {
+        lmsItems.push({
+            id: 'lms-design',
+            title: 'Perancangan Course',
+            url: lmsDesign.url(),
+            icon: BookOpen,
+        });
+    }
+
+    lmsItems.push(
+        {
+            id: 'lms-management',
+            title: 'Course Management',
+            url: lmsManagement.url(),
+            icon: LibraryBig,
+        },
+        {
+            id: 'lms-my-courses',
+            title: 'Course Saya',
+            url: lmsMyCourses.url(),
+            icon: BookOpenCheck,
+        },
+    );
+
     const examItems: NavMainItem[] = [];
     const studentAffairsItems: NavMainItem[] = [];
     const canteenItems: NavMainItem[] = [];
@@ -322,6 +357,9 @@ export function AppSidebar({
             : []),
         ...(curriculumItems.length > 0
             ? [{ id: 3, label: 'Kurikulum', items: curriculumItems }]
+            : []),
+        ...(lmsItems.length > 0
+            ? [{ id: 10, label: 'LMS', items: lmsItems }]
             : []),
         ...(teacherItems.length > 0
             ? [{ id: 4, label: 'Guru', items: teacherItems }]

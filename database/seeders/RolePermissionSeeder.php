@@ -180,5 +180,6 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         $this->call(ModuleDocumentPermissionSeeder::class);
+        $this->call(LmsPermissionSeeder::class);
     }
 }
