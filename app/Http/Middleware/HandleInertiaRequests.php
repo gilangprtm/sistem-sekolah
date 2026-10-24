@@ -63,6 +63,7 @@ class HandleInertiaRequests extends Middleware
                 'roles' => $request->user()?->getRoleNames(),
             ],
             'canAccessStudentViolations' => fn (): bool => $request->user()?->can('viewAny', StudentViolation::class) ?? false,
+            'canManageLmsCourses' => fn (): bool => $request->user()?->can('manage', LmsCourse::class) ?? false,
             'canDesignLmsCourses' => fn (): bool => $request->user()?->can('viewAny', LmsCourse::class) ?? false,
             'canAccessCounseling' => fn (): bool => $request->user()?->can('viewAny', CounselingNote::class) ?? false,
             'documentNavigation' => fn (): array => $request->user() === null ? [] : collect(DocumentModule::cases())

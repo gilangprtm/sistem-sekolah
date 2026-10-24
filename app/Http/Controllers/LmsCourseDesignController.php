@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LmsCourseTransitionRequest;
 use App\Http\Requests\SaveLmsCourseContentRequest;
 use App\Http\Requests\SaveLmsCourseRequest;
 use App\Models\LmsCourse;
@@ -9,6 +10,7 @@ use App\Models\LmsCourseRevision;
 use App\Models\Subject;
 use App\Models\Teacher;
 use App\Services\LmsCourseContent;
+use App\Services\LmsCourseLifecycle;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,8 +34,8 @@ class LmsCourseDesignController extends Controller
         $user = $request->user();
 
         $courses = LmsCourse::query()
-            ->with(['subject:id,name', 'designer:id,full_name', 'latestRevision'])
-            ->withExists(['revisions as has_approved_revision' => fn (Builder $revision) => $revision->where('status', LmsCourseRevision::STATUS_APPROVED)])
+            ->with(['subject:id,name', 'designer:id,full_name', 'latestRevision', 'approvedRevision'])
+            ->withExists(['revisions as has_approved_revision' => fn (Builder $revision): Builder => $revision->where('status', LmsCourseRevision::STATUS_APPROVED)])
             ->whereNull('archived_at')
             ->when(! $user->can('manageDesigns', LmsCourse::class), fn (Builder $query) => $query->where('created_by', $user->teacher->id ?? 0))
             ->when($search !== '', fn (Builder $query) => $query->whereHas('latestRevision', fn (Builder $revision) => $revision
@@ -43,71 +45,37 @@ class LmsCourseDesignController extends Controller
                 })))
             ->when($subjectId > 0, fn (Builder $query) => $query->where('subject_id', $subjectId))
             ->when($gradeLevel !== '', fn (Builder $query) => $query->where('grade_level', $gradeLevel))
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->paginate($perPage)
-            ->withQueryString()
+            ->orderByDesc('updated_at')->orderByDesc('id')->paginate($perPage)->withQueryString()
             ->through(fn (LmsCourse $course): array => [
-                'id' => $course->id,
-                'title' => $course->latestRevision->title ?? $course->title,
-                'description' => $course->latestRevision?->description,
-                'subject' => $course->subject->name,
-                'grade_level' => $course->grade_level,
-                'designer' => $course->designer->full_name,
+                'id' => $course->id, 'title' => $course->latestRevision->title ?? $course->title,
+                'description' => $course->latestRevision?->description, 'subject' => $course->subject->name,
+                'grade_level' => $course->grade_level, 'designer' => $course->designer->full_name,
                 'revision_number' => $course->latestRevision?->revision_number,
-                'status' => $course->latestRevision->status ?? 'draft',
-                'editable' => $request->user()->can('update', $course),
+                'status' => $course->approved_revision_id !== null ? 'active' : 'draft', 'editable' => $request->user()->can('update', $course),
+                'can_revise' => $request->user()->can('revise', $course),
+                'revision_id' => $course->latestRevision?->editToken($course),
                 'updated_at' => $course->updated_at?->toIso8601String(),
             ]);
 
         return Inertia::render('lms/design/index', [
             'courses' => $courses,
-            'filters' => [
-                'search' => $search,
-                'subject_id' => $subjectId > 0 ? $subjectId : null,
-                'grade_level' => $gradeLevel,
-                'per_page' => $perPage,
-            ],
-            'filterOptions' => [
-                'subjects' => Subject::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']),
-                'gradeLevels' => LmsCourse::GRADE_LEVELS,
-            ],
-            'designers' => $user->can('manageDesigns', LmsCourse::class)
-                ? Teacher::query()->where('status', 'active')->where('staff_type', 'guru')->orderBy('full_name')->get(['id', 'full_name'])
-                : [],
-            'canCreate' => $user->can('create', LmsCourse::class),
-            'canChooseDesigner' => $user->can('manageDesigns', LmsCourse::class),
+            'filters' => ['search' => $search, 'subject_id' => $subjectId > 0 ? $subjectId : null, 'grade_level' => $gradeLevel, 'per_page' => $perPage],
+            'filterOptions' => ['subjects' => Subject::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']), 'gradeLevels' => LmsCourse::GRADE_LEVELS],
+            'designers' => $user->can('manageDesigns', LmsCourse::class) ? Teacher::query()->where('status', 'active')->where('staff_type', 'guru')->orderBy('full_name')->get(['id', 'full_name']) : [],
+            'canCreate' => $user->can('create', LmsCourse::class), 'canChooseDesigner' => $user->can('manageDesigns', LmsCourse::class),
         ]);
     }
 
     public function store(SaveLmsCourseRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $designerId = $request->user()->can('manageDesigns', LmsCourse::class)
-            ? (int) $data['designer_id']
-            : (int) $request->user()->teacher?->id;
-
+        $designerId = $request->user()->can('manageDesigns', LmsCourse::class) ? (int) $data['designer_id'] : (int) $request->user()->teacher?->id;
         $course = DB::transaction(function () use ($data, $designerId): LmsCourse {
-            $course = LmsCourse::query()->create([
-                'subject_id' => $data['subject_id'],
-                'grade_level' => $data['grade_level'],
-                'title' => $data['title'],
-                'created_by' => $designerId,
-            ]);
-
-            $course->revisions()->create([
-                'revision_number' => 1,
-                'title' => $data['title'],
-                'description' => $data['description'] ?? null,
-                'status' => LmsCourseRevision::STATUS_DRAFT,
-                'content_schema_version' => 1,
-                'content' => ['materials' => []],
-                'created_by' => $designerId,
-            ]);
+            $course = LmsCourse::query()->create(['subject_id' => $data['subject_id'], 'grade_level' => $data['grade_level'], 'title' => $data['title'], 'created_by' => $designerId]);
+            $course->revisions()->create(['revision_number' => 1, 'title' => $data['title'], 'description' => $data['description'] ?? null, 'status' => LmsCourseRevision::STATUS_DRAFT, 'content_schema_version' => 1, 'content' => ['materials' => []], 'created_by' => $designerId]);
 
             return $course;
         });
-
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Draf course berhasil dibuat.']);
 
         return redirect()->route('lms.design.edit', $course);
@@ -116,50 +84,29 @@ class LmsCourseDesignController extends Controller
     public function edit(Request $request, LmsCourse $course): Response
     {
         abort_unless($request->user()->can('view', $course), 404);
-
-        $revision = $course->revisions()->orderByDesc('revision_number')->first();
-        abort_if($revision === null, 404);
+        $revision = $course->revisions()->orderByDesc('revision_number')->firstOrFail();
 
         return Inertia::render('lms/design/edit', [
             'course' => [
-                'id' => $course->id,
-                'subject_id' => $course->subject_id,
-                'grade_level' => $course->grade_level,
-                'title' => $revision->title,
-                'description' => $revision->description,
-                'revision_id' => $revision->editToken($course),
-                'revision_number' => $revision->revision_number,
-                'status' => $revision->status,
+                'id' => $course->id, 'subject_id' => $course->subject_id, 'grade_level' => $course->grade_level,
+                'title' => $revision->title, 'description' => $revision->description, 'revision_id' => $revision->editToken($course),
+                'revision_number' => $revision->revision_number, 'status' => $revision->lifecycleStatus(),
                 'editable' => $request->user()->can('update', $course),
+                'can_revise' => $request->user()->can('revise', $course),
                 'content' => $this->editorContent($revision, $course),
+                'has_approved_revision' => $course->hasApprovedRevision(),
             ],
             'contentUpdateUrl' => route('lms.design.content.update', $course),
             'subjects' => Subject::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']),
             'gradeLevels' => LmsCourse::GRADE_LEVELS,
+            'reviseUrl' => route('lms.design.revise', $course),
         ]);
     }
 
     /** @return array<string, mixed> */
     private function editorContent(LmsCourseRevision $revision, LmsCourse $course): array
     {
-        $content = $revision->content;
-        $content['materials'] ??= [];
-        foreach ($content['materials'] as &$material) {
-            $material['body'] = app(LmsCourseContent::class)->sanitize($material['body'] ?? '');
-            $material['sections'] ??= [];
-            foreach ($material['sections'] as &$section) {
-                $section['body'] = app(LmsCourseContent::class)->sanitize($section['body'] ?? '');
-            }
-            unset($section);
-        }
-        unset($material);
-        $assets = [];
-        foreach ($content['assets'] ?? [] as $id => $asset) {
-            $assets[$id] = ['name' => $asset['name'], 'type' => $asset['type'], 'url' => route('lms.design.media.view', [$course, $id])];
-        }
-        $content['assets'] = (object) $assets;
-
-        return $content;
+        return app(LmsCourseContent::class)->editorContent($revision, $course);
     }
 
     public function updateContent(SaveLmsCourseContentRequest $request, LmsCourse $course, LmsCourseContent $service): RedirectResponse
@@ -175,6 +122,9 @@ class LmsCourseDesignController extends Controller
                 Gate::authorize('update', $locked);
                 if (! hash_equals($revision->editToken($locked), $data['revision_id'])) {
                     throw ValidationException::withMessages(['revision_id' => 'Draf course telah berubah. Muat ulang halaman sebelum menyimpan.']);
+                }
+                if ($locked->hasApprovedRevision() && (((int) ($data['subject_id'] ?? $locked->subject_id) !== $locked->subject_id) || (($data['grade_level'] ?? $locked->grade_level) !== $locked->grade_level))) {
+                    throw ValidationException::withMessages(['subject_id' => 'Mata pelajaran dan jenjang tidak dapat diubah setelah publikasi pertama.']);
                 }
                 $assets = $revision->content['assets'] ?? [];
                 $references = [];
@@ -201,13 +151,10 @@ class LmsCourseDesignController extends Controller
                         throw ValidationException::withMessages(['content' => 'Lampiran tidak tersedia pada course ini.']);
                     }
                 }
-                $locked->update(array_intersect_key($data, array_flip(['title', 'subject_id', 'grade_level'])));
+                $identityFields = $locked->hasApprovedRevision() ? ['subject_id', 'grade_level'] : ['title', 'subject_id', 'grade_level'];
+                $locked->update(array_intersect_key($data, array_flip($identityFields)));
                 $locked->touch();
-                $revision->update([
-                    'title' => $data['title'] ?? $revision->title,
-                    'description' => array_key_exists('description', $data) ? $data['description'] : $revision->description,
-                    'content' => [...$content, 'assets' => $assets],
-                ]);
+                $revision->update(['title' => $data['title'] ?? $revision->title, 'description' => array_key_exists('description', $data) ? $data['description'] : $revision->description, 'content' => [...$content, 'assets' => $assets]]);
             });
         } catch (\Throwable $exception) {
             foreach ($storedPaths as $path) {
@@ -223,17 +170,16 @@ class LmsCourseDesignController extends Controller
     public function viewMedia(Request $request, LmsCourse $course, string $media, LmsCourseContent $service): StreamedResponse
     {
         abort_unless($request->user()->can('view', $course), 404);
-        $revision = $course->latestRevision;
-        abort_if($revision === null, 404);
-        $referenced = collect($service->media($revision->content))->contains('asset_id', $media);
-        $asset = $revision->content['assets'][$media] ?? null;
-        abort_unless($referenced && is_array($asset) && Str::isUuid($media), 404);
-        abort_unless(str_starts_with($asset['path'], 'lms/courses/'.$course->id.'/') && Storage::disk('local')->exists($asset['path']), 404);
 
-        return Storage::disk('local')->response($asset['path'], $asset['name'], [
-            'Content-Type' => $asset['mime'], 'X-Content-Type-Options' => 'nosniff',
-            'Cache-Control' => 'private, no-store', 'Content-Security-Policy' => "sandbox; default-src 'none'",
-        ]);
+        return $service->mediaResponse($course, $course->latestRevision, $media);
+    }
+
+    public function revise(LmsCourseTransitionRequest $request, LmsCourse $course, LmsCourseLifecycle $lifecycle): RedirectResponse
+    {
+        $lifecycle->revise($request->user(), $course, $request->validated('revision_id'));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Revisi baru berhasil dibuat.']);
+
+        return redirect()->route('lms.design.edit', $course);
     }
 
     public function update(SaveLmsCourseRequest $request, LmsCourse $course): RedirectResponse
@@ -242,26 +188,19 @@ class LmsCourseDesignController extends Controller
         DB::transaction(function () use ($course, $data): void {
             $lockedCourse = LmsCourse::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
             $revision = $lockedCourse->revisions()->orderByDesc('revision_number')->lockForUpdate()->first();
-
-            if ($revision === null || ! hash_equals($revision->editToken($lockedCourse), $data['revision_id'])) {
-                throw ValidationException::withMessages([
-                    'revision_id' => 'Draf course telah berubah. Muat ulang halaman sebelum menyimpan.',
-                ]);
-            }
-
             Gate::authorize('update', $lockedCourse);
-
+            if ($revision === null || ! hash_equals($revision->editToken($lockedCourse), $data['revision_id'])) {
+                throw ValidationException::withMessages(['revision_id' => 'Draf course telah berubah. Muat ulang halaman sebelum menyimpan.']);
+            }
+            if ($lockedCourse->hasApprovedRevision() && ($data['subject_id'] !== $lockedCourse->subject_id || $data['grade_level'] !== $lockedCourse->grade_level)) {
+                throw ValidationException::withMessages(['subject_id' => 'Mata pelajaran dan jenjang tidak dapat diubah setelah publikasi pertama.']);
+            }
             $lockedCourse->update([
-                'subject_id' => $data['subject_id'],
-                'grade_level' => $data['grade_level'],
-                'title' => $data['title'],
+                'subject_id' => $data['subject_id'], 'grade_level' => $data['grade_level'],
+                'title' => $lockedCourse->hasApprovedRevision() ? $lockedCourse->title : $data['title'],
             ]);
-            $revision->update([
-                'title' => $data['title'],
-                'description' => $data['description'] ?? null,
-            ]);
+            $revision->update(['title' => $data['title'], 'description' => $data['description'] ?? null]);
         });
-
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Draf course berhasil diperbarui.']);
 
         return redirect()->route('lms.design.edit', $course);

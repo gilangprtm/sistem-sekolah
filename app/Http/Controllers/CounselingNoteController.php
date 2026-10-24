@@ -32,8 +32,6 @@ class CounselingNoteController extends Controller
             ->paginate($request->integer('per_page', 10))
             ->through(fn (CounselingNote $note): array => $this->summary($note));
 
-        Inertia::encryptHistory();
-
         $response = Inertia::render('counseling/notes/index', [
             'notes' => $notes,
             'filters' => ['search' => $search],

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use stdClass;
 
 class KantinDashboardController extends Controller
 {
@@ -52,7 +53,7 @@ class KantinDashboardController extends Controller
             ->orderByDesc('sales.created_at')
             ->orderByDesc('sales.id')
             ->paginate($perPage, ['*'], 'transaction_page')
-            ->through(static fn (object $transaction): array => [
+            ->through(static fn (stdClass $transaction): array => [
                 'id' => (int) $transaction->id,
                 'total' => (string) $transaction->total,
                 'created_at' => Carbon::parse((string) $transaction->created_at)->utc()->toRfc3339String(),

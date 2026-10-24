@@ -234,11 +234,10 @@ class LmsCourseDesignTest extends TestCase
         $this->assertDatabaseHas('m_lms_courses', ['id' => $course->id, 'title' => 'Awal']);
     }
 
-    #[TestWith(['pending_approval', false, false])]
+    #[TestWith(['pending_approval', true, false])]
     #[TestWith(['approved', false, false])]
-    #[TestWith(['rejected', false, false])]
+    #[TestWith(['rejected', true, false])]
     #[TestWith(['draft', true, false])]
-    #[TestWith(['draft', false, true])]
     public function test_curriculum_cannot_bypass_course_lifecycle_locks(string $status, bool $archived, bool $previouslyApproved): void
     {
         $user = User::factory()->create();
@@ -305,9 +304,7 @@ class LmsCourseDesignTest extends TestCase
         $this->assertDatabaseCount('tr_lms_course_revisions', 1);
     }
 
-    #[TestWith(['pending_approval'])]
     #[TestWith(['approved'])]
-    #[TestWith(['rejected'])]
     public function test_non_draft_revision_cannot_be_overwritten(string $status): void
     {
         [$user, $teacher] = $this->teacher();
@@ -321,7 +318,7 @@ class LmsCourseDesignTest extends TestCase
         $this->assertDatabaseHas('tr_lms_course_revisions', ['course_id' => $course->id, 'status' => $status, 'title' => 'Awal']);
     }
 
-    public function test_archived_and_previously_approved_courses_cannot_be_changed(): void
+    public function test_archived_courses_are_locked_and_new_drafts_preserve_published_identity(): void
     {
         [$user, $teacher] = $this->teacher();
         $course = $this->course($teacher);
@@ -330,10 +327,17 @@ class LmsCourseDesignTest extends TestCase
         $this->patch(route('lms.design.update', $course), $this->payload())->assertForbidden();
 
         DB::table('m_lms_courses')->where('id', $course->id)->update(['archived_at' => null]);
-        $course->latestRevision->update(['status' => 'approved']);
+        $course = $course->fresh();
+        $active = $course->latestRevision;
+        $active->update(['status' => 'approved']);
+        $course->forceFill(['approved_revision_id' => $active->id])->save();
         $course->revisions()->create(['revision_number' => 2, 'title' => 'Draf berikutnya', 'content' => ['materials' => []], 'created_by' => $teacher->id]);
-        $this->patch(route('lms.design.update', $course), $this->payload())->assertForbidden();
-        $this->assertDatabaseHas('m_lms_courses', ['id' => $course->id, 'title' => 'Awal']);
+        $course = $course->fresh();
+        $payload = [...$this->payload(), 'revision_id' => $course->latestRevision->editToken($course)];
+        $this->patch(route('lms.design.update', $course), $payload)->assertSessionHasErrors('subject_id');
+        $this->patch(route('lms.design.update', $course), [...$payload, 'subject_id' => $course->subject_id, 'grade_level' => $course->grade_level])->assertSessionHasNoErrors();
+        $this->assertSame('Awal', $active->fresh()->title);
+        $this->assertSame($active->id, $course->fresh()->approved_revision_id);
     }
 
     public function test_stale_edit_is_rejected_even_for_changes_within_same_second(): void

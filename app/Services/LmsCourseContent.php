@@ -2,12 +2,17 @@
 
 namespace App\Services;
 
+use App\Models\LmsCourse;
+use App\Models\LmsCourseRevision;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LmsCourseContent
 {
@@ -35,9 +40,11 @@ class LmsCourseContent
         }
         $rules = [
             'materials' => ['present', 'array', 'list', 'max:100'],
-            'materials.*' => ['required', 'array:id,title,body,media,questions,sections'],
+            'materials.*' => ['required', 'array:id,title,body,media,questions,sections,layout'],
+            'materials.*.layout' => ['sometimes', 'required', 'string', Rule::in(['media_first', 'text_first'])],
             'materials.*.sections' => ['present', 'array', 'list', 'max:50'],
-            'materials.*.sections.*' => ['required', 'array:id,title,body,media,questions'],
+            'materials.*.sections.*' => ['required', 'array:id,title,body,media,questions,layout'],
+            'materials.*.sections.*.layout' => ['sometimes', 'required', 'string', Rule::in(['media_first', 'text_first'])],
         ];
         foreach (['materials.*', 'materials.*.sections.*'] as $path) {
             $rules += [
@@ -220,6 +227,52 @@ class LmsCourseContent
         }
 
         return array_values($media);
+    }
+
+    /** @return array<string, mixed> */
+    public function editorContent(LmsCourseRevision $revision, LmsCourse $course, bool $management = false): array
+    {
+        $content = $revision->content;
+        $content['materials'] ??= [];
+        foreach ($content['materials'] as &$material) {
+            $material['body'] = $this->sanitize($material['body'] ?? '');
+            $material['media'] ??= [];
+            $material['questions'] ??= [];
+            $material['sections'] ??= [];
+            foreach ($material['sections'] as &$section) {
+                $section['body'] = $this->sanitize($section['body'] ?? '');
+                $section['media'] ??= [];
+                $section['questions'] ??= [];
+            }
+            unset($section);
+        }
+        unset($material);
+        $assets = [];
+        foreach ($content['assets'] ?? [] as $id => $asset) {
+            $assets[$id] = [
+                'name' => $asset['name'], 'type' => $asset['type'],
+                'url' => $management
+                    ? route('lms.management.media', [$course, $revision, $id])
+                    : route('lms.design.media.view', [$course, $id]),
+            ];
+        }
+        $content['assets'] = (object) $assets;
+
+        return $content;
+    }
+
+    public function mediaResponse(LmsCourse $course, LmsCourseRevision $revision, string $media): StreamedResponse
+    {
+        abort_unless($revision->course_id === $course->id, 404);
+        $referenced = collect($this->media($revision->content))->contains('asset_id', $media);
+        $asset = $revision->content['assets'][$media] ?? null;
+        abort_unless($referenced && is_array($asset) && Str::isUuid($media), 404);
+        abort_unless(str_starts_with($asset['path'], 'lms/courses/'.$course->id.'/') && Storage::disk('local')->exists($asset['path']), 404);
+
+        return Storage::disk('local')->response($asset['path'], $asset['name'], [
+            'Content-Type' => $asset['mime'], 'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store', 'Content-Security-Policy' => "sandbox; default-src 'none'",
+        ]);
     }
 
     private function invalid(string $key, string $message): never

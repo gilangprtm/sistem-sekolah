@@ -157,6 +157,28 @@ class StudentViolationTest extends TestCase
         $this->assertSame(['id', 'full_name', 'nisn'], array_keys($this->getJson(route('student-affairs.violations.students'))->json('students.0')));
     }
 
+    public function test_index_uses_standard_history_for_initial_and_inertia_navigation(): void
+    {
+        $user = $this->kesiswaan();
+        StudentViolation::factory()->create(['content' => 'Uraian pelanggaran privat.']);
+
+        $response = $this->actingAs($user)->get(route('student-affairs.violations.index'))
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertViewHas('page', fn (array $page): bool => ! ($page['encryptHistory'] ?? false));
+        $headers = ['X-Inertia' => 'true', 'X-Inertia-Version' => $response->viewData('page')['version']];
+        $this->get(route('student-affairs.violations.index'), $headers)
+            ->assertOk()->assertHeader('X-Inertia', 'true')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonMissingPath('encryptHistory')
+            ->assertJsonPath('component', 'student-affairs/violations/index')
+            ->assertJsonCount(1, 'props.notes.data')
+            ->assertJsonMissingPath('props.notes.data.0.content')
+            ->assertDontSee('Uraian pelanggaran privat.');
+        $this->get(route('dashboard'), $headers)
+            ->assertOk()->assertJsonPath('component', 'dashboard')
+            ->assertJsonMissingPath('encryptHistory')->assertJsonMissingPath('props.notes');
+    }
+
     public function test_required_and_optional_fields_are_validated_and_rejected_payload_does_not_mutate(): void
     {
         $user = $this->kesiswaan();

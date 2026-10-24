@@ -13,7 +13,6 @@ class LmsPermissionSeeder extends Seeder
     private const PERMISSIONS = [
         'lms.course.view',
         'lms.course.design',
-        'lms.course.approve',
         'lms.course.archive',
         'lms.run.manage',
         'lms.result.view',
@@ -27,11 +26,12 @@ class LmsPermissionSeeder extends Seeder
 
         try {
             DB::transaction(function (): void {
+                Permission::query()->where('name', 'lms.course.approve')->where('guard_name', 'web')->delete();
                 $permissions = collect(self::PERMISSIONS)
                     ->mapWithKeys(fn (string $name): array => [$name => Permission::findOrCreate($name, 'web')]);
 
                 $roles = [
-                    'Kurikulum' => ['lms.course.view', 'lms.course.design', 'lms.course.approve', 'lms.course.archive'],
+                    'Kurikulum' => ['lms.course.view', 'lms.course.design', 'lms.course.archive'],
                     'Guru' => ['lms.course.view', 'lms.course.design', 'lms.run.manage', 'lms.result.view'],
                     'Siswa' => ['lms.course.view', 'lms.course.learn'],
                 ];

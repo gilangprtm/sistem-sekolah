@@ -6,7 +6,7 @@ use App\Models\KantinBarang;
 use App\Models\KantinCategory;
 use App\Models\User;
 use App\Services\KantinBarangService;
-use Database\Seeders\KantinSeeder;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -352,7 +352,7 @@ class KantinBarangTest extends TestCase
         ]);
     }
 
-    public function test_code_prefix_is_shared_with_seeder_and_handles_normalized_collisions(): void
+    public function test_code_prefix_handles_normalized_collisions(): void
     {
         $this->assertSame('A-B', KantinBarangService::codePrefix('A+B'));
         $this->assertSame('A-B', KantinBarangService::codePrefix('A B'));
@@ -367,12 +367,33 @@ class KantinBarangTest extends TestCase
         $service = app(KantinBarangService::class);
         $this->assertSame('A-B-0002', $service->nextCode($collidingCategory));
 
-        $this->seed(KantinSeeder::class);
-        $seeded = KantinBarang::query()->where('name', 'Buku Tulis')->firstOrFail();
-        $this->assertSame(
-            KantinBarangService::codePrefix($seeded->category->name).'-0001',
-            $seeded->kode_barang,
-        );
+    }
+
+    public function test_database_seed_does_not_create_sample_canteen_categories_or_products(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertDatabaseCount('m_kantin_kategori', 0);
+        $this->assertDatabaseCount('m_kantin_barang', 0);
+    }
+
+    public function test_database_seed_preserves_existing_canteen_products_and_categories(): void
+    {
+        $category = KantinCategory::factory()->create(['name' => 'Makanan', 'slug' => 'makanan']);
+        $product = KantinBarang::factory()->create([
+            'kantin_kategori_id' => $category->id, 'name' => 'Roti', 'brand' => 'Toko sekolah',
+            'satuan' => 'pak', 'harga' => '8750.50', 'status' => 'archived',
+        ]);
+        $beforeCategory = $category->fresh()->getAttributes();
+        $beforeProduct = $product->fresh()->getAttributes();
+
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame(1, KantinCategory::query()->count());
+        $this->assertSame(1, KantinBarang::query()->count());
+        $this->assertSame($beforeCategory, $category->fresh()->getAttributes());
+        $this->assertSame($beforeProduct, $product->fresh()->getAttributes());
     }
 
     public function test_category_delete_is_restricted_and_sidebar_contract_is_permission_gated(): void

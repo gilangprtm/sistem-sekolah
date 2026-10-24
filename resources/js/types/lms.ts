@@ -1,3 +1,11 @@
+export const courseManagementStatusLabels: Record<string, string> = {
+    draft: 'Draft',
+    active: 'Aktif',
+    archived: 'Arsip',
+};
+
+export const courseStatusLabels = courseManagementStatusLabels;
+
 export type CourseQuestion = {
     id: string;
     type: 'multiple_choice' | 'essay';
@@ -15,6 +23,7 @@ export type CoursePage = {
     id: string;
     title: string;
     body: string;
+    layout?: 'media_first' | 'text_first';
     media: CourseMedia[];
     questions: CourseQuestion[];
 };

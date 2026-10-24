@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
+import AlertError from '@/components/alert-error';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
@@ -13,6 +14,7 @@ import type {
 } from '@/components/lms/course-fields';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
     DialogDescription,
@@ -27,8 +29,9 @@ import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
 import { formatWitaDate } from '@/lib/date-time';
 import { design } from '@/routes/lms';
-import { edit, store } from '@/routes/lms/design';
+import { edit, revise, store } from '@/routes/lms/design';
 import type { BreadcrumbItem } from '@/types';
+import { courseStatusLabels } from '@/types/lms';
 
 type Course = {
     id: number;
@@ -40,6 +43,8 @@ type Course = {
     revision_number: number;
     status: string;
     editable: boolean;
+    can_revise: boolean;
+    revision_id: string;
     updated_at: string | null;
 };
 
@@ -67,12 +72,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'LMS', href: design.url() },
     { title: 'Perancangan Course', href: design.url() },
 ];
-const statuses: Record<string, string> = {
-    draft: 'Draf',
-    pending_approval: 'Menunggu persetujuan',
-    approved: 'Disetujui',
-    rejected: 'Perlu diperbaiki',
-};
 
 export default function LmsCourseDesignIndex({
     courses,
@@ -89,6 +88,27 @@ export default function LmsCourseDesignIndex({
     const [gradeLevel, setGradeLevel] = useState(filters.grade_level ?? '');
     const [selected, setSelected] = useState<number[]>([]);
     const [open, setOpen] = useState(false);
+    const confirm = useConfirmation();
+    const [transitionErrors, setTransitionErrors] = useState<string[]>([]);
+    const transition = async (course: Course) => {
+        if (
+            await confirm({
+                title: 'Buat revisi baru?',
+                description:
+                    'Revisi terakhir disalin ke Draft baru. Versi aktif tetap digunakan sampai revisi baru diaktifkan.',
+            })
+        ) {
+            router.post(
+                revise.url(course.id),
+                { revision_id: course.revision_id },
+                {
+                    onError: (errors) =>
+                        setTransitionErrors(Object.values(errors)),
+                    onBefore: () => setTransitionErrors([]),
+                },
+            );
+        }
+    };
     const form = useForm<CourseFormData>({
         title: '',
         subject_id: '',
@@ -152,7 +172,9 @@ export default function LmsCourseDesignIndex({
             header: 'Status',
             cell: (course) => (
                 <div className="grid gap-1">
-                    <span>{statuses[course.status] ?? course.status}</span>
+                    <span>
+                        {courseStatusLabels[course.status] ?? course.status}
+                    </span>
                     <span className="text-xs text-muted-foreground">
                         Revisi {course.revision_number || 1}
                     </span>
@@ -266,6 +288,12 @@ export default function LmsCourseDesignIndex({
                         </div>
                     </div>
                 </div>
+                {transitionErrors.length > 0 && (
+                    <AlertError
+                        title="Tindakan belum berhasil"
+                        errors={transitionErrors}
+                    />
+                )}
                 <DataTableShell
                     data={courses.data}
                     columns={columns}
@@ -282,14 +310,24 @@ export default function LmsCourseDesignIndex({
                     rowActions={{
                         label: (course) => `Aksi course ${course.title}`,
                         render: (course) => (
-                            <DropdownMenuItem
-                                disabled={!course.editable}
-                                onClick={() =>
-                                    router.visit(edit.url(course.id))
-                                }
-                            >
-                                Buka draf
-                            </DropdownMenuItem>
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() =>
+                                        router.visit(edit.url(course.id))
+                                    }
+                                >
+                                    {course.editable
+                                        ? 'Buka draf'
+                                        : 'Lihat revisi'}
+                                </DropdownMenuItem>
+                                {course.can_revise && (
+                                    <DropdownMenuItem
+                                        onClick={() => transition(course)}
+                                    >
+                                        Buat revisi baru
+                                    </DropdownMenuItem>
+                                )}
+                            </>
                         ),
                     }}
                     pagination={{
@@ -315,9 +353,9 @@ export default function LmsCourseDesignIndex({
                         <DialogHeader>
                             <DialogTitle>Rancang Course Baru</DialogTitle>
                             <DialogDescription>
-                                Course ini merupakan aset sekolah. Materi dan
-                                persetujuan dapat ditambahkan setelah draf
-                                tersimpan.
+                                Course ini merupakan aset sekolah. Lengkapi
+                                materi setelah Draft tersimpan, lalu aktifkan
+                                melalui Course Management.
                             </DialogDescription>
                         </DialogHeader>
                         <CourseFields

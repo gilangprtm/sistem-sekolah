@@ -177,6 +177,28 @@ class CounselingNoteTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('notes.data', 0));
     }
 
+    public function test_index_uses_standard_history_for_initial_and_inertia_navigation(): void
+    {
+        $user = $this->counselor();
+        CounselingNote::factory()->create(['content' => 'Isi konseling privat.']);
+
+        $response = $this->actingAs($user)->get(route('counseling.notes.index'))
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertViewHas('page', fn (array $page): bool => ! ($page['encryptHistory'] ?? false));
+        $headers = ['X-Inertia' => 'true', 'X-Inertia-Version' => $response->viewData('page')['version']];
+        $this->get(route('counseling.notes.index'), $headers)
+            ->assertOk()->assertHeader('X-Inertia', 'true')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonMissingPath('encryptHistory')
+            ->assertJsonPath('component', 'counseling/notes/index')
+            ->assertJsonCount(1, 'props.notes.data')
+            ->assertJsonMissingPath('props.notes.data.0.content')
+            ->assertDontSee('Isi konseling privat.');
+        $this->get(route('dashboard'), $headers)
+            ->assertOk()->assertJsonPath('component', 'dashboard')
+            ->assertJsonMissingPath('encryptHistory')->assertJsonMissingPath('props.notes');
+    }
+
     public function test_student_lookup_is_bounded_searchable_and_exposes_only_minimum_fields(): void
     {
         $user = $this->counselor();

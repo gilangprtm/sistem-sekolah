@@ -31,7 +31,8 @@ const sections: Record<
     },
     management: {
         title: 'Course Management',
-        description: 'Pengelolaan dan persetujuan course oleh Kurikulum.',
+        description:
+            'Pengelolaan Draft, Course aktif, dan arsip oleh Kurikulum.',
         emptyTitle: 'Pengelolaan course akan tersedia pada tahap berikutnya.',
         icon: LibraryBig,
         url: management.url,

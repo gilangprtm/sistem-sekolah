@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use stdClass;
 
 class KantinSaldoController extends Controller
 {
@@ -120,7 +121,7 @@ class KantinSaldoController extends Controller
             ])
             ->groupBy('penjualan_id');
 
-        $purchaseHistory->through(function (object $sale) use ($purchaseDetails): array {
+        $purchaseHistory->through(function (stdClass $sale) use ($purchaseDetails): array {
             return [
                 'id' => (int) $sale->id,
                 'type' => 'purchase',
@@ -132,7 +133,7 @@ class KantinSaldoController extends Controller
                     'nis' => $sale->nis,
                     'full_name' => $sale->full_name,
                 ],
-                'details' => collect($purchaseDetails->get($sale->id, []))->map(static fn (object $detail): array => [
+                'details' => collect($purchaseDetails->get($sale->id, []))->map(static fn (stdClass $detail): array => [
                     'barang_name' => (string) $detail->barang_name,
                     'quantity' => (int) $detail->quantity,
                     'harga' => number_format((float) $detail->harga, 2, '.', ''),

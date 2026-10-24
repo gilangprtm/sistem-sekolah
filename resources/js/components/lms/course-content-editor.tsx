@@ -7,6 +7,13 @@ import { useConfirmation } from '@/components/ui/confirmation-provider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { createLmsContentId as newId } from '@/lib/lms-content-id';
@@ -445,6 +452,30 @@ export default function CourseContentEditor({
                                 )}
                             </>
                         )}
+                        <div className="grid gap-2 sm:max-w-xs">
+                            <Label htmlFor="content-page-layout">
+                                Urutan konten di pratinjau
+                            </Label>
+                            <Select
+                                value={page.layout ?? 'media_first'}
+                                disabled={disabled}
+                                onValueChange={(
+                                    value: 'media_first' | 'text_first',
+                                ) => updatePage({ layout: value })}
+                            >
+                                <SelectTrigger id="content-page-layout">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="media_first">
+                                        Media di atas
+                                    </SelectItem>
+                                    <SelectItem value="text_first">
+                                        Teks di atas
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <div className="grid gap-2">
                             <Label htmlFor="content-page-body">
                                 Teks Materi
@@ -456,195 +487,260 @@ export default function CourseContentEditor({
                                 disabled={disabled}
                                 onChange={(body) => updatePage({ body })}
                             />
-                            <p className="text-xs text-muted-foreground">
+                            <p className="mt-2 text-xs text-muted-foreground">
                                 Format teks didukung saat ditempel. Elemen yang
                                 tidak didukung dan tautan tidak aman akan
                                 dibuang saat disimpan.
                             </p>
                         </div>
-                        <div className="grid gap-3 rounded-xl border p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <h4 className="font-semibold">
-                                    Lampiran dan video
-                                </h4>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={disabled}
-                                        onClick={addYouTube}
+                        <div className="grid min-w-0 gap-4 rounded-xl border p-4">
+                            <h4 className="font-semibold">
+                                Lampiran dan video
+                            </h4>
+                            <div className="grid min-w-0 items-start gap-5 lg:grid-cols-2">
+                                {(['youtube', 'file'] as const).map((group) => (
+                                    <section
+                                        key={group}
+                                        aria-label={
+                                            group === 'youtube'
+                                                ? 'Video YouTube'
+                                                : 'Gambar dan PDF'
+                                        }
+                                        className="grid min-w-0 gap-3"
                                     >
-                                        Tambah YouTube
-                                    </Button>
-                                    <Label
-                                        htmlFor="content-media-upload"
-                                        className="sr-only"
-                                    >
-                                        Unggah gambar atau PDF
-                                    </Label>
-                                    <Input
-                                        id="content-media-upload"
-                                        type="file"
-                                        accept="image/jpeg,image/png,image/webp,application/pdf"
-                                        disabled={disabled}
-                                        aria-describedby="content-media-upload-help content-media-upload-error"
-                                        aria-invalid={Boolean(uploadError)}
-                                        onChange={(event) => {
-                                            const file =
-                                                event.target.files?.[0];
-                                            setUploadError(null);
-
-                                            if (
-                                                file &&
-                                                file.size > 10 * 1024 * 1024
-                                            ) {
-                                                setUploadError(
-                                                    'Ukuran file maksimal 10 MB.',
-                                                );
-                                            } else if (
-                                                file &&
-                                                page.media.length >= 20
-                                            ) {
-                                                setUploadError(
-                                                    'Setiap Materi atau Bagian dapat memiliki maksimal 20 lampiran.',
-                                                );
-                                            } else if (file) {
-                                                addUpload(file);
-                                            }
-
-                                            event.target.value = '';
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            {(page.media ?? []).map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="grid gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]"
-                                >
-                                    <Label>
-                                        {item.type === 'youtube'
-                                            ? 'Tautan YouTube'
-                                            : item.type === 'pdf'
-                                              ? 'PDF'
-                                              : 'Gambar'}
-                                    </Label>
-                                    {item.type === 'youtube' ? (
-                                        <Input
-                                            value={item.url ?? ''}
-                                            disabled={disabled}
-                                            type="url"
-                                            placeholder="https://youtu.be/..."
-                                            onChange={(event) =>
-                                                updatePage({
-                                                    media: (
-                                                        page.media ?? []
-                                                    ).map((media) =>
-                                                        media.id === item.id
-                                                            ? {
-                                                                  ...media,
-                                                                  url: event
-                                                                      .target
-                                                                      .value,
-                                                              }
-                                                            : media,
-                                                    ),
-                                                })
-                                            }
-                                        />
-                                    ) : (
-                                        <p className="truncate text-sm text-muted-foreground">
-                                            {item.caption ||
-                                                content.assets?.[
-                                                    item.asset_id ?? ''
-                                                ]?.name ||
-                                                'Lampiran terpilih'}
-                                        </p>
-                                    )}
-                                    <div className="flex flex-wrap gap-2 sm:col-start-2">
-                                        {item.asset_id &&
-                                            content.assets?.[item.asset_id] && (
-                                                <a
-                                                    className="text-sm underline"
-                                                    href={
-                                                        content.assets[
-                                                            item.asset_id
-                                                        ].url
-                                                    }
-                                                    target="_blank"
-                                                    rel="noreferrer"
+                                        {group === 'youtube' ? (
+                                            <div className="grid gap-2">
+                                                <p className="text-sm font-medium">
+                                                    Video YouTube
+                                                </p>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    disabled={disabled}
+                                                    onClick={addYouTube}
+                                                    className="w-full"
                                                 >
-                                                    Buka lampiran tersimpan
-                                                </a>
-                                            )}
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            disabled={disabled}
-                                            onClick={() =>
-                                                updatePage({
-                                                    media: page.media.filter(
-                                                        (media) =>
-                                                            media.id !==
-                                                            item.id,
-                                                    ),
-                                                })
-                                            }
-                                        >
-                                            Hapus media
-                                        </Button>
-                                    </div>
-                                    {item.type === 'image' &&
-                                        item.asset_id &&
-                                        content.assets?.[item.asset_id] && (
-                                            <img
-                                                className="max-h-72 max-w-full rounded-lg object-contain sm:col-start-2"
-                                                src={
-                                                    content.assets[
-                                                        item.asset_id
-                                                    ].url
-                                                }
-                                                alt={
-                                                    item.caption ??
-                                                    'Gambar materi'
-                                                }
-                                            />
+                                                    Tambah YouTube
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="grid min-w-0 gap-2">
+                                                <Label htmlFor="content-media-upload">
+                                                    Tambah media (gambar atau
+                                                    PDF)
+                                                </Label>
+                                                <Input
+                                                    id="content-media-upload"
+                                                    type="file"
+                                                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                                                    disabled={disabled}
+                                                    aria-describedby="content-media-upload-help content-media-upload-error"
+                                                    aria-invalid={Boolean(
+                                                        uploadError,
+                                                    )}
+                                                    onChange={(event) => {
+                                                        const file =
+                                                            event.target
+                                                                .files?.[0];
+                                                        setUploadError(null);
+
+                                                        if (
+                                                            file &&
+                                                            file.size >
+                                                                10 * 1024 * 1024
+                                                        ) {
+                                                            setUploadError(
+                                                                'Ukuran file maksimal 10 MB.',
+                                                            );
+                                                        } else if (
+                                                            file &&
+                                                            page.media.length >=
+                                                                20
+                                                        ) {
+                                                            setUploadError(
+                                                                'Setiap Materi atau Bagian dapat memiliki maksimal 20 lampiran.',
+                                                            );
+                                                        } else if (file) {
+                                                            addUpload(file);
+                                                        }
+
+                                                        event.target.value = '';
+                                                    }}
+                                                />
+                                            </div>
                                         )}
-                                    {item.type === 'youtube' &&
-                                        /^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/.test(
-                                            item.url ?? '',
-                                        ) && (
-                                            <iframe
-                                                title={`Video ${item.id}`}
-                                                className="aspect-video w-full rounded-lg sm:col-start-2"
-                                                src={`https://www.youtube-nocookie.com/embed/${item.url?.split('v=')[1]}`}
-                                                loading="lazy"
-                                                referrerPolicy="strict-origin-when-cross-origin"
-                                                allowFullScreen
-                                            />
+                                        {page.media
+                                            .filter((item) =>
+                                                group === 'youtube'
+                                                    ? item.type === 'youtube'
+                                                    : item.type !== 'youtube',
+                                            )
+                                            .map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className="grid min-w-0 gap-2"
+                                                >
+                                                    <Label
+                                                        htmlFor={
+                                                            item.type ===
+                                                            'youtube'
+                                                                ? `content-media-${item.id}`
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        {item.type === 'youtube'
+                                                            ? 'Tautan YouTube'
+                                                            : item.type ===
+                                                                'pdf'
+                                                              ? 'PDF'
+                                                              : 'Gambar'}
+                                                    </Label>
+                                                    {item.type === 'youtube' ? (
+                                                        <Input
+                                                            id={`content-media-${item.id}`}
+                                                            value={
+                                                                item.url ?? ''
+                                                            }
+                                                            disabled={disabled}
+                                                            type="url"
+                                                            placeholder="https://youtu.be/..."
+                                                            onChange={(event) =>
+                                                                updatePage({
+                                                                    media: (
+                                                                        page.media ??
+                                                                        []
+                                                                    ).map(
+                                                                        (
+                                                                            media,
+                                                                        ) =>
+                                                                            media.id ===
+                                                                            item.id
+                                                                                ? {
+                                                                                      ...media,
+                                                                                      url: event
+                                                                                          .target
+                                                                                          .value,
+                                                                                  }
+                                                                                : media,
+                                                                    ),
+                                                                })
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        <p className="truncate text-sm text-muted-foreground">
+                                                            {item.caption ||
+                                                                content
+                                                                    .assets?.[
+                                                                    item.asset_id ??
+                                                                        ''
+                                                                ]?.name ||
+                                                                'Lampiran terpilih'}
+                                                        </p>
+                                                    )}
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {item.asset_id &&
+                                                            content.assets?.[
+                                                                item.asset_id
+                                                            ] && (
+                                                                <a
+                                                                    className="text-sm underline"
+                                                                    href={
+                                                                        content
+                                                                            .assets[
+                                                                            item
+                                                                                .asset_id
+                                                                        ].url
+                                                                    }
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                >
+                                                                    Buka
+                                                                    lampiran
+                                                                    tersimpan
+                                                                </a>
+                                                            )}
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            disabled={disabled}
+                                                            onClick={() =>
+                                                                updatePage({
+                                                                    media: page.media.filter(
+                                                                        (
+                                                                            media,
+                                                                        ) =>
+                                                                            media.id !==
+                                                                            item.id,
+                                                                    ),
+                                                                })
+                                                            }
+                                                        >
+                                                            Hapus media
+                                                        </Button>
+                                                    </div>
+                                                    {item.type === 'image' &&
+                                                        item.asset_id &&
+                                                        content.assets?.[
+                                                            item.asset_id
+                                                        ] && (
+                                                            <img
+                                                                className="max-h-72 max-w-full rounded-lg object-contain"
+                                                                src={
+                                                                    content
+                                                                        .assets[
+                                                                        item
+                                                                            .asset_id
+                                                                    ].url
+                                                                }
+                                                                alt={
+                                                                    item.caption ??
+                                                                    'Gambar materi'
+                                                                }
+                                                            />
+                                                        )}
+                                                    {item.type === 'youtube' &&
+                                                        /^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/.test(
+                                                            item.url ?? '',
+                                                        ) && (
+                                                            <iframe
+                                                                title={`Video ${item.id}`}
+                                                                className="aspect-video w-full rounded-lg"
+                                                                src={`https://www.youtube-nocookie.com/embed/${item.url?.split('v=')[1]}`}
+                                                                loading="lazy"
+                                                                referrerPolicy="strict-origin-when-cross-origin"
+                                                                allowFullScreen
+                                                            />
+                                                        )}
+                                                </div>
+                                            ))}
+                                        {group === 'file' && (
+                                            <>
+                                                <p
+                                                    id="content-media-upload-help"
+                                                    className="text-xs text-muted-foreground"
+                                                >
+                                                    JPEG, PNG, WebP, atau PDF;
+                                                    maksimal 10 MB per file, 10
+                                                    file baru per penyimpanan.
+                                                    Pratinjau tersedia setelah
+                                                    disimpan.
+                                                </p>
+                                                {uploadError && (
+                                                    <Alert
+                                                        id="content-media-upload-error"
+                                                        variant="destructive"
+                                                    >
+                                                        <AlertDescription>
+                                                            {uploadError}
+                                                        </AlertDescription>
+                                                    </Alert>
+                                                )}
+                                            </>
                                         )}
-                                </div>
-                            ))}
-                            <p
-                                id="content-media-upload-help"
-                                className="text-xs text-muted-foreground"
-                            >
-                                JPEG, PNG, WebP, atau PDF; maksimal 10 MB per
-                                file, 10 file baru per penyimpanan. Pratinjau
-                                tersedia setelah disimpan.
-                            </p>
-                            {uploadError && (
-                                <Alert
-                                    id="content-media-upload-error"
-                                    variant="destructive"
-                                >
-                                    <AlertDescription>
-                                        {uploadError}
-                                    </AlertDescription>
-                                </Alert>
-                            )}
+                                    </section>
+                                ))}
+                            </div>
                         </div>
                         <div className="grid gap-3 rounded-xl border p-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">

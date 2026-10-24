@@ -546,7 +546,7 @@ export default function CounselingNotesIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Catatan Konseling" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4">
                     <Heading
                         variant="small"
                         title="Catatan Konseling"
@@ -571,8 +571,8 @@ export default function CounselingNotesIndex({
                     }}
                 >
                     <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-9">
-                            <Label htmlFor="counseling-search">Pencarian</Label>
+                        <div className="grid gap-2 md:col-span-6">
+                            <Label htmlFor="counseling-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -587,7 +587,7 @@ export default function CounselingNotesIndex({
                                 />
                             </div>
                         </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="col-span-full flex gap-2">
                             <Button type="submit">Filter</Button>
                             <Button
                                 type="button"

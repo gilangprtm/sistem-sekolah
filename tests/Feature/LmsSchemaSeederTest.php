@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
+use App\Models\LmsCourse;
 use App\Models\Rombel;
 use App\Models\SchedulePlan;
 use App\Models\ScheduleTeachingAssignment;
@@ -49,7 +50,12 @@ class LmsSchemaSeederTest extends TestCase
             'created_by' => $context['teacher_id'],
         ]);
 
-        DB::table('m_lms_courses')->where('id', $context['course_id'])->update(['archived_at' => '2026-10-23 12:00:00']);
+        $this->seed(LmsPermissionSeeder::class);
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $course = LmsCourse::query()->findOrFail($context['course_id']);
+        $this->actingAs($admin)->post(route('lms.management.archive', $course), ['revision_id' => $course->latestRevision->editToken($course)])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('m_lms_courses', ['id' => $course->id, 'archived_by' => $admin->id]);
 
         $this->assertDatabaseHas('tr_lms_course_attempts', ['id' => $context['attempt_id'], 'course_revision_id' => $context['revision_id']]);
         $this->assertDatabaseHas('tr_lms_course_answers', ['id' => $answerId, 'question_key' => 'question-1']);
@@ -96,14 +102,26 @@ class LmsSchemaSeederTest extends TestCase
     public function test_migration_can_be_rolled_back_and_reapplied_on_an_empty_test_database(): void
     {
         $migration = require database_path('migrations/2026_10_23_095932_create_lms_course_tables.php');
+        $pointerMigration = require database_path('migrations/2026_10_24_013823_add_approved_revision_to_lms_courses_table.php');
 
+        $pointerMigration->down();
         $migration->down();
         $this->assertFalse(Schema::hasTable('m_lms_courses'));
         $this->assertFalse(Schema::hasTable('tr_lms_course_answers'));
         $migration->up();
+        $pointerMigration->up();
 
+        $this->assertTrue(Schema::hasColumn('m_lms_courses', 'approved_revision_id'));
         $this->assertTrue(Schema::hasTable('m_lms_courses'));
         $this->assertTrue(Schema::hasTable('tr_lms_course_answers'));
+    }
+
+    public function test_approved_pointer_cannot_reference_another_courses_revision(): void
+    {
+        $first = $this->createCourseContext();
+        $second = $this->createCourseContext('2027/2028');
+        $this->expectException(QueryException::class);
+        DB::table('m_lms_courses')->where('id', $first['course_id'])->update(['approved_revision_id' => $second['revision_id']]);
     }
 
     public function test_lms_permission_seeder_creates_curriculum_and_assigns_scoped_permissions(): void
@@ -115,13 +133,12 @@ class LmsSchemaSeederTest extends TestCase
         $student = Role::findByName('Siswa', 'web');
         $superAdmin = Role::findByName('Super Admin', 'web');
 
-        $this->assertTrue($curriculum->hasPermissionTo('lms.course.approve'));
+        $this->assertDatabaseMissing('permissions', ['name' => 'lms.course.approve']);
         $this->assertTrue($curriculum->hasPermissionTo('lms.course.archive'));
         $this->assertTrue($curriculum->hasPermissionTo('lms.course.design'));
         $this->assertTrue($teacher->hasPermissionTo('lms.course.design'));
         $this->assertTrue($teacher->hasPermissionTo('lms.run.manage'));
         $this->assertTrue($teacher->hasPermissionTo('lms.result.view'));
-        $this->assertFalse($teacher->hasPermissionTo('lms.course.approve'));
         $this->assertFalse($teacher->hasPermissionTo('lms.course.archive'));
         $this->assertTrue($student->hasPermissionTo('lms.course.learn'));
         $this->assertFalse($student->hasPermissionTo('lms.course.archive'));
@@ -145,11 +162,13 @@ class LmsSchemaSeederTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole($teacher);
         $curriculum = Role::findOrCreate('Kurikulum', 'web');
+        $curriculum->givePermissionTo(Permission::findOrCreate('lms.course.approve', 'web'));
 
         $this->seed(LmsPermissionSeeder::class);
         $this->seed(LmsPermissionSeeder::class);
 
-        $this->assertSame(7, DB::table('permissions')->where('name', 'like', 'lms.%')->count());
+        $this->assertSame(6, DB::table('permissions')->where('name', 'like', 'lms.%')->count());
+        $this->assertDatabaseMissing('permissions', ['name' => 'lms.course.approve']);
         $this->assertTrue($teacher->fresh()->hasPermissionTo($existingPermission));
         $this->assertTrue($user->fresh()->hasRole('Guru'));
         $this->assertSame($curriculum->id, Role::findByName('Kurikulum', 'web')->id);
@@ -158,9 +177,9 @@ class LmsSchemaSeederTest extends TestCase
     }
 
     /** @return array{course_id: int, revision_id: int, run_id: int, attempt_id: int, teacher_id: int, subject_id: int} */
-    private function createCourseContext(): array
+    private function createCourseContext(string $yearCode = '2026/2027'): array
     {
-        $year = AcademicYear::create(['year' => '2026/2027', 'status' => 'inactive']);
+        $year = AcademicYear::create(['year' => $yearCode, 'status' => 'inactive']);
         $period = AcademicPeriod::create(['academic_year_id' => $year->id, 'code' => 'ganjil', 'name' => 'Ganjil']);
         $rombel = Rombel::factory()->create(['grade_level' => 'VII']);
         $teacherSubject = TeacherSubject::factory()->create();

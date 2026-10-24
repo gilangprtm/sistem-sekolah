@@ -63,6 +63,32 @@ class LmsCourseContentTest extends TestCase
         $this->get(route('lms.design.edit', $course))->assertInertia(fn ($page) => $page->where('course.content.materials.0.body', $body));
     }
 
+    public function test_media_and_text_order_is_saved_for_materials_and_sections_and_invalid_values_are_rejected(): void
+    {
+        [$user, $course] = $this->context();
+        $content = $this->content();
+        $content['materials'][0]['layout'] = 'text_first';
+        $content['materials'][0]['sections'][0]['layout'] = 'media_first';
+
+        $this->save($user, $course, $content)->assertSessionHasNoErrors();
+
+        $saved = $course->fresh()->latestRevision->content['materials'];
+        $this->assertSame('text_first', $saved[0]['layout']);
+        $this->assertSame('media_first', $saved[0]['sections'][0]['layout']);
+        $this->get(route('lms.design.edit', $course))->assertInertia(fn ($page) => $page
+            ->where('course.content.materials.0.layout', 'text_first')
+            ->where('course.content.materials.0.sections.0.layout', 'media_first'));
+
+        $content['materials'][0]['layout'] = 'side_by_side';
+        $this->save($user, $course->fresh(), $content)->assertSessionHasErrors('materials.0.layout');
+        $this->assertSame($saved, $course->fresh()->latestRevision->content['materials']);
+
+        $content['materials'][0]['layout'] = 'media_first';
+        $content['materials'][0]['sections'][0]['layout'] = null;
+        $this->save($user, $course->fresh(), $content)->assertSessionHasErrors('materials.0.sections.0.layout');
+        $this->assertSame($saved, $course->fresh()->latestRevision->content['materials']);
+    }
+
     public function test_tiptap_formatting_and_safe_links_survive_save_and_reload(): void
     {
         [$user, $course] = $this->context();
@@ -173,7 +199,7 @@ class LmsCourseContentTest extends TestCase
         $this->patch($url, [])->assertRedirect(route('login'));
         [$other] = $this->context();
         $this->save($other, $course, $this->content())->assertForbidden();
-        $course->latestRevision->update(['status' => 'pending_approval']);
+        $course->latestRevision->update(['status' => 'approved']);
         $this->save($user, $course->fresh(), $this->content())->assertForbidden();
         $this->assertSame(['materials' => []], $course->fresh()->latestRevision->content);
     }

@@ -34,6 +34,7 @@ type Props = {
     gradeLevels: string[];
     designers?: DesignerOption[];
     disabled?: boolean;
+    identityLocked?: boolean;
 };
 
 export default function CourseFields({
@@ -44,6 +45,7 @@ export default function CourseFields({
     gradeLevels,
     designers,
     disabled = false,
+    identityLocked = false,
 }: Props) {
     return (
         <fieldset disabled={disabled} className="grid min-w-0 gap-5">
@@ -75,7 +77,7 @@ export default function CourseFields({
                         placeholder="Pilih mata pelajaran"
                         searchPlaceholder="Cari mata pelajaran..."
                         emptyMessage="Mata pelajaran tidak ditemukan."
-                        disabled={disabled}
+                        disabled={disabled || identityLocked}
                         aria-invalid={Boolean(errors.subject_id)}
                         aria-describedby="course-subject-error"
                     />
@@ -89,7 +91,7 @@ export default function CourseFields({
                     <Select
                         value={data.grade_level}
                         onValueChange={(value) => setData('grade_level', value)}
-                        disabled={disabled}
+                        disabled={disabled || identityLocked}
                     >
                         <SelectTrigger
                             id="course-grade"

@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Save } from 'lucide-react';
 import { useState } from 'react';
 import SecondaryPageShell from '@/components/admin/secondary-page-shell';
@@ -17,8 +17,10 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import AppLayout from '@/layouts/app-layout';
 import { design } from '@/routes/lms';
+import { revise } from '@/routes/lms/design';
 import { edit } from '@/routes/lms/design';
 import type { BreadcrumbItem } from '@/types';
 import type { CourseContent } from '@/types/lms';
@@ -33,6 +35,9 @@ type Props = {
         revision_id: string;
         revision_number: number;
         editable: boolean;
+        can_revise: boolean;
+        status: string;
+        has_approved_revision: boolean;
         content: CourseContent;
     };
     contentUpdateUrl: string;
@@ -70,6 +75,36 @@ export default function LmsCourseDesignEdit({
         { title: course.title, href: edit.url(course.id) },
     ];
     const [content, setContent] = useState(() => editorContent(course.content));
+    const confirm = useConfirmation();
+    const [transitionErrors, setTransitionErrors] = useState<string[]>([]);
+    const [transitionBusy, setTransitionBusy] = useState(false);
+    const transition = async () => {
+        if (transitionBusy) {
+            return;
+        }
+
+        if (
+            await confirm({
+                title: 'Buat revisi baru?',
+                description:
+                    'Versi aktif tetap digunakan sampai revisi baru diaktifkan.',
+            })
+        ) {
+            router.post(
+                revise.url(course.id),
+                { revision_id: course.revision_id },
+                {
+                    onStart: () => {
+                        setTransitionBusy(true);
+                        setTransitionErrors([]);
+                    },
+                    onFinish: () => setTransitionBusy(false),
+                    onError: (errors) =>
+                        setTransitionErrors(Object.values(errors)),
+                },
+            );
+        }
+    };
     const form = useForm<
         CourseFormData & {
             content_json: string;
@@ -109,7 +144,7 @@ export default function LmsCourseDesignEdit({
         });
     };
     const errors = Object.entries(form.errors);
-    const disabled = form.processing || !course.editable;
+    const disabled = form.processing || transitionBusy || !course.editable;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -134,9 +169,26 @@ export default function LmsCourseDesignEdit({
                                 {form.processing ? 'Menyimpan…' : 'Simpan Draf'}
                             </Button>
                         </>
+                    ) : course.can_revise ? (
+                        <Button disabled={transitionBusy} onClick={transition}>
+                            Buat revisi baru
+                        </Button>
                     ) : undefined
                 }
             >
+                {transitionErrors.length > 0 && (
+                    <AlertError
+                        title="Tindakan belum berhasil"
+                        errors={transitionErrors}
+                    />
+                )}
+                {course.has_approved_revision && (
+                    <p className="text-sm text-muted-foreground">
+                        Mata pelajaran dan jenjang dikunci setelah Course aktif.
+                        Perubahan judul dan materi berlaku setelah revisi baru
+                        diaktifkan.
+                    </p>
+                )}
                 <form
                     id="course-identity-form"
                     onSubmit={submit}
@@ -147,7 +199,7 @@ export default function LmsCourseDesignEdit({
                             <CardTitle>Identitas Course</CardTitle>
                             <CardDescription>
                                 {course.editable
-                                    ? 'Simpan Draf menyimpan identitas dan seluruh materi. Draf belum dipublikasikan.'
+                                    ? 'Simpan Draf menyimpan identitas dan seluruh materi. Draft belum aktif.'
                                     : 'Revisi ini hanya dapat dibaca; penyuntingan draf dikunci.'}
                             </CardDescription>
                         </CardHeader>
@@ -159,6 +211,7 @@ export default function LmsCourseDesignEdit({
                                 subjects={subjects}
                                 gradeLevels={gradeLevels}
                                 disabled={disabled}
+                                identityLocked={course.has_approved_revision}
                             />
                         </CardContent>
                     </Card>
@@ -173,7 +226,7 @@ export default function LmsCourseDesignEdit({
                         </CardHeader>
                         <CardContent>
                             <CourseContentEditor
-                                key={course.id}
+                                key={`${course.id}-${course.revision_number}`}
                                 content={content}
                                 disabled={disabled}
                                 onChange={setContent}

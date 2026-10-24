@@ -14,7 +14,10 @@ use Illuminate\Support\Carbon;
  * @property string $grade_level
  * @property string $title
  * @property int $created_by
+ * @property int|null $approved_revision_id
+ * @property int|null $archived_by
  * @property bool $has_approved_revision
+ * @property-read LmsCourseRevision|null $approvedRevision
  * @property Carbon|null $archived_at
  * @property-read Subject $subject
  * @property-read Teacher $designer
@@ -49,6 +52,18 @@ class LmsCourse extends Model
     public function revisions(): HasMany
     {
         return $this->hasMany(LmsCourseRevision::class, 'course_id');
+    }
+
+    public function hasApprovedRevision(): bool
+    {
+        return $this->approved_revision_id !== null
+            || ($this->has_approved_revision ?? $this->revisions()->where('status', LmsCourseRevision::STATUS_APPROVED)->exists());
+    }
+
+    /** @return BelongsTo<LmsCourseRevision, $this> */
+    public function approvedRevision(): BelongsTo
+    {
+        return $this->belongsTo(LmsCourseRevision::class, 'approved_revision_id');
     }
 
     /** @return HasOne<LmsCourseRevision, $this> */

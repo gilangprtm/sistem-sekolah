@@ -35,8 +35,46 @@ class LmsCoursePolicy
     public function update(User $user, LmsCourse $course): bool
     {
         return $this->view($user, $course)
-            && $course->latestRevision?->status === LmsCourseRevision::STATUS_DRAFT
-            && ! ($course->has_approved_revision ?? $course->revisions()->where('status', LmsCourseRevision::STATUS_APPROVED)->exists());
+            && $course->latestRevision?->isDraft() === true;
+    }
+
+    public function manage(User $user): bool
+    {
+        return $user->hasRole('Super Admin')
+            || ($user->hasRole('Kurikulum') && ($user->can('lms.course.design') || $user->can('lms.course.archive')));
+    }
+
+    public function inspect(User $user, LmsCourse $course): bool
+    {
+        return $this->manage($user);
+    }
+
+    public function revise(User $user, LmsCourse $course): bool
+    {
+        return $this->view($user, $course)
+            && $course->latestRevision?->status === LmsCourseRevision::STATUS_APPROVED;
+    }
+
+    public function activate(User $user, LmsCourse $course): bool
+    {
+        return $this->manage($user)
+            && ($user->hasRole('Super Admin') || $user->can('lms.course.design'))
+            && $course->archived_at === null
+            && $course->latestRevision?->isDraft() === true;
+    }
+
+    public function archive(User $user, LmsCourse $course): bool
+    {
+        return $this->manage($user)
+            && ($user->hasRole('Super Admin') || $user->can('lms.course.archive'))
+            && $course->archived_at === null;
+    }
+
+    public function restore(User $user, LmsCourse $course): bool
+    {
+        return $this->manage($user)
+            && ($user->hasRole('Super Admin') || $user->can('lms.course.archive'))
+            && $course->archived_at !== null;
     }
 
     private function isActiveTeacher(User $user): bool

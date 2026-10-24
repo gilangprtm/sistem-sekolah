@@ -57,6 +57,7 @@ type PageProps = {
     }[];
     canAccessCounseling?: boolean;
     canDesignLmsCourses?: boolean;
+    canManageLmsCourses?: boolean;
     canAccessStudentViolations?: boolean;
     auth?: {
         user?: {
@@ -81,6 +82,7 @@ export function AppSidebar({
         documentNavigation = [],
         canAccessCounseling = false,
         canDesignLmsCourses = false,
+        canManageLmsCourses = false,
         canAccessStudentViolations = false,
     } = usePage<PageProps>().props;
     const permissions = auth?.permissions ?? [];
@@ -136,20 +138,21 @@ export function AppSidebar({
         });
     }
 
-    lmsItems.push(
-        {
+    if (canManageLmsCourses) {
+        lmsItems.push({
             id: 'lms-management',
             title: 'Course Management',
             url: lmsManagement.url(),
             icon: LibraryBig,
-        },
-        {
-            id: 'lms-my-courses',
-            title: 'Course Saya',
-            url: lmsMyCourses.url(),
-            icon: BookOpenCheck,
-        },
-    );
+        });
+    }
+
+    lmsItems.push({
+        id: 'lms-my-courses',
+        title: 'Course Saya',
+        url: lmsMyCourses.url(),
+        icon: BookOpenCheck,
+    });
 
     const examItems: NavMainItem[] = [];
     const studentAffairsItems: NavMainItem[] = [];

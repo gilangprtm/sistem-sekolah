@@ -21,7 +21,7 @@ class LmsModuleTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
-    public function test_authorized_teacher_can_open_each_lms_menu(): void
+    public function test_teacher_can_open_design_and_my_courses_but_not_management(): void
     {
         $this->seed(LmsPermissionSeeder::class);
         $user = User::factory()->create();
@@ -36,10 +36,7 @@ class LmsModuleTest extends TestCase
                 ->has('courses.data', 0));
 
         $this->get(route('lms.management'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('lms/index')
-                ->where('section', 'management'));
+            ->assertForbidden();
 
         $this->get(route('lms.my-courses'))
             ->assertOk()

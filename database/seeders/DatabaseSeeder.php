@@ -25,7 +25,6 @@ class DatabaseSeeder extends Seeder
             StudentAttendancePermissionSeeder::class,
             TeacherStudentNotePermissionSeeder::class,
             RombelSeeder::class,
-            KantinSeeder::class,
         ]);
 
         // Admin pertama (Super Admin) — idempotent

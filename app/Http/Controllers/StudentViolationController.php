@@ -34,8 +34,6 @@ class StudentViolationController extends Controller
             ->paginate($request->integer('per_page', 10))
             ->through(fn (StudentViolation $note): array => $this->summary($note));
 
-        Inertia::encryptHistory();
-
         $response = Inertia::render('student-affairs/violations/index', [
             'notes' => $notes,
             'filters' => ['search' => $search],
