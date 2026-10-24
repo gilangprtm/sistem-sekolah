@@ -29,8 +29,9 @@ export default function StudentAppLayout({
     const isChatbot = currentPath === '/student/chatbot';
     const isKantin = currentPath === '/student/kantin';
     const isUas = currentPath === '/student/uas';
+    const isCourse = /^\/student\/courses(?:\/\d+)?$/.test(currentPath);
     const isExam = /^\/student\/uas\/\d+\/(attempt|open)$/.test(currentPath);
-    const isSecondaryPage = isKantin || isUas || isExam;
+    const isSecondaryPage = isKantin || isUas || isExam || isCourse;
     const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {

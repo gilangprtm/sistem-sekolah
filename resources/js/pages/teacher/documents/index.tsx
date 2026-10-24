@@ -26,6 +26,7 @@ import { useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import { Calendar } from '@/components/ui/calendar';
 import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
@@ -1268,10 +1269,9 @@ function TeacherDocumentsContent({
                                 ({documents.total})
                             </span>
                         </h2>
-                        <div
-                            role="group"
+                        <ButtonGroup
                             aria-label="Tampilan file"
-                            className="inline-flex overflow-hidden rounded-lg border"
+                            className="rounded-lg border"
                         >
                             <Button
                                 type="button"
@@ -1279,7 +1279,6 @@ function TeacherDocumentsContent({
                                     layout === 'grid' ? 'secondary' : 'ghost'
                                 }
                                 size="sm"
-                                className="h-7 rounded-none border-r px-2 text-xs"
                                 aria-pressed={layout === 'grid'}
                                 onClick={() => setLayout('grid')}
                             >
@@ -1292,14 +1291,13 @@ function TeacherDocumentsContent({
                                     layout === 'list' ? 'secondary' : 'ghost'
                                 }
                                 size="sm"
-                                className="h-7 rounded-none px-2 text-xs"
                                 aria-pressed={layout === 'list'}
                                 onClick={() => setLayout('list')}
                             >
                                 <List className="size-3.5" />
                                 List View
                             </Button>
-                        </div>
+                        </ButtonGroup>
                     </div>
                     <div
                         className={

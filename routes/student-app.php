@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\StudentApp\CourseController;
 use App\Http\Controllers\StudentApp\DashboardController;
 use App\Http\Controllers\StudentApp\ExamAttemptController;
 use App\Http\Controllers\StudentApp\KantinController;
@@ -15,6 +16,10 @@ Route::middleware(['auth', 'verified', 'role:Siswa'])
     ->group(function (): void {
         Route::get('/', DashboardController::class)->name('dashboard');
         Route::get('/schedule', ScheduleController::class)->name('schedule');
+        Route::get('/courses', [CourseController::class, 'index'])->name('courses');
+        Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+        Route::post('/courses/{course}/answers', [CourseController::class, 'save'])->name('courses.answers');
+        Route::get('/courses/{course}/media/{media}', [CourseController::class, 'media'])->name('courses.media');
         Route::get('/uas', UasController::class)->name('uas');
         Route::get('/uas/{uasLink}/open', [UasController::class, 'open'])->name('uas.open');
         Route::get('/uas/{uasLink}/attempt', [ExamAttemptController::class, 'show'])->name('uas.attempt');

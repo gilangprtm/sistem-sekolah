@@ -261,6 +261,36 @@ class LmsCourseContent
         return $content;
     }
 
+    /** @return array<string, mixed> */
+    public function learningContent(LmsCourseRevision $revision, LmsCourse $course, bool $student = false): array
+    {
+        $content = $this->editorContent($revision, $course);
+        $withoutKeys = static function (array $page): array {
+            $page['questions'] = array_map(static function (array $question): array {
+                if (isset($question['options'])) {
+                    $question['options'] = array_map(static fn (array $option): array => [
+                        'id' => $option['id'], 'text' => $option['text'],
+                    ], $question['options']);
+                }
+
+                return $question;
+            }, $page['questions']);
+
+            return $page;
+        };
+        foreach ($content['materials'] as &$material) {
+            $material = $withoutKeys($material);
+            $material['sections'] = array_map($withoutKeys, $material['sections']);
+        }
+        unset($material);
+        foreach ($content['assets'] as $id => &$asset) {
+            $asset['url'] = $student ? route('student-app.courses.media', [$course, $id]) : route('lms.my-courses.media', [$course, $id]);
+        }
+        unset($asset);
+
+        return $content;
+    }
+
     public function mediaResponse(LmsCourse $course, LmsCourseRevision $revision, string $media): StreamedResponse
     {
         abort_unless($revision->course_id === $course->id, 404);

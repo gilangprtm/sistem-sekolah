@@ -65,6 +65,7 @@ class HandleInertiaRequests extends Middleware
             'canAccessStudentViolations' => fn (): bool => $request->user()?->can('viewAny', StudentViolation::class) ?? false,
             'canManageLmsCourses' => fn (): bool => $request->user()?->can('manage', LmsCourse::class) ?? false,
             'canDesignLmsCourses' => fn (): bool => $request->user()?->can('viewAny', LmsCourse::class) ?? false,
+            'canAccessLmsMyCourses' => fn (): bool => $request->user()?->can('browseMyCourses', LmsCourse::class) ?? false,
             'canAccessCounseling' => fn (): bool => $request->user()?->can('viewAny', CounselingNote::class) ?? false,
             'documentNavigation' => fn (): array => $request->user() === null ? [] : collect(DocumentModule::cases())
                 ->filter(fn (DocumentModule $module): bool => $module->canView($request->user()))

@@ -20,6 +20,12 @@ class ScheduleTeachingAssignment extends Model
         return ['weekly_jp' => 'integer'];
     }
 
+    /** @return BelongsTo<Rombel, $this> */
+    public function rombel(): BelongsTo
+    {
+        return $this->belongsTo(Rombel::class);
+    }
+
     /** @return BelongsTo<SchedulePlan, $this> */
     public function schedulePlan(): BelongsTo
     {

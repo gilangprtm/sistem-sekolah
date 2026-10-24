@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\LmsCourseDesignController;
 use App\Http\Controllers\LmsCourseManagementController;
+use App\Http\Controllers\LmsMyCourseController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])
@@ -25,5 +26,7 @@ Route::middleware(['auth', 'verified'])
             Route::post('/course-management/{course}/restore', [LmsCourseManagementController::class, 'restore'])->name('management.restore');
             Route::get('/course-management/{course}/revisions/{revision}/media/{media}', [LmsCourseManagementController::class, 'media'])->name('management.media');
         });
-        Route::inertia('/course-saya', 'lms/index', ['section' => 'my-courses'])->name('my-courses');
+        Route::get('/course-saya', [LmsMyCourseController::class, 'index'])->name('my-courses');
+        Route::get('/course-saya/{course}', [LmsMyCourseController::class, 'show'])->name('my-courses.show');
+        Route::get('/course-saya/{course}/media/{media}', [LmsMyCourseController::class, 'media'])->name('my-courses.media');
     });

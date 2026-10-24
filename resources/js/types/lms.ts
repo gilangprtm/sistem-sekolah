@@ -28,6 +28,18 @@ export type CoursePage = {
     questions: CourseQuestion[];
 };
 export type CourseMaterial = CoursePage & { sections: CoursePage[] };
+export type LearningCourseQuestion = Omit<CourseQuestion, 'options'> & {
+    options?: { id: string; text: string }[];
+};
+export type LearningCoursePage = Omit<CoursePage, 'questions'> & {
+    questions: LearningCourseQuestion[];
+};
+export type LearningCourseContent = Omit<
+    CourseContent,
+    'materials' | 'uploads'
+> & {
+    materials: (LearningCoursePage & { sections: LearningCoursePage[] })[];
+};
 export type CourseContent = {
     materials: CourseMaterial[];
     assets?: Record<string, { name: string; type: string; url: string }>;

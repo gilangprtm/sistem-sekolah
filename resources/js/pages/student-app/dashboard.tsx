@@ -20,6 +20,7 @@ import {
     useStudentPwaInstall,
 } from '@/hooks/use-student-pwa-install';
 import { formatWitaDate } from '@/lib/date-time';
+import { courses } from '@/routes/student-app';
 
 type NewsItem = {
     id: number;
@@ -45,6 +46,7 @@ const menuItems = [
     { label: 'Pengumuman', icon: Megaphone },
     { label: 'Kantin', icon: ShoppingBasket },
     { label: 'Ujian', icon: ClipboardCheck },
+    { label: 'Course', icon: BookOpen },
     { label: 'Absensi', icon: Bell },
     { label: 'Perpustakaan', icon: Library },
     { label: 'Lainnya', icon: Ellipsis },
@@ -247,16 +249,22 @@ export default function StudentDashboard({ student, news }: Props) {
                                         ? '/student/kantin'
                                         : label === 'Ujian'
                                           ? '/student/uas'
-                                          : '#'
+                                          : label === 'Course'
+                                            ? courses.url()
+                                            : '#'
                                 }
                                 aria-disabled={
-                                    label === 'Kantin' || label === 'Ujian'
+                                    ['Kantin', 'Ujian', 'Course'].includes(
+                                        label,
+                                    )
                                         ? undefined
                                         : 'true'
                                 }
                                 className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border bg-card px-2 py-3 text-center shadow-xs"
                                 onClick={
-                                    label === 'Kantin' || label === 'Ujian'
+                                    ['Kantin', 'Ujian', 'Course'].includes(
+                                        label,
+                                    )
                                         ? undefined
                                         : (event) => event.preventDefault()
                                 }

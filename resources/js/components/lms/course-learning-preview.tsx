@@ -3,35 +3,78 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import type { CourseContent, CoursePage } from '@/types/lms';
+import type {
+    CourseContent,
+    LearningCourseContent,
+    LearningCoursePage,
+} from '@/types/lms';
 
 type Props = {
     title: string;
     description: string | null;
-    content: CourseContent;
+    content: LearningCourseContent;
+    mode?: 'preview' | 'student';
+    initialAnswers?: Record<string, string>;
+    status?: string;
+    onSave?: (answers: Record<string, string>, submit: boolean) => void;
+    saving?: boolean;
 };
 
 export default function CourseLearningPreview({
     title,
     description,
     content,
+    mode = 'preview',
+    initialAnswers = {},
+    status,
+    onSave,
+    saving = false,
 }: Props) {
     const [activeMaterial, setActiveMaterial] = useState(0);
     const [activePageId, setActivePageId] = useState('material');
-    const [answers, setAnswers] = useState<Record<string, string>>({});
+    const [answers, setAnswers] =
+        useState<Record<string, string>>(initialAnswers);
+    const isStudent = mode === 'student';
+    const isSubmitted = status === 'submitted';
     const material = content.materials[activeMaterial];
     const answer = (questionId: string, value: string) =>
+        !isSubmitted &&
+        !saving &&
         setAnswers((current) => ({ ...current, [questionId]: value }));
 
     return (
         <section
-            aria-label="Pratinjau tampilan siswa"
+            aria-label={
+                isStudent ? 'Materi pembelajaran' : 'Pratinjau tampilan siswa'
+            }
             className="mx-auto grid w-full max-w-6xl min-w-0 gap-6"
         >
             <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                Mode pratinjau siswa. Jawaban hanya untuk mencoba dan tidak
-                disimpan.
+                {isStudent
+                    ? isSubmitted
+                        ? 'Jawaban sudah dikumpulkan dan tidak dapat diubah.'
+                        : 'Jawaban tersimpan saat Anda memilih Simpan atau Kumpulkan.'
+                    : 'Mode pratinjau siswa. Jawaban hanya untuk mencoba dan tidak disimpan.'}
             </div>
+            {isStudent && (
+                <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSubmitted || saving}
+                        onClick={() => onSave?.(answers, false)}
+                    >
+                        {saving ? 'Menyimpan…' : 'Simpan jawaban'}
+                    </Button>
+                    <Button
+                        type="button"
+                        disabled={isSubmitted || saving}
+                        onClick={() => onSave?.(answers, true)}
+                    >
+                        Kumpulkan jawaban
+                    </Button>
+                </div>
+            )}
             <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
                 <nav
                     aria-label="Daftar materi"
@@ -98,7 +141,7 @@ export default function CourseLearningPreview({
                                         <TabsList
                                             variant="line"
                                             aria-label={`Materi dan bagian ${material.title}`}
-                                            className="h-auto w-full justify-start gap-1 rounded-none border-b bg-transparent p-0"
+                                            className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0"
                                         >
                                             <TabsTrigger
                                                 value="material"
@@ -128,6 +171,7 @@ export default function CourseLearningPreview({
                                             assets={content.assets}
                                             answers={answers}
                                             onAnswer={answer}
+                                            disabled={isSubmitted || saving}
                                         />
                                     </TabsContent>
                                     {material.sections.map((section) => (
@@ -141,6 +185,7 @@ export default function CourseLearningPreview({
                                                 assets={content.assets}
                                                 answers={answers}
                                                 onAnswer={answer}
+                                                disabled={isSubmitted || saving}
                                             />
                                         </TabsContent>
                                     ))}
@@ -151,6 +196,7 @@ export default function CourseLearningPreview({
                                     assets={content.assets}
                                     answers={answers}
                                     onAnswer={answer}
+                                    disabled={isSubmitted || saving}
                                 />
                             )}
                             <footer className="flex flex-wrap justify-between gap-3 border-t pt-5">
@@ -197,11 +243,13 @@ function LearningPage({
     assets,
     answers,
     onAnswer,
+    disabled,
 }: {
-    page: CoursePage;
+    page: LearningCoursePage;
     assets: CourseContent['assets'];
     answers: Record<string, string>;
     onAnswer: (questionId: string, value: string) => void;
+    disabled: boolean;
 }) {
     const body = page.body ? (
         <div
@@ -275,6 +323,7 @@ function LearningPage({
             {page.questions.map((question, index) => (
                 <fieldset
                     key={question.id}
+                    disabled={disabled}
                     className="grid min-w-0 gap-4 rounded-xl border p-4 sm:p-5"
                 >
                     <legend className="sr-only">

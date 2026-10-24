@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ScheduleMoveRequest;
 use App\Http\Requests\ScheduleSaveRequest;
 use App\Models\AcademicPeriod;
+use App\Models\LmsCourseRun;
 use App\Models\Rombel;
 use App\Models\ScheduleCustomSlot;
 use App\Models\ScheduleEntry;
@@ -152,9 +153,12 @@ class ScheduleController extends Controller
             $rombels = $this->activeRombelsForAssignments($data['assignments']);
             $relations = $this->eligibleTeacherSubjects($data['assignments']);
             $revision = $sourcePlan?->revision ? $sourcePlan->revision + 1 : 1;
+            $hasCourseRuns = $sourcePlan !== null && LmsCourseRun::query()
+                ->whereIn('schedule_teaching_assignment_id', $sourcePlan->teachingAssignments()->select('id'))->exists();
             $inPlaceRegeneration = $sourcePlan !== null
                 && $sourcePlan->status === 'published'
-                && $publishedPlan?->id === $sourcePlan->id;
+                && $publishedPlan?->id === $sourcePlan->id
+                && ! $hasCourseRuns;
 
             if ($inPlaceRegeneration) {
                 $sourcePlan->entries()->delete();
@@ -168,6 +172,9 @@ class ScheduleController extends Controller
                 ]);
                 $plan = $sourcePlan;
             } else {
+                if ($hasCourseRuns && $sourcePlan->status === 'published') {
+                    $sourcePlan->update(['status' => 'archived', 'archived_at' => now()]);
+                }
                 $plan = SchedulePlan::query()->create([
                     'academic_period_id' => $period->id,
                     'grade_level' => $grade,
@@ -329,6 +336,12 @@ class ScheduleController extends Controller
 
             if ($plan === null) {
                 return;
+            }
+
+            if (LmsCourseRun::query()->whereIn('schedule_teaching_assignment_id', $plan->teachingAssignments()->select('id'))->exists()) {
+                throw ValidationException::withMessages([
+                    'schedule' => 'Jadwal memiliki hasil Course tersimpan dan tidak dapat dihapus.',
+                ]);
             }
 
             if (SchedulePlan::query()->where('source_plan_id', $plan->id)->exists()) {

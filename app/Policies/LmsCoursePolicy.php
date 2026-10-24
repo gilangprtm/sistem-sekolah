@@ -19,6 +19,17 @@ class LmsCoursePolicy
         return $this->viewAny($user);
     }
 
+    public function viewStudentCourses(User $user): bool
+    {
+        return $user->hasRole('Siswa') && $user->student?->status === 'active';
+    }
+
+    public function browseMyCourses(User $user): bool
+    {
+        return $user->hasRole('Super Admin')
+            || ($user->can('lms.course.view') && $this->isActiveTeacher($user));
+    }
+
     public function manageDesigns(User $user): bool
     {
         return $user->hasRole('Super Admin')

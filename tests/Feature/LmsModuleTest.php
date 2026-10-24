@@ -41,7 +41,7 @@ class LmsModuleTest extends TestCase
         $this->get(route('lms.my-courses'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('lms/index')
-                ->where('section', 'my-courses'));
+                ->component('lms/my-courses/index')
+                ->has('courses.data', 0));
     }
 }

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
+use App\Models\LmsCourse;
+use App\Models\LmsCourseRun;
 use App\Models\Rombel;
 use App\Models\RombelPeriodUsage;
 use App\Models\ScheduleEntry;
@@ -822,6 +824,61 @@ class ScheduleManagementTest extends TestCase
         $this->assertSame(2, $regenerated->revision);
         $this->assertDatabaseMissing('tr_curriculum_schedule_plans', ['id' => $published->id, 'status' => 'archived']);
         $this->assertDatabaseCount('tr_curriculum_schedule_plans', 1);
+    }
+
+    public function test_changed_save_preserves_course_run_assignment_in_archived_schedule_revision(): void
+    {
+        $period = $this->activePeriod();
+        $rombel = Rombel::factory()->create(['grade_level' => 'VII']);
+        $firstSubject = Subject::factory()->create(['jp_per_class' => 1]);
+        $secondSubject = Subject::factory()->create(['jp_per_class' => 1]);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $first = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $firstSubject->id]);
+        $second = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $secondSubject->id]);
+        $admin = $this->admin();
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
+            'academic_period_id' => $period->id,
+            'assignments' => [['teacher_subject_id' => $first->id, 'rombel_ids' => [$rombel->id]]],
+        ])->assertRedirect();
+        $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
+        $assignment = $plan->teachingAssignments()->firstOrFail();
+        $courseTeacher = Teacher::factory()->create();
+        $course = LmsCourse::query()->create([
+            'subject_id' => $firstSubject->id, 'grade_level' => 'VII', 'title' => 'Course tersimpan',
+            'created_by' => $courseTeacher->id,
+        ]);
+        $revision = $course->revisions()->create([
+            'revision_number' => 1, 'title' => $course->title, 'content' => ['materials' => []],
+            'status' => 'approved', 'created_by' => $courseTeacher->id,
+        ]);
+        $course->forceFill(['approved_revision_id' => $revision->id])->save();
+        $run = LmsCourseRun::query()->create([
+            'course_id' => $course->id, 'course_revision_id' => $revision->id,
+            'academic_period_id' => $period->id, 'rombel_id' => $rombel->id,
+            'schedule_teaching_assignment_id' => $assignment->id, 'teacher_id' => $teacher->id,
+        ]);
+
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
+            'academic_period_id' => $period->id,
+            'source_plan_id' => $plan->id,
+            'assignments' => [['teacher_subject_id' => $second->id, 'rombel_ids' => [$rombel->id]]],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('tr_curriculum_schedule_plans', ['id' => $plan->id, 'status' => 'archived']);
+        $this->assertDatabaseHas('tr_curriculum_teaching_assignments', ['id' => $assignment->id, 'status' => 'active']);
+        $this->assertDatabaseHas('tr_lms_course_runs', [
+            'id' => $run->id, 'schedule_teaching_assignment_id' => $assignment->id,
+        ]);
+        $newPlan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
+        $this->assertNotSame($plan->id, $newPlan->id);
+        $this->assertDatabaseHas('tr_curriculum_teaching_assignments', [
+            'schedule_plan_id' => $newPlan->id, 'teacher_subject_id' => $second->id, 'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)->delete('/kurikulum/schedule', [
+            'academic_period_id' => $period->id, 'grade' => 'VII',
+        ])->assertSessionHasErrors('schedule');
+        $this->assertModelExists($run->fresh());
     }
 
     public function test_changed_save_regenerates_existing_published_plan_in_place(): void
