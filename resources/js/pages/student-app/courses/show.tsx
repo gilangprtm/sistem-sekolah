@@ -21,6 +21,7 @@ type Props = {
         status: string;
         attempt_token: string;
         answers: Record<string, string>;
+        submitted_page_ids: string[];
     };
 };
 
@@ -28,16 +29,16 @@ export default function StudentCourseShow({ course }: Props) {
     const [saving, setSaving] = useState(false);
     const confirm = useConfirmation();
     const { errors } = usePage().props;
-    const save = async (answers: Record<string, string>, submit: boolean) => {
+    const save = async (pageId: string, answers: Record<string, string>) => {
         if (saving) {
             return;
         }
 
         if (
-            submit &&
             !(await confirm({
                 title: 'Kumpulkan jawaban?',
-                description: 'Setelah dikumpulkan, jawaban tidak dapat diubah.',
+                description:
+                    'Hanya jawaban pada tab ini yang dikumpulkan dan tidak dapat diubah. Tab lain tetap dapat dikerjakan.',
             }))
         ) {
             return;
@@ -49,7 +50,7 @@ export default function StudentCourseShow({ course }: Props) {
                 revision_id: course.revision_id,
                 attempt_token: course.attempt_token,
                 answers,
-                submit,
+                page_id: pageId,
             },
             {
                 preserveScroll: true,
@@ -74,13 +75,14 @@ export default function StudentCourseShow({ course }: Props) {
                         <AlertError errors={Object.values(errors)} />
                     )}
                     <CourseLearningPreview
-                        key={`${course.id}-${course.attempt_token}`}
+                        key={`${course.id}-${course.revision_id}`}
                         title={course.title}
                         description={course.description}
                         content={course.content}
                         mode="student"
                         initialAnswers={course.answers}
                         status={course.status}
+                        submittedPageIds={course.submitted_page_ids}
                         saving={saving}
                         onSave={save}
                     />

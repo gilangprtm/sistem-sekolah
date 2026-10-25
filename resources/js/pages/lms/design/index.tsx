@@ -316,15 +316,13 @@ export default function LmsCourseDesignIndex({
                                         router.visit(edit.url(course.id))
                                     }
                                 >
-                                    {course.editable
-                                        ? 'Buka draf'
-                                        : 'Lihat revisi'}
+                                    {course.editable ? 'Buka draf' : 'Lihat'}
                                 </DropdownMenuItem>
                                 {course.can_revise && (
                                     <DropdownMenuItem
                                         onClick={() => transition(course)}
                                     >
-                                        Buat revisi baru
+                                        Revisi
                                     </DropdownMenuItem>
                                 )}
                             </>

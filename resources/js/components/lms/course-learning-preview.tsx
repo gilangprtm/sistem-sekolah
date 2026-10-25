@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { getAdjacentCoursePage } from '@/lib/lms-course-navigation';
 import type {
     CourseContent,
     LearningCourseContent,
@@ -16,7 +17,8 @@ type Props = {
     mode?: 'preview' | 'student';
     initialAnswers?: Record<string, string>;
     status?: string;
-    onSave?: (answers: Record<string, string>, submit: boolean) => void;
+    submittedPageIds?: string[];
+    onSave?: (pageId: string, answers: Record<string, string>) => void;
     saving?: boolean;
 };
 
@@ -27,6 +29,7 @@ export default function CourseLearningPreview({
     mode = 'preview',
     initialAnswers = {},
     status,
+    submittedPageIds = [],
     onSave,
     saving = false,
 }: Props) {
@@ -34,11 +37,33 @@ export default function CourseLearningPreview({
     const [activePageId, setActivePageId] = useState('material');
     const [answers, setAnswers] =
         useState<Record<string, string>>(initialAnswers);
+
     const isStudent = mode === 'student';
     const isSubmitted = status === 'submitted';
     const material = content.materials[activeMaterial];
+    const activePage =
+        activePageId === 'material'
+            ? material
+            : material?.sections.find((section) => section.id === activePageId);
+    const isPageSubmitted =
+        isSubmitted ||
+        (activePage ? submittedPageIds.includes(activePage.id) : false);
+    const currentPage = {
+        materialIndex: activeMaterial,
+        pageId: activePageId,
+    };
+    const previousPage = getAdjacentCoursePage(
+        content.materials,
+        currentPage,
+        'previous',
+    );
+    const nextPage = getAdjacentCoursePage(
+        content.materials,
+        currentPage,
+        'next',
+    );
     const answer = (questionId: string, value: string) =>
-        !isSubmitted &&
+        !isPageSubmitted &&
         !saving &&
         setAnswers((current) => ({ ...current, [questionId]: value }));
 
@@ -49,30 +74,11 @@ export default function CourseLearningPreview({
             }
             className="mx-auto grid w-full max-w-6xl min-w-0 gap-6"
         >
-            <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                {isStudent
-                    ? isSubmitted
-                        ? 'Jawaban sudah dikumpulkan dan tidak dapat diubah.'
-                        : 'Jawaban tersimpan saat Anda memilih Simpan atau Kumpulkan.'
-                    : 'Mode pratinjau siswa. Jawaban hanya untuk mencoba dan tidak disimpan.'}
-            </div>
-            {isStudent && (
-                <div className="flex flex-wrap justify-end gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        disabled={isSubmitted || saving}
-                        onClick={() => onSave?.(answers, false)}
-                    >
-                        {saving ? 'Menyimpan…' : 'Simpan jawaban'}
-                    </Button>
-                    <Button
-                        type="button"
-                        disabled={isSubmitted || saving}
-                        onClick={() => onSave?.(answers, true)}
-                    >
-                        Kumpulkan jawaban
-                    </Button>
+            {(!isStudent || !isPageSubmitted) && (
+                <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                    {isStudent
+                        ? 'Jawaban pada tab ini akan disimpan saat dikumpulkan.'
+                        : 'Mode pratinjau siswa. Jawaban hanya untuk mencoba dan tidak disimpan.'}
                 </div>
             )}
             <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
@@ -169,9 +175,13 @@ export default function CourseLearningPreview({
                                         <LearningPage
                                             page={material}
                                             assets={content.assets}
-                                            answers={answers}
+                                            answers={
+                                                isPageSubmitted
+                                                    ? initialAnswers
+                                                    : answers
+                                            }
                                             onAnswer={answer}
-                                            disabled={isSubmitted || saving}
+                                            disabled={isPageSubmitted || saving}
                                         />
                                     </TabsContent>
                                     {material.sections.map((section) => (
@@ -183,9 +193,15 @@ export default function CourseLearningPreview({
                                             <LearningPage
                                                 page={section}
                                                 assets={content.assets}
-                                                answers={answers}
+                                                answers={
+                                                    isPageSubmitted
+                                                        ? initialAnswers
+                                                        : answers
+                                                }
                                                 onAnswer={answer}
-                                                disabled={isSubmitted || saving}
+                                                disabled={
+                                                    isPageSubmitted || saving
+                                                }
                                             />
                                         </TabsContent>
                                     ))}
@@ -194,36 +210,88 @@ export default function CourseLearningPreview({
                                 <LearningPage
                                     page={material}
                                     assets={content.assets}
-                                    answers={answers}
+                                    answers={
+                                        isPageSubmitted
+                                            ? initialAnswers
+                                            : answers
+                                    }
                                     onAnswer={answer}
-                                    disabled={isSubmitted || saving}
+                                    disabled={isPageSubmitted || saving}
                                 />
                             )}
+                            {isStudent &&
+                                activePage &&
+                                activePage.questions.length > 0 && (
+                                    <div className="border-t pt-5">
+                                        <Button
+                                            type="button"
+                                            className="w-full"
+                                            disabled={isPageSubmitted || saving}
+                                            onClick={() => {
+                                                const pageAnswers =
+                                                    Object.fromEntries(
+                                                        activePage.questions
+                                                            .filter(
+                                                                (question) =>
+                                                                    answers[
+                                                                        question
+                                                                            .id
+                                                                    ] !==
+                                                                    undefined,
+                                                            )
+                                                            .map((question) => [
+                                                                question.id,
+                                                                answers[
+                                                                    question.id
+                                                                ],
+                                                            ]),
+                                                    );
+                                                onSave?.(
+                                                    activePage.id,
+                                                    pageAnswers,
+                                                );
+                                            }}
+                                        >
+                                            {saving
+                                                ? 'Mengumpulkan…'
+                                                : isPageSubmitted
+                                                  ? 'Sudah dikumpulkan'
+                                                  : 'Kumpulkan jawaban'}
+                                        </Button>
+                                    </div>
+                                )}
                             <footer className="flex flex-wrap justify-between gap-3 border-t pt-5">
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    disabled={activeMaterial === 0}
+                                    disabled={previousPage === null}
                                     onClick={() => {
-                                        setActiveMaterial(activeMaterial - 1);
-                                        setActivePageId('material');
+                                        if (previousPage) {
+                                            setActiveMaterial(
+                                                previousPage.materialIndex,
+                                            );
+                                            setActivePageId(
+                                                previousPage.pageId,
+                                            );
+                                        }
                                     }}
                                 >
-                                    Materi sebelumnya
+                                    Sebelumnya
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    disabled={
-                                        activeMaterial ===
-                                        content.materials.length - 1
-                                    }
+                                    disabled={nextPage === null}
                                     onClick={() => {
-                                        setActiveMaterial(activeMaterial + 1);
-                                        setActivePageId('material');
+                                        if (nextPage) {
+                                            setActiveMaterial(
+                                                nextPage.materialIndex,
+                                            );
+                                            setActivePageId(nextPage.pageId);
+                                        }
                                     }}
                                 >
-                                    Materi berikutnya
+                                    Selanjutnya
                                 </Button>
                             </footer>
                         </section>

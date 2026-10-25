@@ -8,7 +8,6 @@ import {
     Ellipsis,
     Info,
     Library,
-    Megaphone,
     ShoppingBasket,
     X,
 } from 'lucide-react';
@@ -43,7 +42,6 @@ type Props = {
 };
 
 const menuItems = [
-    { label: 'Pengumuman', icon: Megaphone },
     { label: 'Kantin', icon: ShoppingBasket },
     { label: 'Ujian', icon: ClipboardCheck },
     { label: 'Course', icon: BookOpen },
@@ -129,7 +127,9 @@ function NewsSection({ news }: { news: NewsItem[] }) {
 }
 
 export default function StudentDashboard({ student, news }: Props) {
-    const firstName = student?.full_name?.trim().split(/\s+/)[0] ?? 'Siswa';
+    const greetingName =
+        student?.full_name?.trim().split(/\s+/).slice(0, 3).join(' ') ||
+        'Siswa';
     const { canInstall, isDismissed, isInstalled, isIos } =
         useStudentPwaInstall();
     const [isInstalling, setIsInstalling] = useState(false);
@@ -224,7 +224,7 @@ export default function StudentDashboard({ student, news }: Props) {
                             className="mb-4 size-12 object-contain"
                         />
                         <p className="text-sm text-white/80">
-                            Selamat datang, {firstName}
+                            Selamat datang, {greetingName}
                         </p>
                         <h3 className="mt-1 text-xl font-semibold">
                             Portal Siswa SMPN 17 Denpasar

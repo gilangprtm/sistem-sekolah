@@ -57,7 +57,7 @@ export default function LmsCourseManagementShow({ course, actions }: Props) {
             !(await confirm({
                 title: 'Aktifkan Course?',
                 description:
-                    'Revisi ini akan ditetapkan sebagai versi aktif Course.',
+                    'Revisi ini menjadi versi aktif untuk Guru dan Siswa. Siswa mengerjakan dari awal; jawaban dan nilai revisi sebelumnya tetap tersimpan sebagai riwayat.',
             }))
         ) {
             return;

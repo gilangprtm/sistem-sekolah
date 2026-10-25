@@ -114,6 +114,7 @@ export default function CourseContentEditor({
             id: newId(),
             type,
             prompt: '',
+            points: null,
             ...(type === 'multiple_choice'
                 ? {
                       options: [
@@ -768,6 +769,28 @@ export default function CourseContentEditor({
                                     </Button>
                                 </div>
                             </div>
+                            {page.questions.length > 0 && (
+                                <p
+                                    className="text-sm text-muted-foreground"
+                                    role="status"
+                                >
+                                    Total bobot tab ini:{' '}
+                                    {Number(
+                                        page.questions
+                                            .reduce(
+                                                (total, question) =>
+                                                    total +
+                                                    (Number(question.points) ||
+                                                        0),
+                                                0,
+                                            )
+                                            .toFixed(2),
+                                    )}
+                                    /100. Setiap Materi atau Bagian yang
+                                    memiliki soal wajib tepat 100 sebelum
+                                    diaktifkan.
+                                </p>
+                            )}
                             {page.questions.map((question, index) => (
                                 <div
                                     key={question.id}
@@ -822,6 +845,51 @@ export default function CourseContentEditor({
                                         }
                                         placeholder="Tulis pertanyaan"
                                     />
+                                    <div className="grid max-w-xs gap-2">
+                                        <Label
+                                            htmlFor={`points-${question.id}`}
+                                        >
+                                            {question.type === 'essay'
+                                                ? 'Nilai maksimal'
+                                                : 'Nilai jawaban benar'}
+                                        </Label>
+                                        <Input
+                                            id={`points-${question.id}`}
+                                            aria-label={`Bobot soal ${question.type === 'essay' ? 'uraian' : 'pilihan ganda'}`}
+                                            type="number"
+                                            min="0.01"
+                                            max="100"
+                                            step="0.01"
+                                            value={question.points ?? ''}
+                                            disabled={disabled}
+                                            placeholder="Belum diatur"
+                                            onChange={(event) =>
+                                                updatePage({
+                                                    questions:
+                                                        page.questions.map(
+                                                            (item) =>
+                                                                item.id ===
+                                                                question.id
+                                                                    ? {
+                                                                          ...item,
+                                                                          points:
+                                                                              event
+                                                                                  .target
+                                                                                  .value ===
+                                                                              ''
+                                                                                  ? null
+                                                                                  : Number(
+                                                                                        event
+                                                                                            .target
+                                                                                            .value,
+                                                                                    ),
+                                                                      }
+                                                                    : item,
+                                                        ),
+                                                })
+                                            }
+                                        />
+                                    </div>
                                     {question.type === 'multiple_choice' && (
                                         <div className="flex flex-wrap gap-2">
                                             <Button

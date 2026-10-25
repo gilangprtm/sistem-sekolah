@@ -84,6 +84,7 @@ class LmsCourseLifecycle
 
     private function assertComplete(LmsCourse $course, LmsCourseRevision $revision): void
     {
+        $grading = app(LmsCourseGrading::class);
         $service = app(LmsCourseContent::class);
         $content = $service->normalize(['materials' => $revision->content['materials'] ?? []]);
         if (trim($revision->title) === '' || $content['materials'] === []) {
@@ -94,6 +95,9 @@ class LmsCourseLifecycle
         }
         foreach ($content['materials'] as $material) {
             foreach ([$material, ...($material['sections'] ?? [])] as $page) {
+                if ($page['questions'] !== [] && ! $grading->hasWeights($page)) {
+                    throw ValidationException::withMessages(['course' => 'Total bobot soal pada setiap Materi atau Bagian harus tepat 100. Periksa: '.$page['title'].'.']);
+                }
                 if (trim(html_entity_decode(strip_tags($page['body']), ENT_QUOTES | ENT_HTML5, 'UTF-8'), " \t\n\r\0\x0B\xc2\xa0") === '' && $page['media'] === [] && $page['questions'] === [] && ($page['sections'] ?? []) === []) {
                     throw ValidationException::withMessages(['course' => 'Setiap Materi dan Bagian harus berisi teks, media, atau soal.']);
                 }

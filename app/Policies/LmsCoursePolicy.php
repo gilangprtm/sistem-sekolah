@@ -30,6 +30,12 @@ class LmsCoursePolicy
             || ($user->can('lms.course.view') && $this->isActiveTeacher($user));
     }
 
+    public function grade(User $user, LmsCourse $course): bool
+    {
+        return $course->archived_at === null && ($user->hasRole('Super Admin')
+            || ($this->isActiveTeacher($user) && $user->can('lms.course.view') && $user->can('lms.run.manage')));
+    }
+
     public function manageDesigns(User $user): bool
     {
         return $user->hasRole('Super Admin')

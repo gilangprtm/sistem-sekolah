@@ -1,6 +1,13 @@
 import { Head, Link } from '@inertiajs/react';
+import { BookOpenCheck, EllipsisVertical } from 'lucide-react';
 import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { dashboard } from '@/routes/student-app';
 import { show } from '@/routes/student-app/courses';
 
@@ -38,19 +45,59 @@ export default function StudentCourses({ courses, period }: Props) {
                     {courses.map((course) => (
                         <article
                             key={course.id}
-                            className="grid min-w-0 gap-3 rounded-xl border bg-card p-4"
+                            className="flex min-h-24 min-w-0 items-center gap-3 rounded-[1.25rem] border border-border bg-card p-3 text-card-foreground"
                         >
-                            <h2 className="font-semibold wrap-anywhere">
-                                {course.title}
-                            </h2>
-                            <p className="text-sm text-muted-foreground">
-                                {course.subject} · Kelas {course.grade_level}
-                            </p>
-                            <Button asChild className="w-fit">
-                                <Link href={show.url(course.id)}>
-                                    Buka Course
-                                </Link>
-                            </Button>
+                            <Link
+                                href={show.url(course.id)}
+                                aria-label={`Buka course ${course.title}`}
+                                className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted/60 text-muted-foreground focus-visible:outline-ring"
+                            >
+                                <BookOpenCheck
+                                    className="size-7"
+                                    strokeWidth={1.7}
+                                    aria-hidden="true"
+                                />
+                            </Link>
+                            <div className="min-w-0 flex-1">
+                                <h2 className="truncate text-base font-semibold">
+                                    <Link
+                                        href={show.url(course.id)}
+                                        className="hover:underline"
+                                    >
+                                        {course.title}
+                                    </Link>
+                                </h2>
+                                <p className="mt-1 truncate text-sm text-muted-foreground">
+                                    {course.subject}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Kelas {course.grade_level}
+                                </p>
+                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label={`Aksi course ${course.title}`}
+                                        className="size-10 shrink-0 self-start rounded-full text-foreground"
+                                    >
+                                        <EllipsisVertical
+                                            className="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                        <Link href={show.url(course.id)}>
+                                            <BookOpenCheck aria-hidden="true" />
+                                            Buka Course
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </article>
                     ))}
                 </section>

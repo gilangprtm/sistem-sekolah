@@ -50,6 +50,7 @@ class CourseController extends Controller
                 'revision_number' => $context['revision']->revision_number, 'content' => $learningContent,
                 'status' => $attempt === null ? 'not_started' : $attempt->status,
                 'answers' => (object) $responses->answers($attempt),
+                'submitted_page_ids' => $responses->submittedPages($attempt, $context['revision']),
                 'attempt_token' => $responses->token($attempt, $context['revision']),
             ],
         ]), $request);
@@ -60,12 +61,12 @@ class CourseController extends Controller
         Gate::authorize('viewStudentCourses', LmsCourse::class);
         $data = $request->validate([
             'revision_id' => ['required', 'integer'], 'attempt_token' => ['required', 'string', 'size:64'],
+            'page_id' => ['required', 'string', 'uuid'],
             'answers' => ['present', 'array', 'max:100'], 'answers.*' => ['nullable', 'string', 'max:10000'],
-            'submit' => ['required', 'boolean'],
         ]);
         $responses->save($request->user(), $course, $data);
 
-        return to_route('student-app.courses.show', $course)->with('success', $data['submit'] ? 'Jawaban berhasil dikumpulkan.' : 'Jawaban tersimpan.');
+        return to_route('student-app.courses.show', $course)->with('success', 'Jawaban pada tab ini berhasil dikumpulkan.');
     }
 
     public function media(Request $request, LmsCourse $course, string $media, LmsCourseResponses $responses, LmsCourseContent $content): SymfonyResponse

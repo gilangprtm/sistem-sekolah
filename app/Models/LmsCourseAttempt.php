@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
  * @property string $status
  * @property Carbon|null $started_at
  * @property Carbon|null $submitted_at
+ * @property array{submitted_pages?: list<string>}|null $progress
  * @property-read int|null $answers_count
  */
 class LmsCourseAttempt extends Model

@@ -49,6 +49,33 @@ class LmsCourseContentTest extends TestCase
         $this->assertSame($saved->content, $course->fresh()->latestRevision->content);
     }
 
+    public function test_draft_saves_partial_and_unset_question_weights_and_editor_returns_them(): void
+    {
+        [$user, $course] = $this->context();
+        $content = $this->content();
+        $content['materials'][0]['questions'][0]['points'] = 12.25;
+        $content['materials'][0]['sections'][0]['questions'][0]['points'] = null;
+        $this->save($user, $course, $content)->assertSessionHasNoErrors();
+        $this->assertSame($content['materials'], $course->fresh()->latestRevision->content['materials']);
+        $this->get(route('lms.design.edit', $course))->assertInertia(fn ($page) => $page
+            ->where('course.content.materials.0.questions.0.points', 12.25)
+            ->where('course.content.materials.0.sections.0.questions.0.points', null));
+    }
+
+    #[TestWith([0])]
+    #[TestWith([-1])]
+    #[TestWith([100.01])]
+    #[TestWith(['1.001'])]
+    #[TestWith(['invalid'])]
+    public function test_question_weights_reject_invalid_values_without_changing_draft(mixed $points): void
+    {
+        [$user, $course] = $this->context();
+        $content = $this->content();
+        $content['materials'][0]['questions'][0]['points'] = $points;
+        $this->save($user, $course, $content)->assertSessionHasErrors('materials.0.questions.0.points');
+        $this->assertSame(['materials' => []], $course->fresh()->latestRevision->content);
+    }
+
     public function test_sanitizes_html_and_canonicalizes_youtube_without_rendering_provider_html(): void
     {
         [$user, $course] = $this->context();

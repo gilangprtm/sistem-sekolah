@@ -17,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -60,6 +61,34 @@ class LmsSchemaSeederTest extends TestCase
         $this->assertDatabaseHas('tr_lms_course_attempts', ['id' => $context['attempt_id'], 'course_revision_id' => $context['revision_id']]);
         $this->assertDatabaseHas('tr_lms_course_answers', ['id' => $answerId, 'question_key' => 'question-1']);
         $this->assertSame('Materi awal', json_decode(DB::table('tr_lms_course_revisions')->where('id', $context['revision_id'])->value('content'), true)['materials'][0]['title']);
+    }
+
+    public function test_course_runs_allow_a_separate_execution_per_revision_without_losing_history_on_rollback(): void
+    {
+        $context = $this->createCourseContext();
+        $secondRevisionId = DB::table('tr_lms_course_revisions')->insertGetId([
+            'course_id' => $context['course_id'], 'revision_number' => 2,
+            'title' => 'Revisi aktif baru', 'content' => '{"materials":[]}', 'created_by' => $context['teacher_id'],
+        ]);
+        $migration = require database_path('migrations/2026_10_25_053410_allow_lms_course_runs_per_revision.php');
+        $migration->down();
+        $migration->up();
+        $secondRunId = DB::table('tr_lms_course_runs')->insertGetId([
+            'course_id' => $context['course_id'], 'course_revision_id' => $secondRevisionId,
+            'academic_period_id' => DB::table('tr_lms_course_runs')->where('id', $context['run_id'])->value('academic_period_id'),
+            'rombel_id' => DB::table('tr_lms_course_runs')->where('id', $context['run_id'])->value('rombel_id'),
+            'schedule_teaching_assignment_id' => DB::table('tr_lms_course_runs')->where('id', $context['run_id'])->value('schedule_teaching_assignment_id'),
+            'teacher_id' => $context['teacher_id'],
+        ]);
+        $this->assertDatabaseHas('tr_lms_course_runs', ['id' => $context['run_id'], 'course_revision_id' => $context['revision_id']]);
+        $this->assertDatabaseHas('tr_lms_course_runs', ['id' => $secondRunId, 'course_revision_id' => $secondRevisionId]);
+
+        try {
+            $migration->down();
+            $this->fail('Rollback must preserve both revision runs.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Rollback ditolak: terdapat pelaksanaan beberapa revisi pada kelas dan semester yang sama. Riwayat tidak boleh dihapus.', $exception->getMessage());
+        }
     }
 
     public function test_attempt_cannot_reference_a_revision_from_another_course(): void

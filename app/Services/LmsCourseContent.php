@@ -59,7 +59,8 @@ class LmsCourseContent
                 "{$path}.media.*.url" => ['nullable', 'string', 'max:500'],
                 "{$path}.media.*.caption" => ['nullable', 'string', 'max:255'],
                 "{$path}.questions" => ['present', 'array', 'list', 'max:100'],
-                "{$path}.questions.*" => ['required', 'array:id,type,prompt,options'],
+                "{$path}.questions.*" => ['required', 'array:id,type,prompt,points,options'],
+                "{$path}.questions.*.points" => ['sometimes', 'nullable', 'numeric', 'decimal:0,2', 'gt:0', 'lte:100'],
                 "{$path}.questions.*.id" => ['required', 'uuid'],
                 "{$path}.questions.*.type" => ['required', Rule::in(['multiple_choice', 'essay'])],
                 "{$path}.questions.*.prompt" => ['required', 'string', 'max:10000'],
@@ -261,12 +262,15 @@ class LmsCourseContent
         return $content;
     }
 
-    /** @return array<string, mixed> */
-    public function learningContent(LmsCourseRevision $revision, LmsCourse $course, bool $student = false): array
+    /** @param array<string, int|null> $mediaQuery
+     * @return array<string, mixed>
+     */
+    public function learningContent(LmsCourseRevision $revision, LmsCourse $course, bool $student = false, array $mediaQuery = []): array
     {
         $content = $this->editorContent($revision, $course);
         $withoutKeys = static function (array $page): array {
             $page['questions'] = array_map(static function (array $question): array {
+                unset($question['points']);
                 if (isset($question['options'])) {
                     $question['options'] = array_map(static fn (array $option): array => [
                         'id' => $option['id'], 'text' => $option['text'],
@@ -284,7 +288,7 @@ class LmsCourseContent
         }
         unset($material);
         foreach ($content['assets'] as $id => &$asset) {
-            $asset['url'] = $student ? route('student-app.courses.media', [$course, $id]) : route('lms.my-courses.media', [$course, $id]);
+            $asset['url'] = $student ? route('student-app.courses.media', [$course, $id]) : route('lms.my-courses.media', [$course, $id, ...$mediaQuery]);
         }
         unset($asset);
 

@@ -28,5 +28,7 @@ Route::middleware(['auth', 'verified'])
         });
         Route::get('/course-saya', [LmsMyCourseController::class, 'index'])->name('my-courses');
         Route::get('/course-saya/{course}', [LmsMyCourseController::class, 'show'])->name('my-courses.show');
+        Route::get('/course-saya/{course}/nilai/unduh', [LmsMyCourseController::class, 'downloadGrades'])->name('my-courses.grades.download');
         Route::get('/course-saya/{course}/media/{media}', [LmsMyCourseController::class, 'media'])->name('my-courses.media');
+        Route::post('/course-saya/{course}/nilai', [LmsMyCourseController::class, 'grade'])->name('my-courses.grade');
     });

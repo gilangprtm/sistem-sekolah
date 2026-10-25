@@ -10,6 +10,7 @@ export type CourseQuestion = {
     id: string;
     type: 'multiple_choice' | 'essay';
     prompt: string;
+    points?: number | null;
     options?: { id: string; text: string; is_correct: boolean }[];
 };
 export type CourseMedia = {
@@ -28,7 +29,10 @@ export type CoursePage = {
     questions: CourseQuestion[];
 };
 export type CourseMaterial = CoursePage & { sections: CoursePage[] };
-export type LearningCourseQuestion = Omit<CourseQuestion, 'options'> & {
+export type LearningCourseQuestion = Omit<
+    CourseQuestion,
+    'options' | 'points'
+> & {
     options?: { id: string; text: string }[];
 };
 export type LearningCoursePage = Omit<CoursePage, 'questions'> & {

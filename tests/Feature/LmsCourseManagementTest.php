@@ -56,6 +56,49 @@ class LmsCourseManagementTest extends TestCase
             ->where('courses.data.0.status', 'active')->where('courses.data.0.can_activate', false));
     }
 
+    #[TestWith([null, 100, false])]
+    #[TestWith([50, 50, false])]
+    #[TestWith([99.99, 100, false])]
+    #[TestWith([100, 99.99, false])]
+    #[TestWith([100, 100, true])]
+    public function test_activation_requires_one_hundred_points_on_each_question_page(?float $materialPoints, float $sectionPoints, bool $valid): void
+    {
+        [, , $course] = $this->course();
+        $content = $this->content();
+        $content['materials'][0]['questions'] = [['id' => (string) Str::uuid(), 'type' => 'essay', 'prompt' => 'Materi', 'points' => $materialPoints]];
+        $content['materials'][0]['sections'] = [[
+            'id' => (string) Str::uuid(), 'title' => 'Bagian', 'body' => '', 'media' => [],
+            'questions' => [['id' => (string) Str::uuid(), 'type' => 'essay', 'prompt' => 'Bagian', 'points' => $sectionPoints]],
+        ]];
+        $course->latestRevision->update(['content' => $content]);
+        $revision = $course->fresh()->latestRevision;
+        $response = $this->actingAs($this->user('Kurikulum'))->post(route('lms.management.activate', $course), ['revision_id' => $revision->editToken($course)]);
+        if ($valid) {
+            $response->assertSessionHasNoErrors();
+            $this->assertSame($revision->id, $course->fresh()->approved_revision_id);
+        } else {
+            $response->assertSessionHasErrors('course');
+            $this->assertNull($course->fresh()->approved_revision_id);
+            $this->assertSame('draft', $revision->fresh()->status);
+        }
+    }
+
+    public function test_activation_sums_fractional_question_weights_exactly_and_exempts_pages_without_questions(): void
+    {
+        [, , $course] = $this->course();
+        $content = $this->content();
+        foreach ([33.33, 33.33, 33.34] as $points) {
+            $content['materials'][0]['questions'][] = ['id' => (string) Str::uuid(), 'type' => 'essay', 'prompt' => 'Uraian', 'points' => $points];
+        }
+        $content['materials'][0]['sections'] = [[
+            'id' => (string) Str::uuid(), 'title' => 'Tanpa soal', 'body' => '<p>Baca</p>', 'media' => [], 'questions' => [],
+        ]];
+        $course->latestRevision->update(['content' => $content]);
+        $revision = $course->fresh()->latestRevision;
+        $this->actingAs($this->user('Kurikulum'))->post(route('lms.management.activate', $course), ['revision_id' => $revision->editToken($course)])->assertSessionHasNoErrors();
+        $this->assertSame($revision->id, $course->fresh()->approved_revision_id);
+    }
+
     public function test_activation_rejects_empty_course_and_does_not_change_draft(): void
     {
         [, , $course] = $this->course();
