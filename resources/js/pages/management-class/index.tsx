@@ -121,13 +121,13 @@ export default function ManagementClass({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manajemen Kelas" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <Heading
                         variant="small"
                         title="Manajemen Kelas"
                         description="Pantau kelas, jumlah siswa, dan wali kelas berdasarkan Tahun Ajaran."
                     />
-                    <Button asChild>
+                    <Button asChild className="w-full md:w-auto md:shrink-0">
                         <Link
                             href={`/kurikulum/management-class/manage${selectedYear ? `?academic_year_id=${selectedYear.id}` : ''}`}
                         >

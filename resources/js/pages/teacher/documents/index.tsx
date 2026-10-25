@@ -417,8 +417,8 @@ function TeacherDocumentsContent({
         <AppLayout>
             <Head title={`Dokumen ${module.label}`} />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="flex min-w-0 items-start gap-3">
                         {folder && (
                             <Button
                                 asChild
@@ -443,7 +443,7 @@ function TeacherDocumentsContent({
                             description={`Dokumen khusus modul ${module.label}. Publik hanya untuk pengguna yang memiliki akses modul ini.`}
                         />
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:flex-wrap md:justify-end">
                         <Dialog
                             open={downloadOpen}
                             onOpenChange={(open) => {
@@ -453,7 +453,10 @@ function TeacherDocumentsContent({
                             }}
                         >
                             <DialogTrigger asChild>
-                                <Button variant="outline">
+                                <Button
+                                    variant="outline"
+                                    className="w-full md:w-auto"
+                                >
                                     <Download />
                                     Unduh
                                 </Button>

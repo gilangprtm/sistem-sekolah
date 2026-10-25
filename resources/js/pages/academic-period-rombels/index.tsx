@@ -122,13 +122,14 @@ export default function AcademicPeriodRombelsIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Penggunaan Rombel" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <Heading
                         variant="small"
                         title="Penggunaan Rombel"
                         description="Pilih rombel yang digunakan pada Tahun Ajaran dan Semester aktif."
                     />
                     <Button
+                        className="w-full md:w-auto md:shrink-0"
                         disabled={
                             !selectedPeriodId || availableRombels.length === 0
                         }

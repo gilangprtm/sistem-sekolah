@@ -179,13 +179,13 @@ export default function TeachersIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Guru & Staff" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <Heading
                         variant="small"
                         title="Master Guru & Staff"
                         description="Kelola profil Guru dan Staff serta akun yang terhubung"
                     />
-                    <Button asChild>
+                    <Button asChild className="w-full md:w-auto md:shrink-0">
                         <Link href="/teachers/create">
                             <Plus />
                             Tambah Guru & Staff

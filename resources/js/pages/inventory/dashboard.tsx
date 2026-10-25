@@ -70,13 +70,17 @@ export default function InventoryDashboard({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Inventaris" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <Heading
                         variant="small"
                         title="Dashboard Inventaris"
                         description="Statistik aset sekolah"
                     />
-                    <Button asChild variant="outline">
+                    <Button
+                        asChild
+                        variant="outline"
+                        className="w-full md:w-auto md:shrink-0"
+                    >
                         <Link href="/inventaris/inventory">
                             <ArrowLeft />
                             Daftar Inventaris

@@ -8,7 +8,7 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { Head, router } from '@inertiajs/react';
-import { CalendarDays, CircleAlert } from 'lucide-react';
+import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
@@ -235,23 +235,21 @@ export default function JadwalPelajaranIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Jadwal Pelajaran" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <div className="flex items-center gap-2">
-                            <CalendarDays
-                                className="size-5 text-primary"
-                                aria-hidden="true"
-                            />
-                            <h1 className="text-xl font-semibold tracking-tight">
-                                Jadwal Pelajaran
-                            </h1>
-                        </div>
+                        <h1 className="text-xl font-semibold tracking-tight">
+                            Jadwal Pelajaran
+                        </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
                             Seret jadwal pada tabel untuk memindahkan slot.
                             Perubahan disimpan otomatis.
                         </p>
                     </div>
-                    <Button variant="outline" asChild>
+                    <Button
+                        variant="outline"
+                        asChild
+                        className="w-full md:w-auto md:shrink-0"
+                    >
                         <a href={generateUrl}>Siapkan Jadwal</a>
                     </Button>
                 </div>

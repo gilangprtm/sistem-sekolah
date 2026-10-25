@@ -17,6 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { createLmsContentId as newId } from '@/lib/lms-content-id';
+import { toEditorHtml } from '@/lib/lms-math-text';
 import type { CourseContent } from '@/types/lms';
 
 type Props = {
@@ -823,28 +824,61 @@ export default function CourseContentEditor({
                                             <Trash2 />
                                         </Button>
                                     </div>
-                                    <Textarea
-                                        rows={3}
-                                        value={question.prompt}
-                                        disabled={disabled}
-                                        maxLength={10000}
-                                        onChange={(event) =>
-                                            updatePage({
-                                                questions: page.questions.map(
-                                                    (item) =>
-                                                        item.id === question.id
-                                                            ? {
-                                                                  ...item,
-                                                                  prompt: event
-                                                                      .target
-                                                                      .value,
-                                                              }
-                                                            : item,
-                                                ),
-                                            })
-                                        }
-                                        placeholder="Tulis pertanyaan"
-                                    />
+                                    {question.type === 'essay' ? (
+                                        <RichTextEditor
+                                            id={`prompt-${question.id}`}
+                                            label={`Pertanyaan uraian ${index + 1}`}
+                                            placeholder="Tulis pertanyaan"
+                                            compact
+                                            value={toEditorHtml(
+                                                question.prompt,
+                                                question.prompt_format,
+                                            )}
+                                            disabled={disabled}
+                                            onChange={(value) =>
+                                                updatePage({
+                                                    questions:
+                                                        page.questions.map(
+                                                            (item) =>
+                                                                item.id ===
+                                                                question.id
+                                                                    ? {
+                                                                          ...item,
+                                                                          prompt: value,
+                                                                          prompt_format:
+                                                                              'html',
+                                                                      }
+                                                                    : item,
+                                                        ),
+                                                })
+                                            }
+                                        />
+                                    ) : (
+                                        <Textarea
+                                            rows={3}
+                                            value={question.prompt}
+                                            disabled={disabled}
+                                            maxLength={10000}
+                                            onChange={(event) =>
+                                                updatePage({
+                                                    questions:
+                                                        page.questions.map(
+                                                            (item) =>
+                                                                item.id ===
+                                                                question.id
+                                                                    ? {
+                                                                          ...item,
+                                                                          prompt: event
+                                                                              .target
+                                                                              .value,
+                                                                      }
+                                                                    : item,
+                                                        ),
+                                                })
+                                            }
+                                            placeholder="Tulis pertanyaan"
+                                        />
+                                    )}
                                     <div className="grid max-w-xs gap-2">
                                         <Label
                                             htmlFor={`points-${question.id}`}

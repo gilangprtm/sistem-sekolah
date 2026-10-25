@@ -247,7 +247,7 @@ export default function StudentsIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Siswa" />
             <div className="flex max-w-full min-w-0 flex-1 flex-col gap-4 rounded-xl p-4 pb-24 sm:pb-6">
-                <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="min-w-0 break-words">
                         <Heading
                             variant="small"
@@ -255,12 +255,12 @@ export default function StudentsIndex({
                             description="Kelola data profil Siswa dan akun yang terhubung"
                         />
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                    <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:flex-wrap md:justify-end">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={() => setImportDialogOpen(true)}
-                            className="w-full sm:w-auto"
+                            className="w-full md:w-auto"
                         >
                             Import Excel
                         </Button>
@@ -273,13 +273,13 @@ export default function StudentsIndex({
                                     setAutoLinkOpen(true);
                                 }}
                                 disabled={autoLinkProcessing}
-                                className="w-full sm:w-auto"
+                                className="w-full md:w-auto"
                             >
                                 <Link2 />
                                 Hubungkan Otomatis
                             </Button>
                         )}
-                        <Button asChild className="w-full sm:w-auto">
+                        <Button asChild className="w-full md:w-auto">
                             <Link href="/students/create">
                                 <Plus />
                                 Tambah Siswa

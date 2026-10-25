@@ -10,6 +10,7 @@ export type CourseQuestion = {
     id: string;
     type: 'multiple_choice' | 'essay';
     prompt: string;
+    prompt_format?: 'html';
     points?: number | null;
     options?: { id: string; text: string; is_correct: boolean }[];
 };

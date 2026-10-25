@@ -253,7 +253,7 @@ export default function KantinSaldoIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Saldo Kantin" />
             <div className="flex flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <Heading
                         variant="small"
                         title="Ledger Saldo Siswa"
@@ -262,6 +262,7 @@ export default function KantinSaldoIndex({
                     {canTopUp && (
                         <Button
                             type="button"
+                            className="w-full md:w-auto md:shrink-0"
                             onClick={() => setDialogOpen(true)}
                         >
                             <Plus />

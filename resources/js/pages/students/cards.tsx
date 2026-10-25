@@ -145,14 +145,17 @@ export default function StudentCards({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Kartu Pelajar" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <Heading
                         variant="small"
                         title="Kartu Pelajar"
                         description="Pilih siswa untuk membuka dan mencetak kartu pelajar"
                     />
                     {canPrint && (
-                        <Button asChild>
+                        <Button
+                            asChild
+                            className="w-full md:w-auto md:shrink-0"
+                        >
                             <Link
                                 href={`/students/cards/print${printQuery ? `?${printQuery}` : ''}`}
                             >

@@ -44,6 +44,32 @@ class InventoryUnitRulesTest extends TestCase
         return $item;
     }
 
+    public function test_inventory_detail_units_use_the_generic_data_table_shell(): void
+    {
+        $page = file_get_contents(resource_path('js/pages/inventory/show.tsx'));
+
+        $this->assertIsString($page);
+        $this->assertStringContainsString(
+            "import DataTableShell from '@/components/data-table/data-table-shell';",
+            $page,
+        );
+        $this->assertStringContainsString('<DataTableShell', $page);
+        $this->assertStringContainsString('columns={unitColumns}', $page);
+        $this->assertStringContainsString('getRowKey={(unit) => unit.id}', $page);
+        $this->assertStringContainsString('selection={{', $page);
+        $this->assertStringContainsString('selectedKeys: selectedUnitIds', $page);
+        $this->assertStringContainsString('pagination={{', $page);
+        $this->assertStringContainsString('data={paginatedUnits}', $page);
+        $this->assertStringContainsString('onPageChange: setUnitPage', $page);
+        $this->assertStringContainsString('Tidak ada unit.', $page);
+        $this->assertStringContainsString('updateRoom(unit, roomId)', $page);
+        $this->assertStringContainsString('updateCondition(unit, condition)', $page);
+        $this->assertStringNotContainsString(
+            "from '@/components/ui/table'",
+            $page,
+        );
+    }
+
     public function test_add_units_increases_qty_and_continues_register(): void
     {
         $admin = $this->admin();

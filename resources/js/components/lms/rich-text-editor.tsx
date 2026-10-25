@@ -4,6 +4,8 @@ import StarterKit from '@tiptap/starter-kit';
 import {
     Bold,
     Code,
+    Subscript,
+    Superscript,
     Heading2,
     Heading3,
     Italic,
@@ -34,12 +36,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ModalShell from '@/components/ui/modal-shell';
 import { Separator } from '@/components/ui/separator';
+import { SubscriptExtension, SuperscriptExtension } from '@/lib/lms-math-text';
 
 type Props = {
     value: string;
     onChange: (value: string) => void;
     disabled: boolean;
     id: string;
+    label?: string;
+    placeholder?: string;
+    compact?: boolean;
 };
 
 function ToolbarButton({
@@ -97,6 +103,9 @@ export default function RichTextEditor({
     onChange,
     disabled,
     id,
+    label = 'Teks Materi',
+    placeholder = 'Tulis isi Materi di sini…',
+    compact = false,
 }: Props) {
     'use no memo';
 
@@ -106,6 +115,8 @@ export default function RichTextEditor({
     const editor = useEditor({
         shouldRerenderOnTransaction: true,
         extensions: [
+            SuperscriptExtension,
+            SubscriptExtension,
             StarterKit.configure({
                 heading: { levels: [2, 3] },
                 link: {
@@ -118,7 +129,7 @@ export default function RichTextEditor({
                     },
                 },
             }),
-            Placeholder.configure({ placeholder: 'Tulis isi Materi di sini…' }),
+            Placeholder.configure({ placeholder }),
         ],
         content: value,
         editable: !disabled,
@@ -126,14 +137,14 @@ export default function RichTextEditor({
             attributes: {
                 id,
                 role: 'textbox',
-                'aria-label': 'Teks Materi',
+                'aria-label': label,
                 'aria-multiline': 'true',
                 'aria-disabled': String(disabled),
-                class: 'min-h-72 px-4 py-3 text-base leading-relaxed wrap-anywhere outline-none sm:min-h-80 [&_p]:my-2 [&_h2]:my-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:my-3 [&_h3]:text-lg [&_h3]:font-semibold [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-6 [&_ol]:pl-6 [&_li]:my-1 [&_blockquote]:my-3 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:text-sm [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:font-mono [&_a]:text-primary [&_a]:underline [&_hr]:my-4 [&_p.is-editor-empty:first-child]:before:pointer-events-none [&_p.is-editor-empty:first-child]:before:float-left [&_p.is-editor-empty:first-child]:before:h-0 [&_p.is-editor-empty:first-child]:before:text-muted-foreground [&_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]',
+                class: `${compact ? 'min-h-32' : 'min-h-72 sm:min-h-80'} px-4 py-3 text-base leading-relaxed wrap-anywhere outline-none [&_p]:my-2 [&_h2]:my-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:my-3 [&_h3]:text-lg [&_h3]:font-semibold [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-6 [&_ol]:pl-6 [&_li]:my-1 [&_sup]:align-super [&_sup]:text-[0.75em] [&_sub]:align-sub [&_sub]:text-[0.75em] [&_blockquote]:my-3 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted-foreground [&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:text-sm [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:font-mono [&_a]:text-primary [&_a]:underline [&_hr]:my-4 [&_p.is-editor-empty:first-child]:before:pointer-events-none [&_p.is-editor-empty:first-child]:before:float-left [&_p.is-editor-empty:first-child]:before:h-0 [&_p.is-editor-empty:first-child]:before:text-muted-foreground [&_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]`,
             },
         },
         onUpdate: ({ editor: currentEditor }) => {
-            onChange(currentEditor.getHTML());
+            onChange(currentEditor.isEmpty ? '' : currentEditor.getHTML());
         },
     });
     useEffect(() => {
@@ -187,7 +198,7 @@ export default function RichTextEditor({
         <div className="min-w-0 overflow-hidden rounded-xl border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
             <div
                 role="group"
-                aria-label="Pemformatan teks"
+                aria-label={`Pemformatan ${label}`}
                 className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 p-2"
             >
                 <ToolbarButton
@@ -223,6 +234,26 @@ export default function RichTextEditor({
                     onClick={() => editor.chain().focus().toggleStrike().run()}
                 >
                     <Strikethrough />
+                </ToolbarButton>
+                <ToolbarButton
+                    label="Pangkat (superscript)"
+                    active={editor.isActive('superscript')}
+                    disabled={toolbarDisabled}
+                    onClick={() =>
+                        editor.chain().focus().toggleSuperscript().run()
+                    }
+                >
+                    <Superscript />
+                </ToolbarButton>
+                <ToolbarButton
+                    label="Indeks (subscript)"
+                    active={editor.isActive('subscript')}
+                    disabled={toolbarDisabled}
+                    onClick={() =>
+                        editor.chain().focus().toggleSubscript().run()
+                    }
+                >
+                    <Subscript />
                 </ToolbarButton>
                 <Divider />
                 <ToolbarButton
@@ -367,7 +398,7 @@ export default function RichTextEditor({
                     }}
                 >
                     <DialogHeader>
-                        <DialogTitle>Tautan Materi</DialogTitle>
+                        <DialogTitle>Tautan teks</DialogTitle>
                         <DialogDescription>
                             Tambahkan tautan HTTP atau HTTPS pada teks yang
                             dipilih.

@@ -21,6 +21,7 @@ type Props = {
         status: string;
         attempt_token: string;
         answers: Record<string, string>;
+        answerHtml: Record<string, string>;
         submitted_page_ids: string[];
     };
 };
@@ -29,7 +30,11 @@ export default function StudentCourseShow({ course }: Props) {
     const [saving, setSaving] = useState(false);
     const confirm = useConfirmation();
     const { errors } = usePage().props;
-    const save = async (pageId: string, answers: Record<string, string>) => {
+    const save = async (
+        pageId: string,
+        answers: Record<string, string>,
+        answerFormats: Record<string, 'html'>,
+    ) => {
         if (saving) {
             return;
         }
@@ -50,6 +55,7 @@ export default function StudentCourseShow({ course }: Props) {
                 revision_id: course.revision_id,
                 attempt_token: course.attempt_token,
                 answers,
+                answer_formats: answerFormats,
                 page_id: pageId,
             },
             {
@@ -81,6 +87,7 @@ export default function StudentCourseShow({ course }: Props) {
                         content={course.content}
                         mode="student"
                         initialAnswers={course.answers}
+                        initialAnswerHtml={course.answerHtml}
                         status={course.status}
                         submittedPageIds={course.submitted_page_ids}
                         saving={saving}

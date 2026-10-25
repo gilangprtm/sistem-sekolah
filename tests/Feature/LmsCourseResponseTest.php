@@ -269,6 +269,98 @@ class LmsCourseResponseTest extends TestCase
         }
     }
 
+    public function test_rich_essay_response_preserves_math_and_renders_safe_html_for_student_and_teacher(): void
+    {
+        [$teacher, $course, $period, $assignment] = $this->context();
+        [$user, $student] = $this->student($period, $assignment->rombel_id);
+        $this->actingAs($user);
+        $question = $course->approvedRevision->content['materials'][0]['questions'][1];
+        $richAnswer = '<p>x<sup>2</sup> + H<sub>2</sub>O</p><ol><li><strong>Langkah pertama</strong></li><li>Kesimpulan</li></ol><script>alert(1)</script><img src=x onerror=evil()>';
+        $expected = '<p>x<sup>2</sup> + H<sub>2</sub>O</p><ol><li><strong>Langkah pertama</strong></li><li>Kesimpulan</li></ol>';
+        $payload = $this->payload($course, [$question['id'] => $richAnswer]);
+        $payload['answer_formats'] = [$question['id'] => 'html'];
+
+        $this->actingAs($user)->post(route('student-app.courses.answers', $course), $payload)
+            ->assertRedirect(route('student-app.courses.show', $course))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('tr_lms_course_answers', [
+            'question_key' => $question['id'],
+            'answer' => json_encode(['value' => $expected, 'format' => 'html']),
+        ]);
+        $this->get(route('student-app.courses.show', $course))->assertInertia(fn ($page) => $page
+            ->where('course.answerHtml.'.$question['id'], $expected));
+        $this->actingAs($teacher)->get(route('lms.my-courses.show', [$course, 'student_id' => $student->id]))
+            ->assertInertia(fn ($page) => $page
+                ->where('selectedResponse.answerHtml.'.$question['id'], $expected));
+    }
+
+    public function test_rich_answer_format_is_rejected_for_multiple_choice_questions(): void
+    {
+        [, $course, $period, $assignment] = $this->context();
+        [$user] = $this->student($period, $assignment->rombel_id);
+        $questions = $course->approvedRevision->content['materials'][0]['questions'];
+        $this->actingAs($user);
+        $payload = $this->payload($course, [$questions[0]['id'] => $questions[0]['options'][0]['id']]);
+        $payload['answer_formats'] = [$questions[0]['id'] => 'html'];
+
+        $this->actingAs($user)->post(route('student-app.courses.answers', $course), $payload)
+            ->assertSessionHasErrors('answers');
+
+        $this->assertDatabaseCount('tr_lms_course_attempts', 0);
+        $this->assertDatabaseCount('tr_lms_course_answers', 0);
+    }
+
+    #[TestWith(['<p><br></p>'])]
+    #[TestWith(['<p>&nbsp;</p><script>evil()</script>'])]
+    public function test_empty_rich_answer_does_not_count_as_an_answer(string $html): void
+    {
+        [, $course, $period, $assignment] = $this->context();
+        [$user] = $this->student($period, $assignment->rombel_id);
+        $this->actingAs($user);
+        $id = $course->approvedRevision->content['materials'][0]['questions'][1]['id'];
+        $payload = $this->payload($course, [$id => $html]);
+        $payload['answer_formats'] = [$id => 'html'];
+
+        $this->post(route('student-app.courses.answers', $course), $payload)->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('tr_lms_course_answers', 0);
+        $this->assertDatabaseHas('tr_lms_course_attempts', ['status' => 'submitted']);
+    }
+
+    public function test_legacy_plain_answers_are_escaped_for_display_without_mutating_storage(): void
+    {
+        [, $course, $period, $assignment] = $this->context();
+        [$user] = $this->student($period, $assignment->rombel_id);
+        $this->actingAs($user);
+        $id = $course->approvedRevision->content['materials'][0]['questions'][1]['id'];
+        $plain = "x < 5 dan y > 2\n<strong>bukan HTML</strong>";
+        $payload = $this->payload($course, [$id => $plain]);
+
+        $this->post(route('student-app.courses.answers', $course), $payload)->assertSessionHasNoErrors();
+
+        $this->get(route('student-app.courses.show', $course))->assertInertia(fn ($page) => $page
+            ->where('course.answers.'.$id, $plain)
+            ->where('course.answerHtml.'.$id, "x &lt; 5 dan y &gt; 2<br />\n&lt;strong&gt;bukan HTML&lt;/strong&gt;"));
+        $this->assertDatabaseHas('tr_lms_course_answers', ['question_key' => $id, 'answer' => json_encode(['value' => $plain])]);
+    }
+
+    public function test_rich_answer_rejects_unrelated_format_keys_and_excessive_text_without_writes(): void
+    {
+        [, $course, $period, $assignment] = $this->context();
+        [$user] = $this->student($period, $assignment->rombel_id);
+        $this->actingAs($user);
+        $id = $course->approvedRevision->content['materials'][0]['questions'][1]['id'];
+        $payload = $this->payload($course, [$id => '<p>Jawaban</p>']);
+        $payload['answer_formats'] = [(string) Str::uuid() => 'html'];
+        $this->post(route('student-app.courses.answers', $course), $payload)->assertSessionHasErrors('answers');
+        $this->assertDatabaseCount('tr_lms_course_answers', 0);
+
+        $payload['answer_formats'] = [$id => 'html'];
+        $payload['answers'][$id] = '<p>'.str_repeat('x', 10001).'</p>';
+        $this->post(route('student-app.courses.answers', $course), $payload)->assertSessionHasErrors('answers');
+        $this->assertDatabaseCount('tr_lms_course_attempts', 0);
+    }
+
     public function test_students_collect_answers_and_teacher_sees_actual_answers_and_statuses(): void
     {
         [$teacher, $course, $period, $assignment] = $this->context();

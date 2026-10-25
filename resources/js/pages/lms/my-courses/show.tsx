@@ -59,6 +59,7 @@ type Props = {
         name: string;
         status: string;
         answers: Record<string, string>;
+        answerHtml: Record<string, string>;
         content: LearningCourseContent;
         submitted_at: string | null;
         submitted_page_ids: string[];
@@ -427,6 +428,9 @@ export default function MyCourseShow({
                                                                                 }
                                                                                 answers={
                                                                                     selectedResponse.answers
+                                                                                }
+                                                                                answerHtml={
+                                                                                    selectedResponse.answerHtml
                                                                                 }
                                                                                 grading={
                                                                                     selectedResponse

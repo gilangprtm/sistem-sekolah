@@ -7,7 +7,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property string $question_key
- * @property array{value: string} $answer
+ * @property array{value: string, format?: 'html'} $answer
  * @property string|null $score
  * @property int|null $graded_by
  * @property Carbon|null $graded_at

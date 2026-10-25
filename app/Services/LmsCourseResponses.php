@@ -111,6 +111,7 @@ final class LmsCourseResponses
                 'status' => $selectedAttempt === null ? 'not_started' : $selectedAttempt->status,
                 'submitted_page_ids' => $selectedAttempt === null ? [] : $this->submittedPages($selectedAttempt, $revision),
                 'answers' => (object) $this->answers($selectedAttempt),
+                'answerHtml' => (object) $this->displayAnswers($selectedAttempt),
                 'grading' => app(LmsCourseGrading::class)->results($selectedAttempt, $revision, $selectedAttempt === null ? [] : $this->submittedPages($selectedAttempt, $revision)),
                 'revision' => $revision,
                 'submitted_at' => $selectedAttempt?->submitted_at?->toIso8601String(),
@@ -188,6 +189,25 @@ final class LmsCourseResponses
             ->mapWithKeys(fn ($answer): array => [$answer->question_key => $answer->answer['value']])->all();
     }
 
+    /** @return array<string, string> */
+    public function displayAnswers(?LmsCourseAttempt $attempt): array
+    {
+        if ($attempt === null) {
+            return [];
+        }
+
+        return $attempt->answers()->where('answer->value', '!=', '')->get()->mapWithKeys(function ($answer): array {
+            $value = $answer->answer['value'];
+            if (($answer->answer['format'] ?? null) === 'html') {
+                $value = app(LmsCourseContent::class)->sanitize($value);
+            } else {
+                $value = nl2br(htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+            }
+
+            return [$answer->question_key => $value];
+        })->all();
+    }
+
     public function token(?LmsCourseAttempt $attempt, LmsCourseRevision $revision): string
     {
         return hash('sha256', json_encode([$revision->id, $attempt?->id, $attempt?->status, $attempt?->progress, $this->answers($attempt)], JSON_THROW_ON_ERROR));
@@ -225,7 +245,7 @@ final class LmsCourseResponses
             if (! $pages->has($data['page_id'])) {
                 throw ValidationException::withMessages(['page_id' => 'Tab tidak valid atau tidak memiliki soal pada versi Course ini.']);
             }
-            $answers = $this->validateAnswers($pages->get($data['page_id']), $data['answers']);
+            $answers = $this->validateAnswers($pages->get($data['page_id']), $data['answers'], $data['answer_formats'] ?? []);
             $run = $context['run'] ?? LmsCourseRun::query()->create([
                 'course_id' => $course->id, 'academic_period_id' => $context['period']->id,
                 'rombel_id' => $context['placement']->rombel_id, 'course_revision_id' => $revision->id,
@@ -242,9 +262,9 @@ final class LmsCourseResponses
             $grading = app(LmsCourseGrading::class);
             $definitions = array_column($page['questions'], null, 'id');
             foreach ($answers as $questionId => $value) {
-                $answer = $attempt->answers()->updateOrCreate(['question_key' => $questionId], ['answer' => ['value' => $value], 'answered_at' => now()]);
+                $answer = $attempt->answers()->updateOrCreate(['question_key' => $questionId], ['answer' => $value, 'answered_at' => now()]);
                 if ($grading->hasWeights($page) && $definitions[$questionId]['type'] === 'multiple_choice') {
-                    $answer->forceFill(['score' => $grading->automaticScore($definitions[$questionId], $value), 'graded_by' => null, 'graded_at' => now()])->save();
+                    $answer->forceFill(['score' => $grading->automaticScore($definitions[$questionId], $value['value']), 'graded_by' => null, 'graded_at' => now()])->save();
                 }
             }
             $submittedPages = array_values(array_unique([
@@ -267,27 +287,47 @@ final class LmsCourseResponses
 
     /** @param array<string, mixed> $page
      * @param  array<string, mixed>  $answers
-     * @return array<string, string>
+     * @param  array<string, string>  $formats
+     * @return array<string, array{value: string, format?: string}>
      */
-    private function validateAnswers(array $page, array $answers): array
+    private function validateAnswers(array $page, array $answers, array $formats): array
     {
         $definitions = [];
         foreach ($page['questions'] ?? [] as $question) {
             $definitions[$question['id']] = $question;
         }
+        if (array_diff_key($formats, $answers) !== []) {
+            throw ValidationException::withMessages(['answers' => 'Format jawaban harus sesuai soal yang dikumpulkan.']);
+        }
         $normalized = [];
         foreach ($answers as $id => $answer) {
             $question = $definitions[$id] ?? null;
-            if ($question === null || ($answer !== null && ! is_string($answer)) || ($answer !== null && mb_strlen($answer) > 10000)) {
+            if ($question === null || ($answer !== null && ! is_string($answer)) || ($answer !== null && mb_strlen($answer) > 30000)) {
                 throw ValidationException::withMessages(['answers' => 'Soal atau jawaban tidak valid untuk Course ini.']);
+            }
+            $format = $formats[$id] ?? null;
+            if (isset($formats[$id]) && $format !== 'html') {
+                throw ValidationException::withMessages(['answers' => 'Format jawaban tidak valid.']);
+            }
+            if ($format === 'html' && $question['type'] !== 'essay') {
+                throw ValidationException::withMessages(['answers' => 'Format teks hanya tersedia untuk soal uraian.']);
             }
             if ($answer === null || trim($answer) === '') {
                 continue;
             }
-            if ($question['type'] === 'multiple_choice' && ! in_array($answer, array_column($question['options'] ?? [], 'id'), true)) {
+            if ($format === 'html') {
+                $answer = app(LmsCourseContent::class)->sanitize($answer);
+                if (! app(LmsCourseContent::class)->hasText($answer)) {
+                    continue;
+                }
+            } elseif ($question['type'] === 'multiple_choice' && ! in_array($answer, array_column($question['options'] ?? [], 'id'), true)) {
                 throw ValidationException::withMessages(['answers' => 'Pilih salah satu opsi yang tersedia pada soal.']);
             }
-            $normalized[$id] = $answer;
+            $text = $format === 'html' ? html_entity_decode(strip_tags($answer), ENT_QUOTES | ENT_HTML5, 'UTF-8') : $answer;
+            if (mb_strlen($text) > 10000) {
+                throw ValidationException::withMessages(['answers' => 'Jawaban maksimal 10000 karakter teks.']);
+            }
+            $normalized[$id] = $format === 'html' ? ['value' => $answer, 'format' => 'html'] : ['value' => $answer];
         }
 
         return $normalized;

@@ -59,11 +59,12 @@ class LmsCourseContent
                 "{$path}.media.*.url" => ['nullable', 'string', 'max:500'],
                 "{$path}.media.*.caption" => ['nullable', 'string', 'max:255'],
                 "{$path}.questions" => ['present', 'array', 'list', 'max:100'],
-                "{$path}.questions.*" => ['required', 'array:id,type,prompt,points,options'],
+                "{$path}.questions.*" => ['required', 'array:id,type,prompt,prompt_format,points,options'],
                 "{$path}.questions.*.points" => ['sometimes', 'nullable', 'numeric', 'decimal:0,2', 'gt:0', 'lte:100'],
                 "{$path}.questions.*.id" => ['required', 'uuid'],
                 "{$path}.questions.*.type" => ['required', Rule::in(['multiple_choice', 'essay'])],
                 "{$path}.questions.*.prompt" => ['required', 'string', 'max:10000'],
+                "{$path}.questions.*.prompt_format" => ['sometimes', 'required', Rule::in(['html'])],
                 "{$path}.questions.*.options" => ['sometimes', 'array', 'list', 'max:6'],
                 "{$path}.questions.*.options.*" => ['required', 'array:id,text,is_correct'],
                 "{$path}.questions.*.options.*.id" => ['required', 'uuid'],
@@ -87,7 +88,13 @@ class LmsCourseContent
             $page['body'] = $this->sanitize($page['body'] ?? '');
             foreach ($page['questions'] as &$question) {
                 $register($question['id']);
-                if (trim($question['prompt']) === '') {
+                if (($question['prompt_format'] ?? null) === 'html') {
+                    if ($question['type'] !== 'essay') {
+                        $this->invalid('content', 'Format teks hanya tersedia untuk soal uraian.');
+                    }
+                    $question['prompt'] = $this->sanitize($question['prompt']);
+                }
+                if (($question['prompt_format'] ?? null) === 'html' ? ! $this->hasText($question['prompt']) : trim($question['prompt']) === '') {
                     $this->invalid('content', 'Pertanyaan wajib diisi.');
                 }
                 $options = $question['options'] ?? [];
@@ -176,6 +183,12 @@ class LmsCourseContent
                     return '';
                 }
                 $tag = strtolower($node->tagName);
+                if ($tag === 'span') {
+                    $verticalAlign = strtolower(trim($node->getAttribute('style')));
+                    if (preg_match('/(?:^|;)\\s*vertical-align\\s*:\\s*(super|sub)\\s*(?:;|$)/D', $verticalAlign, $matches)) {
+                        $tag = $matches[1] === 'super' ? 'sup' : 'sub';
+                    }
+                }
                 if ($tag === 'div' && $node->parentNode?->nodeName !== 'body') {
                     $tag = 'p';
                 }
@@ -194,7 +207,7 @@ class LmsCourseContent
 
                     return '<a href="'.htmlspecialchars($href, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'" target="_blank" rel="noopener noreferrer">'.$children.'</a>';
                 }
-                if (! in_array($tag, ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'ul', 'ol', 'li', 'blockquote', 'h2', 'h3', 'pre', 'code', 'hr'], true)) {
+                if (! in_array($tag, ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'sup', 'sub', 'ul', 'ol', 'li', 'blockquote', 'h2', 'h3', 'pre', 'code', 'hr'], true)) {
                     return $children;
                 }
                 if ($tag === 'br' || $tag === 'hr') {
@@ -212,6 +225,25 @@ class LmsCourseContent
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
         }
+    }
+
+    public function hasText(string $html): bool
+    {
+        return trim(preg_replace('/[\\s\\x{00A0}\\x{200B}\\x{FEFF}]+/u', '', html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? '') !== '';
+    }
+
+    /** @param list<array<string, mixed>> $questions
+     * @return list<array<string, mixed>>
+     */
+    private function displayQuestions(array $questions): array
+    {
+        return array_map(function (array $question): array {
+            if (($question['prompt_format'] ?? null) === 'html') {
+                $question['prompt'] = $this->sanitize($question['prompt']);
+            }
+
+            return $question;
+        }, $questions);
     }
 
     /** @param array<string, mixed> $content
@@ -238,12 +270,12 @@ class LmsCourseContent
         foreach ($content['materials'] as &$material) {
             $material['body'] = $this->sanitize($material['body'] ?? '');
             $material['media'] ??= [];
-            $material['questions'] ??= [];
+            $material['questions'] = $this->displayQuestions($material['questions'] ?? []);
             $material['sections'] ??= [];
             foreach ($material['sections'] as &$section) {
                 $section['body'] = $this->sanitize($section['body'] ?? '');
                 $section['media'] ??= [];
-                $section['questions'] ??= [];
+                $section['questions'] = $this->displayQuestions($section['questions'] ?? []);
             }
             unset($section);
         }

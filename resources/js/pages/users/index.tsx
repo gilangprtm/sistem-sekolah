@@ -243,7 +243,7 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Users" />
             <div className="flex max-w-full min-w-0 flex-1 flex-col gap-4 rounded-xl p-4 pb-24 sm:pb-6">
-                <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="min-w-0 break-words">
                         <Heading
                             variant="small"
@@ -251,18 +251,18 @@ export default function UsersIndex({ users, roles, filters }: UsersPageProps) {
                             description="Kelola akun pengguna dan role"
                         />
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:flex-wrap md:justify-end">
                         <Button
                             variant="outline"
                             onClick={openImport}
-                            className="w-full sm:w-auto"
+                            className="w-full md:w-auto"
                         >
                             <Upload />
                             Import CSV
                         </Button>
                         <Button
                             onClick={openCreate}
-                            className="w-full sm:w-auto"
+                            className="w-full md:w-auto"
                         >
                             <Plus />
                             Tambah User

@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import RichTextContent from '@/components/lms/rich-text-content';
+import RichTextEditor from '@/components/lms/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { getAdjacentCoursePage } from '@/lib/lms-course-navigation';
 import type {
     CourseContent,
@@ -16,9 +17,14 @@ type Props = {
     content: LearningCourseContent;
     mode?: 'preview' | 'student';
     initialAnswers?: Record<string, string>;
+    initialAnswerHtml?: Record<string, string>;
     status?: string;
     submittedPageIds?: string[];
-    onSave?: (pageId: string, answers: Record<string, string>) => void;
+    onSave?: (
+        pageId: string,
+        answers: Record<string, string>,
+        formats: Record<string, 'html'>,
+    ) => void;
     saving?: boolean;
 };
 
@@ -28,6 +34,7 @@ export default function CourseLearningPreview({
     content,
     mode = 'preview',
     initialAnswers = {},
+    initialAnswerHtml = {},
     status,
     submittedPageIds = [],
     onSave,
@@ -35,8 +42,10 @@ export default function CourseLearningPreview({
 }: Props) {
     const [activeMaterial, setActiveMaterial] = useState(0);
     const [activePageId, setActivePageId] = useState('material');
-    const [answers, setAnswers] =
-        useState<Record<string, string>>(initialAnswers);
+    const [answers, setAnswers] = useState<Record<string, string>>({
+        ...initialAnswers,
+        ...initialAnswerHtml,
+    });
 
     const isStudent = mode === 'student';
     const isSubmitted = status === 'submitted';
@@ -177,7 +186,10 @@ export default function CourseLearningPreview({
                                             assets={content.assets}
                                             answers={
                                                 isPageSubmitted
-                                                    ? initialAnswers
+                                                    ? {
+                                                          ...initialAnswers,
+                                                          ...initialAnswerHtml,
+                                                      }
                                                     : answers
                                             }
                                             onAnswer={answer}
@@ -195,7 +207,10 @@ export default function CourseLearningPreview({
                                                 assets={content.assets}
                                                 answers={
                                                     isPageSubmitted
-                                                        ? initialAnswers
+                                                        ? {
+                                                              ...initialAnswers,
+                                                              ...initialAnswerHtml,
+                                                          }
                                                         : answers
                                                 }
                                                 onAnswer={answer}
@@ -212,7 +227,10 @@ export default function CourseLearningPreview({
                                     assets={content.assets}
                                     answers={
                                         isPageSubmitted
-                                            ? initialAnswers
+                                            ? {
+                                                  ...initialAnswers,
+                                                  ...initialAnswerHtml,
+                                              }
                                             : answers
                                     }
                                     onAnswer={answer}
@@ -249,6 +267,23 @@ export default function CourseLearningPreview({
                                                 onSave?.(
                                                     activePage.id,
                                                     pageAnswers,
+                                                    Object.fromEntries(
+                                                        activePage.questions
+                                                            .filter(
+                                                                (question) =>
+                                                                    question.type ===
+                                                                        'essay' &&
+                                                                    pageAnswers[
+                                                                        question
+                                                                            .id
+                                                                    ] !==
+                                                                        undefined,
+                                                            )
+                                                            .map((question) => [
+                                                                question.id,
+                                                                'html' as const,
+                                                            ]),
+                                                    ),
                                                 );
                                             }}
                                         >
@@ -320,10 +355,7 @@ function LearningPage({
     disabled: boolean;
 }) {
     const body = page.body ? (
-        <div
-            className="text-base leading-relaxed wrap-anywhere [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_li]:ml-6 [&_ol]:list-decimal [&_p]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_ul]:list-disc"
-            dangerouslySetInnerHTML={{ __html: page.body }}
-        />
+        <RichTextContent value={page.body} format="html" />
     ) : null;
     const media =
         page.media.length > 0 ? (
@@ -394,12 +426,14 @@ function LearningPage({
                     disabled={disabled}
                     className="grid min-w-0 gap-4 rounded-xl border p-4 sm:p-5"
                 >
-                    <legend className="sr-only">
-                        Soal {index + 1}. {question.prompt}
-                    </legend>
-                    <p className="text-base font-medium wrap-anywhere whitespace-pre-wrap">
-                        Soal {index + 1}. {question.prompt}
-                    </p>
+                    <legend className="sr-only">Soal {index + 1}</legend>
+                    <div className="grid min-w-0 gap-1 text-base font-medium">
+                        <p>Soal {index + 1}.</p>
+                        <RichTextContent
+                            value={question.prompt}
+                            format={question.prompt_format}
+                        />
+                    </div>
                     {question.type === 'multiple_choice' && (
                         <RadioGroup
                             value={answers[question.id] ?? ''}
@@ -432,18 +466,14 @@ function LearningPage({
                         </RadioGroup>
                     )}
                     {question.type === 'essay' && (
-                        <Textarea
-                            value={answers[question.id] ?? ''}
-                            onChange={(event) =>
-                                onAnswer(question.id, event.target.value)
-                            }
-                            aria-label={
-                                question.prompt ||
-                                `Jawaban uraian soal ${index + 1}`
-                            }
+                        <RichTextEditor
+                            id={`answer-${question.id}`}
+                            label={`Jawaban uraian soal ${index + 1}`}
                             placeholder="Tulis jawabanmu di sini"
-                            rows={4}
-                            maxLength={10000}
+                            compact
+                            value={answers[question.id] ?? ''}
+                            disabled={disabled}
+                            onChange={(value) => onAnswer(question.id, value)}
                         />
                     )}
                 </fieldset>

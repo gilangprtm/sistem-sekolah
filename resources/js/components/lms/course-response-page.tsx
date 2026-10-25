@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
+import RichTextContent from '@/components/lms/rich-text-content';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,7 @@ type Props = {
     studentId: number;
     page: LearningCoursePage;
     answers: Record<string, string>;
+    answerHtml: Record<string, string>;
     grading?: CoursePageGrading;
     submitted: boolean;
     canGrade: boolean;
@@ -34,6 +36,7 @@ export default function CourseResponsePage({
     studentId,
     page,
     answers,
+    answerHtml,
     grading,
     submitted,
     canGrade,
@@ -107,12 +110,25 @@ export default function CourseResponsePage({
                         key={question.id}
                         className="grid min-w-0 gap-3 rounded-lg border p-4"
                     >
-                        <p className="text-sm font-medium wrap-anywhere whitespace-pre-wrap">
-                            Soal {index + 1}. {question.prompt}
-                        </p>
-                        <p className="text-sm wrap-anywhere whitespace-pre-wrap">
-                            {text || 'Belum dijawab'}
-                        </p>
+                        <div className="grid min-w-0 gap-1 text-sm font-medium">
+                            <p>Soal {index + 1}.</p>
+                            <RichTextContent
+                                value={question.prompt}
+                                format={question.prompt_format}
+                            />
+                        </div>
+                        {question.type === 'essay' ? (
+                            <RichTextContent
+                                value={
+                                    answerHtml[question.id] || 'Belum dijawab'
+                                }
+                                format="html"
+                            />
+                        ) : (
+                            <p className="text-sm wrap-anywhere whitespace-pre-wrap">
+                                {text || 'Belum dijawab'}
+                            </p>
+                        )}
                         {grading?.weights_set &&
                             result &&
                             (question.type === 'multiple_choice' ? (

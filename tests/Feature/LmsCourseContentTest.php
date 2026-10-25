@@ -76,6 +76,38 @@ class LmsCourseContentTest extends TestCase
         $this->assertSame(['materials' => []], $course->fresh()->latestRevision->content);
     }
 
+    public function test_rich_essay_prompt_preserves_math_and_lists_but_removes_unsafe_html(): void
+    {
+        [$user, $course] = $this->context();
+        $content = $this->content();
+        $question = &$content['materials'][0]['sections'][0]['questions'][0];
+        $question['prompt_format'] = 'html';
+        $question['prompt'] = '<p onclick="evil()">Hitung x<span style="vertical-align: super">2</span> dan H<span style="vertical-align: sub">2</span>O.</p><ol><li>Jelaskan <strong>langkahnya</strong></li></ol><script>evil()</script><img src=x onerror=evil()>';
+        $expected = '<p>Hitung x<sup>2</sup> dan H<sub>2</sub>O.</p><ol><li>Jelaskan <strong>langkahnya</strong></li></ol>';
+
+        $this->save($user, $course, $content)->assertSessionHasNoErrors();
+
+        $this->assertSame($expected, $course->fresh()->latestRevision->content['materials'][0]['sections'][0]['questions'][0]['prompt']);
+        $this->get(route('lms.design.edit', $course))->assertInertia(fn ($page) => $page
+            ->where('course.content.materials.0.sections.0.questions.0.prompt', $expected)
+            ->where('course.content.materials.0.sections.0.questions.0.prompt_format', 'html'));
+    }
+
+    #[TestWith(['<p><br></p>'])]
+    #[TestWith(['<p>&nbsp;</p>'])]
+    #[TestWith(['<script>evil()</script>'])]
+    public function test_empty_rich_prompt_is_rejected(string $prompt): void
+    {
+        [$user, $course] = $this->context();
+        $content = $this->content();
+        $content['materials'][0]['sections'][0]['questions'][0]['prompt'] = $prompt;
+        $content['materials'][0]['sections'][0]['questions'][0]['prompt_format'] = 'html';
+
+        $this->save($user, $course, $content)->assertSessionHasErrors('content');
+
+        $this->assertSame(['materials' => []], $course->fresh()->latestRevision->content);
+    }
+
     public function test_sanitizes_html_and_canonicalizes_youtube_without_rendering_provider_html(): void
     {
         [$user, $course] = $this->context();

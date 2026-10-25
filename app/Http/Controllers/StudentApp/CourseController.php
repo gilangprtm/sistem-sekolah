@@ -50,6 +50,7 @@ class CourseController extends Controller
                 'revision_number' => $context['revision']->revision_number, 'content' => $learningContent,
                 'status' => $attempt === null ? 'not_started' : $attempt->status,
                 'answers' => (object) $responses->answers($attempt),
+                'answerHtml' => (object) $responses->displayAnswers($attempt),
                 'submitted_page_ids' => $responses->submittedPages($attempt, $context['revision']),
                 'attempt_token' => $responses->token($attempt, $context['revision']),
             ],
@@ -62,7 +63,8 @@ class CourseController extends Controller
         $data = $request->validate([
             'revision_id' => ['required', 'integer'], 'attempt_token' => ['required', 'string', 'size:64'],
             'page_id' => ['required', 'string', 'uuid'],
-            'answers' => ['present', 'array', 'max:100'], 'answers.*' => ['nullable', 'string', 'max:10000'],
+            'answers' => ['present', 'array', 'max:100'], 'answers.*' => ['nullable', 'string', 'max:30000'],
+            'answer_formats' => ['sometimes', 'array', 'max:100'], 'answer_formats.*' => ['required', 'string', 'in:html'],
         ]);
         $responses->save($request->user(), $course, $data);
 

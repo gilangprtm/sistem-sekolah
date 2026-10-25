@@ -744,7 +744,7 @@ export default function StudentViolationsIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Pelanggaran Siswa" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <Heading
                         variant="small"
                         title="Pelanggaran Siswa"
@@ -752,6 +752,7 @@ export default function StudentViolationsIndex({
                     />
                     {canCreate && (
                         <Button
+                            className="w-full md:w-auto md:shrink-0"
                             onClick={() =>
                                 setEditor({ mode: 'create', note: null })
                             }

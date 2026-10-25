@@ -3,6 +3,8 @@ import { ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import SecondaryPageShell from '@/components/admin/secondary-page-shell';
+import DataTableShell from '@/components/data-table/data-table-shell';
+import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
@@ -18,14 +20,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ModalShell from '@/components/ui/modal-shell';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { formatRupiah } from '@/lib/utils';
@@ -90,6 +84,9 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
     );
     const [addUnitModalOpen, setAddUnitModalOpen] = useState(false);
     const [addingUnits, setAddingUnits] = useState(false);
+    const [selectedUnitIds, setSelectedUnitIds] = useState<number[]>([]);
+    const [unitPage, setUnitPage] = useState(1);
+    const [unitsPerPage, setUnitsPerPage] = useState(10);
     useEffect(() => {
         if (!imagePreview) {
             return;
@@ -108,6 +105,17 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
             ),
         [item.units],
     );
+    const paginatedUnits = useMemo(() => {
+        const start = (unitPage - 1) * unitsPerPage;
+
+        return sortedUnits.slice(start, start + unitsPerPage);
+    }, [sortedUnits, unitPage, unitsPerPage]);
+    const unitPagination = {
+        current_page: unitPage,
+        last_page: Math.max(1, Math.ceil(sortedUnits.length / unitsPerPage)),
+        per_page: unitsPerPage,
+        total: sortedUnits.length,
+    };
 
     const saveImage = () => {
         if (!image) {
@@ -197,6 +205,63 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
             { preserveScroll: true },
         );
     };
+
+    const unitColumns: DataTableColumn<Unit>[] = [
+        {
+            id: 'register',
+            header: 'Register',
+            cell: (unit) => unit.register,
+            cellClassName: 'font-mono',
+        },
+        {
+            id: 'code',
+            header: 'Kode',
+            cell: (unit) => `${item.kode_barang}.${unit.register}`,
+            cellClassName: 'font-mono text-xs text-muted-foreground',
+        },
+        {
+            id: 'room',
+            header: 'Ruangan Saat Ini',
+            cell: (unit) => (
+                <SearchableCombobox
+                    value={unit.room?.id.toString() ?? ''}
+                    options={[
+                        { value: '', label: 'Tanpa ruangan' },
+                        ...rooms.map((room) => ({
+                            value: room.id.toString(),
+                            label: room.name,
+                        })),
+                    ]}
+                    onChange={(roomId) => updateRoom(unit, roomId)}
+                    placeholder="Tanpa ruangan"
+                    searchPlaceholder="Cari ruangan..."
+                    emptyMessage="Ruangan tidak ditemukan."
+                />
+            ),
+            cellClassName: 'min-w-48',
+        },
+        {
+            id: 'condition',
+            header: 'Kondisi',
+            cell: (unit) => (
+                <SearchableCombobox
+                    value={unit.condition}
+                    options={[
+                        { value: 'B', label: 'B — Baik' },
+                        { value: 'KB', label: 'KB — Kurang Baik' },
+                        { value: 'RB', label: 'RB — Rusak Berat' },
+                    ]}
+                    onChange={(condition) => updateCondition(unit, condition)}
+                    placeholder="Pilih kondisi"
+                    searchPlaceholder="Cari kondisi..."
+                    emptyMessage="Kondisi tidak ditemukan."
+                    className="ml-auto w-40"
+                />
+            ),
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+        },
+    ];
 
     const confirm = useConfirmation();
 
@@ -428,7 +493,7 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
                         </div>
                     </section>
 
-                    <div className="rounded-xl border p-4 lg:col-span-3">
+                    <div className="min-w-0 rounded-xl border p-4 lg:col-span-3">
                         <Dialog
                             open={addUnitModalOpen}
                             onOpenChange={(open) => {
@@ -516,104 +581,52 @@ export default function InventoryShow({ item, categories, rooms }: Props) {
                             </ModalShell>
                         </Dialog>
 
-                        <div className="w-full overflow-x-auto">
-                            <Table className="w-full table-fixed">
-                                <colgroup>
-                                    <col className="w-[15%]" />
-                                    <col className="w-[25%]" />
-                                    <col className="w-[30%]" />
-                                    <col className="w-[30%]" />
-                                </colgroup>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Register</TableHead>
-                                        <TableHead>Kode</TableHead>
-                                        <TableHead>Ruangan Saat Ini</TableHead>
-                                        <TableHead className="text-right">
-                                            Kondisi
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {sortedUnits.map((unit) => (
-                                        <TableRow key={unit.id}>
-                                            <TableCell className="font-mono">
-                                                {unit.register}
-                                            </TableCell>
-                                            <TableCell className="font-mono text-xs text-muted-foreground">
-                                                {item.kode_barang}.
-                                                {unit.register}
-                                            </TableCell>
-                                            <TableCell>
-                                                <SearchableCombobox
-                                                    value={
-                                                        unit.room?.id.toString() ??
-                                                        ''
-                                                    }
-                                                    options={[
-                                                        {
-                                                            value: '',
-                                                            label: 'Tanpa ruangan',
-                                                        },
-                                                        ...rooms.map(
-                                                            (room) => ({
-                                                                value: room.id.toString(),
-                                                                label: room.name,
-                                                            }),
-                                                        ),
-                                                    ]}
-                                                    onChange={(roomId) =>
-                                                        updateRoom(unit, roomId)
-                                                    }
-                                                    placeholder="Tanpa ruangan"
-                                                    searchPlaceholder="Cari ruangan..."
-                                                    emptyMessage="Ruangan tidak ditemukan."
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <SearchableCombobox
-                                                    value={unit.condition}
-                                                    options={[
-                                                        {
-                                                            value: 'B',
-                                                            label: 'B — Baik',
-                                                        },
-                                                        {
-                                                            value: 'KB',
-                                                            label: 'KB — Kurang Baik',
-                                                        },
-                                                        {
-                                                            value: 'RB',
-                                                            label: 'RB — Rusak Berat',
-                                                        },
-                                                    ]}
-                                                    onChange={(condition) =>
-                                                        updateCondition(
-                                                            unit,
-                                                            condition,
-                                                        )
-                                                    }
-                                                    placeholder="Pilih kondisi"
-                                                    searchPlaceholder="Cari kondisi..."
-                                                    emptyMessage="Kondisi tidak ditemukan."
-                                                    className="ml-auto w-40"
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {item.units.length === 0 && (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={4}
-                                                className="text-center text-muted-foreground"
-                                            >
-                                                Tidak ada unit.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <DataTableShell
+                            data={paginatedUnits}
+                            columns={unitColumns}
+                            getRowKey={(unit) => unit.id}
+                            emptyState="Tidak ada unit."
+                            selection={{
+                                selectedKeys: selectedUnitIds,
+                                selectedCount: selectedUnitIds.length,
+                                onSelectionChange: setSelectedUnitIds,
+                                selectAllLabel:
+                                    'Pilih semua unit di halaman ini',
+                                getRowLabel: (unit) =>
+                                    `Pilih register ${unit.register}`,
+                                selectedCountLabel: (count, total) =>
+                                    `${count} dipilih dari ${total} unit.`,
+                                onSelectAll: (checked, pageUnits) => {
+                                    const pageUnitIds = pageUnits.map(
+                                        (unit) => unit.id,
+                                    );
+
+                                    setSelectedUnitIds((current) =>
+                                        checked
+                                            ? Array.from(
+                                                  new Set([
+                                                      ...current,
+                                                      ...pageUnitIds,
+                                                  ]),
+                                              )
+                                            : current.filter(
+                                                  (id) =>
+                                                      !pageUnitIds.includes(id),
+                                              ),
+                                    );
+                                },
+                            }}
+                            pagination={{
+                                resource: unitPagination,
+                                onPageChange: setUnitPage,
+                                onPerPageChange: (perPage) => {
+                                    setUnitsPerPage(perPage);
+                                    setUnitPage(1);
+                                },
+                                noun: 'unit',
+                            }}
+                            tableClassName="min-w-[640px]"
+                        />
                     </div>
                 </div>
             </SecondaryPageShell>
