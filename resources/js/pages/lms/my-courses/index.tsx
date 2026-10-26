@@ -128,10 +128,10 @@ export default function MyCoursesIndex({
                         event.preventDefault();
                         visit();
                     }}
-                    className="grid gap-4 rounded-xl border p-4"
+                    className="@container grid gap-4 rounded-xl border p-4"
                 >
-                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid min-w-0 gap-2 md:col-span-6">
+                    <div className="grid grid-cols-1 items-end gap-3 @min-[40rem]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+                        <div className="grid min-w-0 gap-2">
                             <Label htmlFor="my-courses-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
@@ -146,7 +146,7 @@ export default function MyCoursesIndex({
                                 />
                             </div>
                         </div>
-                        <div className="grid min-w-0 gap-2 md:col-span-3">
+                        <div className="grid min-w-0 gap-2">
                             <Label htmlFor="my-courses-subject">
                                 Mata Pelajaran
                             </Label>
@@ -162,11 +162,11 @@ export default function MyCoursesIndex({
                                 ]}
                                 onChange={setSubject}
                                 placeholder="Semua"
-                                searchPlaceholder="Cari mata pelajaran…"
+                                searchPlaceholder="Search mata pelajaran…"
                                 emptyMessage="Mata pelajaran tidak ditemukan."
                             />
                         </div>
-                        <div className="grid min-w-0 gap-2 md:col-span-3">
+                        <div className="grid min-w-0 gap-2">
                             <Label htmlFor="my-courses-grade">Jenjang</Label>
                             <SearchableCombobox
                                 id="my-courses-grade"
@@ -182,11 +182,11 @@ export default function MyCoursesIndex({
                                 ]}
                                 onChange={setGrade}
                                 placeholder="Semua"
-                                searchPlaceholder="Cari jenjang…"
+                                searchPlaceholder="Search jenjang…"
                                 emptyMessage="Jenjang tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="flex gap-2">
                             <Button type="submit">Filter</Button>
                             <Button
                                 type="button"

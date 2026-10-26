@@ -7,7 +7,7 @@ import {
     Search,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
@@ -110,6 +110,30 @@ export default function KantinBarangIndex({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [requestError, setRequestError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const imageInput = useRef<HTMLInputElement>(null);
+    const previewUrl =
+        imagePreview ?? (!form.remove_image ? editing?.image_url : null);
+
+    useEffect(() => {
+        if (!imagePreview) {
+            return;
+        }
+
+        return () => URL.revokeObjectURL(imagePreview);
+    }, [imagePreview]);
+
+    const changeOpen = (nextOpen: boolean) => {
+        setOpen(nextOpen);
+
+        if (!nextOpen) {
+            setImagePreview(null);
+
+            if (imageInput.current) {
+                imageInput.current.value = '';
+            }
+        }
+    };
 
     const navigate = (params: Record<string, string | number>) =>
         router.get('/kantin/barang', params, {
@@ -119,6 +143,7 @@ export default function KantinBarangIndex({
         });
 
     const openCreate = () => {
+        setImagePreview(null);
         setEditing(null);
         setForm(initialForm);
         setErrors({});
@@ -127,6 +152,7 @@ export default function KantinBarangIndex({
     };
 
     const openEdit = (barang: Barang) => {
+        setImagePreview(null);
         setEditing(barang);
         setForm({
             category_id: String(barang.category.id),
@@ -162,7 +188,7 @@ export default function KantinBarangIndex({
             onStart: () => setProcessing(true),
             onSuccess: () => {
                 setErrors({});
-                setOpen(false);
+                changeOpen(false);
             },
             onError: (validationErrors: Record<string, string>) => {
                 setErrors(validationErrors);
@@ -420,7 +446,7 @@ export default function KantinBarangIndex({
                     }}
                 />
             </div>
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={open} onOpenChange={changeOpen}>
                 <ModalShell size="medium">
                     {requestError && (
                         <Alert variant="destructive" role="alert">
@@ -649,44 +675,57 @@ export default function KantinBarangIndex({
                                 <Label htmlFor="kantin-image">
                                     Gambar Produk
                                 </Label>
-                                {editing?.image_url &&
-                                    !form.remove_image &&
-                                    !form.image && (
-                                        <img
-                                            src={editing.image_url}
-                                            alt={editing.name}
-                                            className="h-32 w-full rounded-lg object-cover"
-                                        />
-                                    )}
+                                {previewUrl && (
+                                    <img
+                                        src={previewUrl}
+                                        alt={
+                                            form.name ||
+                                            'Pratinjau gambar produk'
+                                        }
+                                        className="h-56 w-full rounded-lg bg-muted/40 object-contain sm:h-72"
+                                    />
+                                )}
                                 <div className="flex min-w-0 items-center gap-2">
                                     <Input
                                         id="kantin-image"
+                                        ref={imageInput}
                                         className="min-w-0 flex-1"
                                         type="file"
                                         accept="image/jpeg,image/png,image/webp"
-                                        onChange={(event) =>
+                                        onChange={(event) => {
+                                            const image =
+                                                event.target.files?.[0] ?? null;
                                             setForm((current) => ({
                                                 ...current,
-                                                image:
-                                                    event.target.files?.[0] ??
-                                                    null,
+                                                image,
                                                 remove_image: false,
-                                            }))
-                                        }
+                                            }));
+                                            setImagePreview(
+                                                image
+                                                    ? URL.createObjectURL(image)
+                                                    : null,
+                                            );
+                                        }}
                                     />
-                                    {editing?.image_url && (
+                                    {(previewUrl || editing?.image_url) && (
                                         <Button
                                             type="button"
                                             variant="outline"
                                             aria-label="Hapus gambar"
                                             className="shrink-0"
-                                            onClick={() =>
+                                            onClick={() => {
                                                 setForm((current) => ({
                                                     ...current,
                                                     image: null,
                                                     remove_image: true,
-                                                }))
-                                            }
+                                                }));
+                                                setImagePreview(null);
+
+                                                if (imageInput.current) {
+                                                    imageInput.current.value =
+                                                        '';
+                                                }
+                                            }}
                                         >
                                             <X className="size-4" />
                                         </Button>
@@ -727,7 +766,7 @@ export default function KantinBarangIndex({
                     <DialogFooter>
                         <Button
                             variant="outline"
-                            onClick={() => setOpen(false)}
+                            onClick={() => changeOpen(false)}
                         >
                             Batal
                         </Button>

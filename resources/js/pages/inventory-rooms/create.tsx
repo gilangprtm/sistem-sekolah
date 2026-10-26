@@ -199,42 +199,45 @@ export default function InventoryRoomsCreate({
                     </>
                 }
             >
-                <div className="grid gap-4 rounded-xl border p-4 md:p-6">
-                    <section className="grid gap-4 border-b pb-6">
-                        <div className="grid gap-2">
-                            <Label htmlFor="room-name">Nama Ruangan</Label>
-                            <Input
-                                id="room-name"
-                                value={form.name}
-                                onChange={(event) =>
-                                    setForm({
-                                        ...form,
-                                        name: event.target.value,
-                                    })
-                                }
-                                placeholder="Ruang Kelas 1A"
-                            />
-                            <InputError message={errors.name} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="room-code">Kode Ruangan</Label>
-                            <Input
-                                id="room-code"
-                                value={form.code}
-                                onChange={(event) =>
-                                    setForm({
-                                        ...form,
-                                        code: event.target.value,
-                                    })
-                                }
-                                placeholder="R-1A"
-                            />
-                            <InputError message={errors.code} />
+                <div className="@container grid gap-4 rounded-xl border p-4 md:p-6">
+                    <section className="grid gap-4 border-b pb-6 @min-[40rem]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] @min-[40rem]:items-start">
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="room-name">Nama Ruangan</Label>
+                                <Input
+                                    id="room-name"
+                                    value={form.name}
+                                    onChange={(event) =>
+                                        setForm({
+                                            ...form,
+                                            name: event.target.value,
+                                        })
+                                    }
+                                    placeholder="Ruang Kelas 1A"
+                                />
+                                <InputError message={errors.name} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="room-code">Kode Ruangan</Label>
+                                <Input
+                                    id="room-code"
+                                    value={form.code}
+                                    onChange={(event) =>
+                                        setForm({
+                                            ...form,
+                                            code: event.target.value,
+                                        })
+                                    }
+                                    placeholder="R-1A"
+                                />
+                                <InputError message={errors.code} />
+                            </div>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="room-description">Keterangan</Label>
                             <Textarea
                                 id="room-description"
+                                className="@min-[40rem]:min-h-28"
                                 value={form.description}
                                 onChange={(event) =>
                                     setForm({

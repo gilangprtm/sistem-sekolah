@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Trash2, X } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
@@ -205,280 +205,348 @@ export default function StudentForm({
         : undefined;
 
     return (
-        <div className="grid min-w-0 gap-6 rounded-xl border p-4 md:p-6">
-            <div>
+        <div className="@container grid min-w-0 gap-6 rounded-xl border p-4 md:p-6">
+            {mode === 'create' && (
                 <Heading
                     variant="small"
-                    title={mode === 'edit' ? 'Edit Siswa' : 'Tambah Siswa'}
+                    title="Tambah Siswa"
                     description="Lengkapi biodata Siswa dan, bila perlu, hubungkan akun role Siswa yang tersedia."
                 />
-            </div>
+            )}
             <div className="grid min-w-0 gap-6">
                 <section className="grid min-w-0 gap-4 border-b pb-6">
                     <div>
-                        <h2 className="text-base font-semibold">
-                            Identitas Siswa
-                        </h2>
+                        <h2 className="text-base font-semibold">Data Siswa</h2>
                         <p className="text-sm text-muted-foreground">
                             Data utama yang digunakan pada daftar Master Siswa.
                         </p>
                     </div>
-                    <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                        <div className="grid min-w-0 gap-2 md:col-span-2">
-                            <Label htmlFor="student-account">Akun Siswa</Label>
-                            <SearchableCombobox
-                                value={form.user_id}
-                                options={availableAccounts.map((account) => ({
-                                    value: String(account.id),
-                                    label: account.email,
-                                }))}
-                                onChange={(value) => update('user_id', value)}
-                                placeholder="Tidak dihubungkan"
-                                searchPlaceholder="Cari email akun..."
-                                emptyMessage="Akun Siswa tidak ditemukan."
-                            />
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                className="w-fit px-0 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
-                                onClick={() => update('user_id', '')}
-                            >
-                                Hapus hubungan akun
-                            </Button>
-                            <InputError message={errors.user_id} />
-                        </div>
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-tahun-angkatan">
-                                Tahun Angkatan
-                            </Label>
-                            <Input
-                                id="student-tahun-angkatan"
-                                type="text"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                minLength={4}
-                                maxLength={4}
-                                min={1900}
-                                max={new Date().getFullYear()}
-                                value={form.tahun_angkatan}
-                                onChange={(event) =>
-                                    handleYearChange(event.target.value)
-                                }
-                            />
-                            <InputError message={errors.tahun_angkatan} />
-                        </div>
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-photo">Foto Siswa</Label>
-                            {student?.photo_url && !form.remove_photo && (
-                                <div className="flex items-center gap-3">
+                    <div className="grid min-w-0 items-start gap-6 @4xl:grid-cols-[16rem_minmax(0,1fr)]">
+                        <div className="grid min-w-0 content-start gap-4">
+                            <div className="grid min-w-0 content-start justify-items-center gap-3 rounded-lg border bg-muted/20 p-4">
+                                <Label
+                                    htmlFor="student-photo"
+                                    className="justify-self-start"
+                                >
+                                    Foto Siswa
+                                </Label>
+                                {student?.photo_url && !form.remove_photo && (
                                     <img
                                         src={student.photo_url}
                                         alt={`Foto ${student.full_name}`}
-                                        className="size-16 rounded-md object-cover"
+                                        className="h-48 w-40 max-w-full rounded-md object-contain"
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() =>
-                                            update('remove_photo', true)
+                                )}
+                                <div className="flex w-full min-w-0 items-center gap-2">
+                                    <Input
+                                        id="student-photo"
+                                        type="file"
+                                        accept="image/*"
+                                        className="min-w-0 flex-1"
+                                        onChange={handlePhotoChange}
+                                    />
+                                    {student?.photo_url &&
+                                        !form.remove_photo && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                aria-label="Hapus foto siswa saat disimpan"
+                                                title="Hapus foto saat disimpan"
+                                                onClick={() =>
+                                                    update('remove_photo', true)
+                                                }
+                                            >
+                                                <Trash2 aria-hidden="true" />
+                                            </Button>
+                                        )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Hanya gambar, maksimal 1 MB.
+                                </p>
+                                <InputError message={errors.photo} />
+                            </div>
+                        </div>
+                        <div className="@container/student-fields grid min-w-0 gap-4">
+                            <div className="grid min-w-0 items-start gap-4 @min-[640px]/student-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem]">
+                                <div className="grid min-w-0 content-start gap-2">
+                                    <Label htmlFor="student-full-name">
+                                        Nama Lengkap
+                                    </Label>
+                                    <Input
+                                        id="student-full-name"
+                                        value={form.full_name}
+                                        onChange={(event) =>
+                                            update(
+                                                'full_name',
+                                                event.target.value,
+                                            )
+                                        }
+                                        autoFocus={mode === 'create'}
+                                    />
+                                    <InputError message={errors.full_name} />
+                                </div>
+                                <div className="grid min-w-0 content-start gap-2">
+                                    <Label htmlFor="student-account">
+                                        Akun Siswa
+                                    </Label>
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <SearchableCombobox
+                                            id="student-account"
+                                            className="min-w-0 flex-1"
+                                            value={form.user_id}
+                                            options={availableAccounts.map(
+                                                (account) => ({
+                                                    value: String(account.id),
+                                                    label: account.email,
+                                                }),
+                                            )}
+                                            onChange={(value) =>
+                                                update('user_id', value)
+                                            }
+                                            placeholder="Tidak dihubungkan"
+                                            searchPlaceholder="Cari email akun..."
+                                            emptyMessage="Akun Siswa tidak ditemukan."
+                                        />
+                                        {form.user_id && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                aria-label="Hapus hubungan akun siswa"
+                                                title="Hapus hubungan akun"
+                                                onClick={() =>
+                                                    update('user_id', '')
+                                                }
+                                            >
+                                                <X aria-hidden="true" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <InputError message={errors.user_id} />
+                                </div>
+                                <div className="grid min-w-0 content-start gap-2">
+                                    <Label htmlFor="student-tahun-angkatan">
+                                        Tahun Angkatan
+                                    </Label>
+                                    <Input
+                                        id="student-tahun-angkatan"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        minLength={4}
+                                        maxLength={4}
+                                        min={1900}
+                                        max={new Date().getFullYear()}
+                                        value={form.tahun_angkatan}
+                                        onChange={(event) =>
+                                            handleYearChange(event.target.value)
+                                        }
+                                    />
+                                    <InputError
+                                        message={errors.tahun_angkatan}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid min-w-0 items-start gap-4 @min-[640px]/student-fields:grid-cols-3">
+                                <div className="grid min-w-0 content-start gap-2">
+                                    <Label htmlFor="student-nis">NIS</Label>
+                                    <Input
+                                        id="student-nis"
+                                        value={form.nis}
+                                        onChange={(event) =>
+                                            update('nis', event.target.value)
+                                        }
+                                    />
+                                    <InputError message={errors.nis} />
+                                </div>
+                                <div className="grid min-w-0 content-start gap-2">
+                                    <Label htmlFor="student-nisn">NISN</Label>
+                                    <Input
+                                        id="student-nisn"
+                                        value={form.nisn}
+                                        onChange={(event) =>
+                                            update('nisn', event.target.value)
+                                        }
+                                    />
+                                    <InputError message={errors.nisn} />
+                                </div>
+                                <div className="grid min-w-0 content-start gap-2">
+                                    <Label htmlFor="student-gender">
+                                        Jenis Kelamin
+                                    </Label>
+                                    <Select
+                                        value={form.gender || 'none'}
+                                        onValueChange={(value) =>
+                                            update(
+                                                'gender',
+                                                value === 'none' ? '' : value,
+                                            )
                                         }
                                     >
-                                        Hapus foto saat disimpan
-                                    </Button>
+                                        <SelectTrigger
+                                            id="student-gender"
+                                            className="w-full"
+                                        >
+                                            <SelectValue placeholder="Pilih" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">
+                                                Tidak diisi
+                                            </SelectItem>
+                                            <SelectItem value="L">
+                                                Laki-laki
+                                            </SelectItem>
+                                            <SelectItem value="P">
+                                                Perempuan
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.gender} />
                                 </div>
-                            )}
-                            <Input
-                                id="student-photo"
-                                type="file"
-                                accept="image/*"
-                                onChange={handlePhotoChange}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Hanya gambar, maksimal 1 MB.
-                            </p>
-                            <InputError message={errors.photo} />
-                        </div>
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-full-name">
-                                Nama Lengkap
-                            </Label>
-                            <Input
-                                id="student-full-name"
-                                value={form.full_name}
-                                onChange={(event) =>
-                                    update('full_name', event.target.value)
-                                }
-                                autoFocus={mode === 'create'}
-                            />
-                            <InputError message={errors.full_name} />
-                        </div>
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-nis">NIS</Label>
-                            <Input
-                                id="student-nis"
-                                value={form.nis}
-                                onChange={(event) =>
-                                    update('nis', event.target.value)
-                                }
-                            />
-                            <InputError message={errors.nis} />
-                        </div>
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-nisn">NISN</Label>
-                            <Input
-                                id="student-nisn"
-                                value={form.nisn}
-                                onChange={(event) =>
-                                    update('nisn', event.target.value)
-                                }
-                            />
-                            <InputError message={errors.nisn} />
-                        </div>
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-gender">
-                                Jenis Kelamin
-                            </Label>
-                            <Select
-                                value={form.gender || 'none'}
-                                onValueChange={(value) =>
-                                    update(
-                                        'gender',
-                                        value === 'none' ? '' : value,
-                                    )
-                                }
-                            >
-                                <SelectTrigger id="student-gender">
-                                    <SelectValue placeholder="Pilih" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">
-                                        Tidak diisi
-                                    </SelectItem>
-                                    <SelectItem value="L">Laki-laki</SelectItem>
-                                    <SelectItem value="P">Perempuan</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <InputError message={errors.gender} />
-                        </div>
-                    </div>
-                </section>
-                <section className="grid min-w-0 gap-4 border-b pb-6">
-                    <div>
-                        <h2 className="text-base font-semibold">
-                            Tempat dan Tanggal Lahir
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            Tanggal lahir tidak boleh melewati hari ini.
-                        </p>
-                    </div>
-                    <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-birth-place">
-                                Tempat Lahir
-                            </Label>
-                            <Input
-                                id="student-birth-place"
-                                value={form.birth_place}
-                                onChange={(event) =>
-                                    update('birth_place', event.target.value)
-                                }
-                            />
-                            <InputError message={errors.birth_place} />
-                        </div>
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-birth-date">
-                                Tanggal Lahir
-                            </Label>
-                            <Popover
-                                open={birthDateOpen}
-                                onOpenChange={setBirthDateOpen}
-                            >
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        id="student-birth-date"
-                                        type="button"
-                                        variant="outline"
-                                        className={cn(
-                                            'w-full justify-start text-left font-normal',
-                                            !selectedBirthDate &&
-                                                'text-muted-foreground',
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {selectedBirthDate
-                                            ? format(
-                                                  selectedBirthDate,
-                                                  'd MMMM yyyy',
-                                                  { locale: indonesianLocale },
-                                              )
-                                            : 'Pilih tanggal lahir'}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                    className="w-auto p-0"
-                                    align="start"
-                                >
-                                    <Calendar
-                                        mode="single"
-                                        captionLayout="dropdown"
-                                        selected={selectedBirthDate}
-                                        defaultMonth={selectedBirthDate}
-                                        onSelect={(date) => {
+                            </div>
+                            <div className="grid min-w-0 items-start gap-4 @min-[800px]/student-fields:grid-cols-[minmax(0,1fr)_12rem_minmax(0,1fr)_8rem]">
+                                <div className="grid min-w-0 gap-2">
+                                    <Label htmlFor="student-birth-place">
+                                        Tempat Lahir
+                                    </Label>
+                                    <Input
+                                        id="student-birth-place"
+                                        value={form.birth_place}
+                                        onChange={(event) =>
                                             update(
-                                                'birth_date',
-                                                date
-                                                    ? format(date, 'yyyy-MM-dd')
-                                                    : '',
-                                            );
-                                            setBirthDateOpen(false);
-                                        }}
-                                        disabled={{ after: new Date() }}
+                                                'birth_place',
+                                                event.target.value,
+                                            )
+                                        }
                                     />
-                                </PopoverContent>
-                            </Popover>
-                            <InputError message={errors.birth_date} />
+                                    <InputError message={errors.birth_place} />
+                                </div>
+                                <div className="grid min-w-0 gap-2">
+                                    <Label htmlFor="student-birth-date">
+                                        Tanggal Lahir
+                                    </Label>
+                                    <Popover
+                                        open={birthDateOpen}
+                                        onOpenChange={setBirthDateOpen}
+                                    >
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                id="student-birth-date"
+                                                type="button"
+                                                variant="outline"
+                                                className={cn(
+                                                    'w-full justify-start text-left font-normal',
+                                                    !selectedBirthDate &&
+                                                        'text-muted-foreground',
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {selectedBirthDate
+                                                    ? format(
+                                                          selectedBirthDate,
+                                                          'd MMMM yyyy',
+                                                          {
+                                                              locale: indonesianLocale,
+                                                          },
+                                                      )
+                                                    : 'Pilih tanggal lahir'}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent
+                                            className="w-auto p-0"
+                                            align="start"
+                                        >
+                                            <Calendar
+                                                mode="single"
+                                                captionLayout="dropdown"
+                                                selected={selectedBirthDate}
+                                                defaultMonth={selectedBirthDate}
+                                                onSelect={(date) => {
+                                                    update(
+                                                        'birth_date',
+                                                        date
+                                                            ? format(
+                                                                  date,
+                                                                  'yyyy-MM-dd',
+                                                              )
+                                                            : '',
+                                                    );
+                                                    setBirthDateOpen(false);
+                                                }}
+                                                disabled={{ after: new Date() }}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <InputError message={errors.birth_date} />
+                                </div>
+                                <div className="grid min-w-0 gap-2">
+                                    <Label htmlFor="student-phone">
+                                        Nomor Telepon Siswa
+                                    </Label>
+                                    <Input
+                                        id="student-phone"
+                                        type="tel"
+                                        inputMode="tel"
+                                        value={form.phone}
+                                        onChange={(event) =>
+                                            update('phone', event.target.value)
+                                        }
+                                    />
+                                    <InputError message={errors.phone} />
+                                </div>
+                                <div className="grid min-w-0 content-start gap-2">
+                                    <Label htmlFor="student-status">
+                                        Status
+                                    </Label>
+                                    <Select
+                                        value={form.status}
+                                        onValueChange={(value) =>
+                                            update('status', value)
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="student-status"
+                                            className="w-full"
+                                        >
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="active">
+                                                Aktif
+                                            </SelectItem>
+                                            <SelectItem value="inactive">
+                                                Tidak Aktif
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.status} />
+                                </div>
+                            </div>
+                            <div className="grid min-w-0 gap-2">
+                                <Label htmlFor="student-address">Alamat</Label>
+                                <Textarea
+                                    id="student-address"
+                                    className="min-h-24"
+                                    value={form.address}
+                                    onChange={(event) =>
+                                        update('address', event.target.value)
+                                    }
+                                />
+                                <InputError message={errors.address} />
+                            </div>
                         </div>
                     </div>
                 </section>
-                <section className="grid min-w-0 gap-4 border-b pb-6">
+                <section className="grid min-w-0 gap-4">
                     <div>
-                        <h2 className="text-base font-semibold">
-                            Kontak Siswa
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            Simpan nomor telepon siswa untuk kebutuhan
-                            administrasi sekolah.
-                        </p>
-                    </div>
-                    <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-phone">
-                                Nomor Telepon Siswa
-                            </Label>
-                            <Input
-                                id="student-phone"
-                                type="tel"
-                                inputMode="tel"
-                                value={form.phone}
-                                onChange={(event) =>
-                                    update('phone', event.target.value)
-                                }
-                            />
-                            <InputError message={errors.phone} />
-                        </div>
-                    </div>
-                </section>
-                <section className="grid min-w-0 gap-4 border-b pb-6">
-                    <div>
-                        <h2 className="text-base font-semibold">
-                            Data Orangtua
-                        </h2>
+                        <h2 className="text-base font-semibold">Data Ortu</h2>
                         <p className="text-sm text-muted-foreground">
                             Data orangtua hanya digunakan untuk administrasi
                             sekolah.
                         </p>
                     </div>
-                    <div className="grid min-w-0 gap-4 md:grid-cols-2">
+                    <div className="grid min-w-0 items-start gap-4 @lg:grid-cols-2">
                         <div className="grid min-w-0 gap-2">
                             <Label htmlFor="student-mother-name">
                                 Nama Ibu
@@ -537,7 +605,7 @@ export default function StudentForm({
                             />
                             <InputError message={errors.father_occupation} />
                         </div>
-                        <div className="grid min-w-0 gap-2 md:col-span-2">
+                        <div className="grid w-full max-w-sm min-w-0 gap-2 @lg:col-span-2">
                             <Label htmlFor="student-parent-phone">
                                 Nomor Telepon Orang Tua
                             </Label>
@@ -554,53 +622,8 @@ export default function StudentForm({
                         </div>
                     </div>
                 </section>
-                <section className="grid min-w-0 gap-4">
-                    <div>
-                        <h2 className="text-base font-semibold">
-                            Status dan Alamat
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            Simpan status administrasi dan alamat yang tersedia.
-                        </p>
-                    </div>
-                    <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                        <div className="grid min-w-0 gap-2">
-                            <Label htmlFor="student-status">Status</Label>
-                            <Select
-                                value={form.status}
-                                onValueChange={(value) =>
-                                    update('status', value)
-                                }
-                            >
-                                <SelectTrigger id="student-status">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="active">
-                                        Aktif
-                                    </SelectItem>
-                                    <SelectItem value="inactive">
-                                        Tidak Aktif
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <InputError message={errors.status} />
-                        </div>
-                        <div className="grid min-w-0 gap-2 md:col-span-2">
-                            <Label htmlFor="student-address">Alamat</Label>
-                            <Textarea
-                                id="student-address"
-                                value={form.address}
-                                onChange={(event) =>
-                                    update('address', event.target.value)
-                                }
-                            />
-                            <InputError message={errors.address} />
-                        </div>
-                    </div>
-                </section>
             </div>
-            <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col gap-2 border-t pt-4 @sm:flex-row @sm:justify-end">
                 <Button type="button" variant="outline" asChild>
                     <Link href="/students">Batal</Link>
                 </Button>

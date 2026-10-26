@@ -189,10 +189,10 @@ export default function LmsCourseManagementIndex({
                     title="Course Management"
                     description="Aktifkan Course yang siap digunakan dan kelola arsip."
                 />
-                <div className="grid gap-4 rounded-xl border p-4">
-                    <div className="grid items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-4">
-                            <Label htmlFor="management-search">Cari</Label>
+                <div className="@container grid gap-4 rounded-xl border p-4">
+                    <div className="grid grid-cols-1 items-end gap-3 @min-[40rem]:grid-cols-[minmax(0,1.4fr)_minmax(8rem,1fr)_minmax(9.5rem,1fr)_minmax(6.5rem,0.8fr)_auto]">
+                        <div className="grid min-w-0 gap-2">
+                            <Label htmlFor="management-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
                                 <Input
@@ -209,12 +209,13 @@ export default function LmsCourseManagementIndex({
                                 />
                             </div>
                         </div>
-                        <div className="grid gap-2 md:col-span-3">
+                        <div className="grid min-w-0 gap-2">
                             <Label htmlFor="management-subject">
                                 Mata Pelajaran
                             </Label>
                             <SearchableCombobox
                                 id="management-subject"
+                                className="w-full min-w-0"
                                 value={subjectId}
                                 options={[
                                     { value: '', label: 'Semua' },
@@ -227,14 +228,15 @@ export default function LmsCourseManagementIndex({
                                 ]}
                                 onChange={setSubjectId}
                                 placeholder="Semua"
-                                searchPlaceholder="Cari mata pelajaran…"
+                                searchPlaceholder="Search mata pelajaran…"
                                 emptyMessage="Mata pelajaran tidak ditemukan."
                             />
                         </div>
-                        <div className="grid gap-2 md:col-span-3">
+                        <div className="grid min-w-0 gap-2">
                             <Label htmlFor="management-status">Status</Label>
                             <SearchableCombobox
                                 id="management-status"
+                                className="w-full min-w-0"
                                 value={status}
                                 options={[
                                     { value: '', label: 'Semua status' },
@@ -247,14 +249,15 @@ export default function LmsCourseManagementIndex({
                                 ]}
                                 onChange={setStatus}
                                 placeholder="Semua status"
-                                searchPlaceholder="Cari status…"
+                                searchPlaceholder="Search status…"
                                 emptyMessage="Status tidak ditemukan."
                             />
                         </div>
-                        <div className="grid gap-2 md:col-span-2">
+                        <div className="grid min-w-0 gap-2">
                             <Label htmlFor="management-grade">Jenjang</Label>
                             <SearchableCombobox
                                 id="management-grade"
+                                className="w-full min-w-0"
                                 value={gradeLevel}
                                 options={[
                                     { value: '', label: 'Semua' },
@@ -267,11 +270,11 @@ export default function LmsCourseManagementIndex({
                                 ]}
                                 onChange={setGradeLevel}
                                 placeholder="Semua"
-                                searchPlaceholder="Cari jenjang…"
+                                searchPlaceholder="Search jenjang…"
                                 emptyMessage="Jenjang tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-12">
+                        <div className="flex gap-2">
                             <Button onClick={() => navigate()}>Filter</Button>
                             <Button
                                 variant="outline"

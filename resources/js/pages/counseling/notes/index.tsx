@@ -14,7 +14,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -235,9 +234,6 @@ function NoteModal({
                               ? 'Ubah Catatan Konseling'
                               : 'Tambah Catatan Konseling'}
                     </DialogTitle>
-                    <DialogDescription>
-                        Catatan privat untuk Konseling dan Super Admin.
-                    </DialogDescription>
                 </DialogHeader>
                 {message && (
                     <p role="alert" className="text-sm text-destructive">
@@ -565,14 +561,14 @@ export default function CounselingNotesIndex({
                     )}
                 </div>
                 <form
-                    className="grid gap-4 rounded-xl border p-4"
+                    className="@container grid gap-4 rounded-xl border p-4"
                     onSubmit={(event) => {
                         event.preventDefault();
                         navigate();
                     }}
                 >
-                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-6">
+                    <div className="grid grid-cols-1 items-end gap-3 @min-[40rem]:grid-cols-[minmax(0,2fr)_auto]">
+                        <div className="grid min-w-0 gap-2">
                             <Label htmlFor="counseling-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -588,7 +584,7 @@ export default function CounselingNotesIndex({
                                 />
                             </div>
                         </div>
-                        <div className="col-span-full flex gap-2">
+                        <div className="flex gap-2">
                             <Button type="submit">Filter</Button>
                             <Button
                                 type="button"
