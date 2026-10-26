@@ -3,15 +3,16 @@ import {
     ArrowUpRight,
     Bell,
     BookOpen,
-    ClipboardCheck,
     Download,
     Ellipsis,
+    HeartHandshake,
     Info,
     Library,
     ShoppingBasket,
     X,
 } from 'lucide-react';
 import { useState } from 'react';
+import SilarasAspirationDialog from '@/components/student-app/silaras-aspiration-dialog';
 import { Button } from '@/components/ui/button';
 import {
     dismissStudentPwaInstall,
@@ -19,7 +20,7 @@ import {
     useStudentPwaInstall,
 } from '@/hooks/use-student-pwa-install';
 import { formatWitaDate } from '@/lib/date-time';
-import { courses } from '@/routes/student-app';
+import { courses, services as studentServices } from '@/routes/student-app';
 
 type NewsItem = {
     id: number;
@@ -43,7 +44,7 @@ type Props = {
 
 const menuItems = [
     { label: 'Kantin', icon: ShoppingBasket },
-    { label: 'Ujian', icon: ClipboardCheck },
+    { label: 'Silaras', icon: HeartHandshake },
     { label: 'Course', icon: BookOpen },
     { label: 'Absensi', icon: Bell },
     { label: 'Perpustakaan', icon: Library },
@@ -241,42 +242,63 @@ export default function StudentDashboard({ student, news }: Props) {
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
-                        {menuItems.map(({ label, icon: Icon }) => (
-                            <Link
-                                key={label}
-                                href={
-                                    label === 'Kantin'
-                                        ? '/student/kantin'
-                                        : label === 'Ujian'
-                                          ? '/student/uas'
-                                          : label === 'Course'
-                                            ? courses.url()
-                                            : '#'
-                                }
-                                aria-disabled={
-                                    ['Kantin', 'Ujian', 'Course'].includes(
-                                        label,
-                                    )
-                                        ? undefined
-                                        : 'true'
-                                }
-                                className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border bg-card px-2 py-3 text-center shadow-xs"
-                                onClick={
-                                    ['Kantin', 'Ujian', 'Course'].includes(
-                                        label,
-                                    )
-                                        ? undefined
-                                        : (event) => event.preventDefault()
-                                }
-                            >
-                                <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
-                                    <Icon className="size-5" />
-                                </span>
-                                <span className="text-xs font-medium">
-                                    {label}
-                                </span>
-                            </Link>
-                        ))}
+                        {menuItems.map(({ label, icon: Icon }) =>
+                            label === 'Silaras' ? (
+                                <SilarasAspirationDialog
+                                    key={label}
+                                    triggerClassName="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border bg-card px-2 py-3 text-center shadow-xs"
+                                    trigger={
+                                        <>
+                                            <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                                                <Icon className="size-5" />
+                                            </span>
+                                            <span className="text-xs font-medium">
+                                                {label}
+                                            </span>
+                                        </>
+                                    }
+                                />
+                            ) : (
+                                <Link
+                                    key={label}
+                                    href={
+                                        label === 'Kantin'
+                                            ? '/student/kantin'
+                                            : label === 'Course'
+                                              ? courses.url()
+                                              : label === 'Lainnya'
+                                                ? studentServices.url()
+                                                : '#'
+                                    }
+                                    aria-disabled={
+                                        [
+                                            'Kantin',
+                                            'Course',
+                                            'Lainnya',
+                                        ].includes(label)
+                                            ? undefined
+                                            : 'true'
+                                    }
+                                    className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border bg-card px-2 py-3 text-center shadow-xs"
+                                    onClick={
+                                        [
+                                            'Kantin',
+                                            'Course',
+                                            'Lainnya',
+                                        ].includes(label)
+                                            ? undefined
+                                            : (event) => event.preventDefault()
+                                    }
+                                >
+                                    <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                                        <Icon className="size-5" />
+                                    </span>
+                                    <span className="text-xs font-medium">
+                                        {label}
+                                    </span>
+                                </Link>
+                            ),
+                        )}
                     </div>
                 </div>
 

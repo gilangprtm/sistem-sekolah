@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\DocumentModule;
 use App\Models\CounselingNote;
+use App\Models\HumasAspiration;
 use App\Models\LmsCourse;
 use App\Models\StudentViolation;
 use Illuminate\Http\Request;
@@ -67,6 +68,7 @@ class HandleInertiaRequests extends Middleware
             'canDesignLmsCourses' => fn (): bool => $request->user()?->can('viewAny', LmsCourse::class) ?? false,
             'canAccessLmsMyCourses' => fn (): bool => $request->user()?->can('browseMyCourses', LmsCourse::class) ?? false,
             'canAccessCounseling' => fn (): bool => $request->user()?->can('viewAny', CounselingNote::class) ?? false,
+            'canAccessSilaras' => fn (): bool => $request->user()?->can('viewAny', HumasAspiration::class) ?? false,
             'documentNavigation' => fn (): array => $request->user() === null ? [] : collect(DocumentModule::cases())
                 ->filter(fn (DocumentModule $module): bool => $module->canView($request->user()))
                 ->map(fn (DocumentModule $module): array => [

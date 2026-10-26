@@ -261,8 +261,8 @@ export default function UasIndex({
                     )}
                 </div>
                 <div className="grid gap-4 rounded-xl border p-4">
-                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-6">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="uas-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -285,7 +285,7 @@ export default function UasIndex({
                                 />
                             </div>
                         </div>
-                        <div className="grid gap-2 md:col-span-3">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label>Kategori</Label>
                             <SearchableCombobox
                                 value={activeCategory}
@@ -305,7 +305,7 @@ export default function UasIndex({
                                 emptyMessage="Kategori tidak ditemukan."
                             />
                         </div>
-                        <div className="grid gap-2 md:col-span-3">
+                        <div className="grid min-w-0 flex-[1_1_14rem] gap-2">
                             <Label>Tahun Ajaran</Label>
                             <SearchableCombobox
                                 value={yearId}
@@ -322,7 +322,7 @@ export default function UasIndex({
                                 emptyMessage="Tahun Ajaran tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="flex flex-wrap gap-2">
                             <Button
                                 onClick={() =>
                                     navigate({

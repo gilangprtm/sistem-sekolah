@@ -190,8 +190,8 @@ export default function LmsCourseManagementIndex({
                     description="Aktifkan Course yang siap digunakan dan kelola arsip."
                 />
                 <div className="@container grid gap-4 rounded-xl border p-4">
-                    <div className="grid grid-cols-1 items-end gap-3 @min-[40rem]:grid-cols-[minmax(0,1.4fr)_minmax(8rem,1fr)_minmax(9.5rem,1fr)_minmax(6.5rem,0.8fr)_auto]">
-                        <div className="grid min-w-0 gap-2">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="management-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
@@ -209,7 +209,7 @@ export default function LmsCourseManagementIndex({
                                 />
                             </div>
                         </div>
-                        <div className="grid min-w-0 gap-2">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label htmlFor="management-subject">
                                 Mata Pelajaran
                             </Label>
@@ -232,7 +232,7 @@ export default function LmsCourseManagementIndex({
                                 emptyMessage="Mata pelajaran tidak ditemukan."
                             />
                         </div>
-                        <div className="grid min-w-0 gap-2">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label htmlFor="management-status">Status</Label>
                             <SearchableCombobox
                                 id="management-status"
@@ -253,7 +253,7 @@ export default function LmsCourseManagementIndex({
                                 emptyMessage="Status tidak ditemukan."
                             />
                         </div>
-                        <div className="grid min-w-0 gap-2">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label htmlFor="management-grade">Jenjang</Label>
                             <SearchableCombobox
                                 id="management-grade"
@@ -274,7 +274,7 @@ export default function LmsCourseManagementIndex({
                                 emptyMessage="Jenjang tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button onClick={() => navigate()}>Filter</Button>
                             <Button
                                 variant="outline"

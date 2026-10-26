@@ -210,8 +210,8 @@ export default function LmsCourseDesignIndex({
                     )}
                 </div>
                 <div className="@container grid gap-4 rounded-xl border p-4">
-                    <div className="grid grid-cols-1 items-end gap-3 @min-[40rem]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-                        <div className="grid min-w-0 gap-2">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="course-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -229,7 +229,7 @@ export default function LmsCourseDesignIndex({
                                 />
                             </div>
                         </div>
-                        <div className="grid min-w-0 gap-2">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label>Mata Pelajaran</Label>
                             <SearchableCombobox
                                 value={subjectId}
@@ -248,7 +248,7 @@ export default function LmsCourseDesignIndex({
                                 emptyMessage="Mata pelajaran tidak ditemukan."
                             />
                         </div>
-                        <div className="grid min-w-0 gap-2">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label>Jenjang</Label>
                             <SearchableCombobox
                                 value={gradeLevel}
@@ -267,7 +267,7 @@ export default function LmsCourseDesignIndex({
                                 emptyMessage="Jenjang tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button onClick={() => navigate(1)}>Filter</Button>
                             <Button
                                 variant="outline"

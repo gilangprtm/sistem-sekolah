@@ -28,10 +28,12 @@ export default function StudentAppLayout({
     const isSchedule = currentPath === '/student/schedule';
     const isChatbot = currentPath === '/student/chatbot';
     const isKantin = currentPath === '/student/kantin';
+    const isServices = currentPath === '/student/services';
     const isUas = currentPath === '/student/uas';
     const isCourse = /^\/student\/courses(?:\/\d+)?$/.test(currentPath);
     const isExam = /^\/student\/uas\/\d+\/(attempt|open)$/.test(currentPath);
-    const isSecondaryPage = isKantin || isUas || isExam || isCourse;
+    const isSecondaryPage =
+        isKantin || isUas || isExam || isCourse || isServices;
     const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {

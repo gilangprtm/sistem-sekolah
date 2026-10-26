@@ -591,8 +591,8 @@ export default function ScheduleGenerate({
                 description="Tentukan Guru dan Rombel untuk setiap Mata Pelajaran. Pengaturan dapat disimpan sebagai jadwal dan jadwal tersimpan dapat diubah kembali."
                 backHref="/kurikulum/schedule"
             >
-                <div className="grid gap-3 rounded-xl border p-4 md:grid-cols-12 md:items-end">
-                    <div className="grid gap-2 md:col-span-4">
+                <div className="flex flex-wrap items-end gap-3 rounded-xl border p-4">
+                    <div className="grid min-w-0 flex-[1_1_18rem] gap-2">
                         <Label>Tahun Ajaran & Semester</Label>
                         <SearchableCombobox
                             value={selectedPeriod?.id.toString() ?? ''}
@@ -606,7 +606,7 @@ export default function ScheduleGenerate({
                             emptyMessage="Semester aktif tidak ditemukan."
                         />
                     </div>
-                    <div className="grid gap-2 md:col-span-5">
+                    <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                         <Label htmlFor="schedule-rombel-search">
                             Cari rombel
                         </Label>
@@ -620,7 +620,7 @@ export default function ScheduleGenerate({
                             placeholder="Kode atau nama rombel..."
                         />
                     </div>
-                    <div className="flex gap-2 md:col-span-3">
+                    <div className="flex flex-wrap gap-2">
                         <Button onClick={() => navigate()}>Terapkan</Button>
                         <Button
                             variant="outline"

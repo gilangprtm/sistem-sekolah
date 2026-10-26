@@ -15,6 +15,7 @@ import {
     CommandSeparator,
 } from '@/components/ui/command';
 import { index as counselingNotes } from '@/routes/counseling/notes';
+import { index as silaras } from '@/routes/humas/silaras';
 import { index as studentViolations } from '@/routes/student-affairs/violations';
 
 type SearchItem = {
@@ -27,6 +28,12 @@ type SearchItem = {
 };
 
 const searchItems: SearchItem[] = [
+    {
+        id: 'humas-silaras',
+        group: 'Humas',
+        label: 'Silaras',
+        url: silaras.url(),
+    },
     {
         id: 'student-violations',
         group: 'Kesiswaan',
@@ -182,17 +189,23 @@ export function SearchDialog() {
         documentNavigation = [],
         canAccessCounseling = false,
         canAccessStudentViolations = false,
+        canAccessSilaras = false,
     } = usePage<{
         auth?: { permissions?: string[]; roles?: string[] };
         documentNavigation?: { id: string; group: string; url: string }[];
         canAccessCounseling?: boolean;
         canAccessStudentViolations?: boolean;
+        canAccessSilaras?: boolean;
     }>().props;
     const permissions = auth?.permissions ?? [];
     const isSuperAdmin = auth?.roles?.includes('Super Admin') ?? false;
     const can = (permission: string) =>
         isSuperAdmin || permissions.includes(permission);
     const availableItems = searchItems.filter((item) => {
+        if (item.id === 'humas-silaras') {
+            return canAccessSilaras;
+        }
+
         if (item.id === 'student-violations') {
             return canAccessStudentViolations;
         }

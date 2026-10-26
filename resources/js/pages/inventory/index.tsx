@@ -459,8 +459,8 @@ export default function InventoryIndex({
                 </div>
 
                 <div className="grid gap-4 rounded-xl border p-4">
-                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-2">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label>Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -480,7 +480,7 @@ export default function InventoryIndex({
                             </div>
                         </div>
                         <FilterCombobox
-                            className="grid gap-2 md:col-span-2"
+                            className="grid min-w-0 flex-[1_1_10rem] gap-2"
                             label="Tahun"
                             value={tahun}
                             options={[
@@ -493,7 +493,7 @@ export default function InventoryIndex({
                             onChange={setTahun}
                         />
                         <FilterCombobox
-                            className="grid gap-2 md:col-span-2"
+                            className="grid min-w-0 flex-[1_1_10rem] gap-2"
                             label="Kondisi"
                             value={kondisi}
                             options={[
@@ -505,7 +505,7 @@ export default function InventoryIndex({
                             onChange={setKondisi}
                         />
                         <FilterCombobox
-                            className="grid gap-2 md:col-span-2"
+                            className="grid min-w-0 flex-[1_1_10rem] gap-2"
                             label="Asal"
                             value={asal}
                             options={[
@@ -518,7 +518,7 @@ export default function InventoryIndex({
                             onChange={setAsal}
                         />
                         <FilterCombobox
-                            className="grid gap-2 md:col-span-2"
+                            className="grid min-w-0 flex-[1_1_10rem] gap-2"
                             label="Satuan"
                             value={satuan}
                             options={[
@@ -531,7 +531,7 @@ export default function InventoryIndex({
                             onChange={setSatuan}
                         />
                         <FilterCombobox
-                            className="grid gap-2 md:col-span-2"
+                            className="grid min-w-0 flex-[1_1_12rem] gap-2"
                             label="Kategori"
                             value={category}
                             options={[
@@ -544,7 +544,7 @@ export default function InventoryIndex({
                             onChange={setCategory}
                         />
                         <FilterCombobox
-                            className="grid gap-2 md:col-span-2"
+                            className="grid min-w-0 flex-[1_1_12rem] gap-2"
                             label="Jenis Inventaris"
                             value={inventoryType}
                             options={[
@@ -556,7 +556,7 @@ export default function InventoryIndex({
                             ]}
                             onChange={setInventoryType}
                         />
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset

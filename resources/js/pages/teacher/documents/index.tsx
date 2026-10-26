@@ -754,8 +754,8 @@ function TeacherDocumentsContent({
                     onSubmit={searchNow}
                     className="grid gap-4 rounded-xl border p-4"
                 >
-                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid min-w-0 gap-2 md:col-span-5">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="document-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -773,7 +773,7 @@ function TeacherDocumentsContent({
                         <div
                             role="group"
                             aria-labelledby="document-access-label"
-                            className="grid min-w-0 gap-2 md:col-span-2"
+                            className="grid min-w-0 flex-[1_1_12rem] gap-2"
                         >
                             <Label id="document-access-label">Akses</Label>
                             <SearchableCombobox
@@ -794,7 +794,7 @@ function TeacherDocumentsContent({
                         <div
                             role="group"
                             aria-labelledby="document-sort-label"
-                            className="grid min-w-0 gap-2 md:col-span-2"
+                            className="grid min-w-0 flex-[1_1_12rem] gap-2"
                         >
                             <Label id="document-sort-label">Urutan</Label>
                             <SearchableCombobox
@@ -810,7 +810,7 @@ function TeacherDocumentsContent({
                                 searchPlaceholder="Cari urutan..."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="flex flex-wrap gap-2">
                             <Button type="submit">Filter</Button>
                             <Button
                                 type="button"

@@ -136,8 +136,8 @@ export default function TeacherSubjectsIndex({
                     </Button>
                 </div>
                 <div className="grid gap-4 rounded-xl border p-4">
-                    <div className="flex items-end gap-3">
-                        <div className="grid flex-1 gap-2">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="teacher-subject-search">
                                 Search
                             </Label>
@@ -162,6 +162,7 @@ export default function TeacherSubjectsIndex({
                             </div>
                         </div>
                         <Button
+                            className="shrink-0"
                             onClick={() =>
                                 navigate({
                                     page: 1,
@@ -172,6 +173,7 @@ export default function TeacherSubjectsIndex({
                             Filter
                         </Button>
                         <Button
+                            className="shrink-0"
                             variant="outline"
                             onClick={() => {
                                 setSearch('');

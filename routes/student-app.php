@@ -6,6 +6,7 @@ use App\Http\Controllers\StudentApp\ExamAttemptController;
 use App\Http\Controllers\StudentApp\KantinController;
 use App\Http\Controllers\StudentApp\ProfileController;
 use App\Http\Controllers\StudentApp\ScheduleController;
+use App\Http\Controllers\StudentApp\SilarasController;
 use App\Http\Controllers\StudentApp\UasController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -15,6 +16,10 @@ Route::middleware(['auth', 'verified', 'role:Siswa'])
     ->name('student-app.')
     ->group(function (): void {
         Route::get('/', DashboardController::class)->name('dashboard');
+        Route::get('/services', fn () => Inertia::render('student-app/services'))->name('services');
+        Route::post('/silaras', [SilarasController::class, 'store'])
+            ->middleware('throttle:6,1')
+            ->name('silaras.store');
         Route::get('/schedule', ScheduleController::class)->name('schedule');
         Route::get('/courses', [CourseController::class, 'index'])->name('courses');
         Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');

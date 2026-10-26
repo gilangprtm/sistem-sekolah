@@ -137,8 +137,8 @@ export default function ManagementClass({
                 </div>
 
                 <div className="grid gap-4 rounded-xl border p-4">
-                    <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-end">
-                        <div className="grid w-full flex-1 gap-2">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="management-class-search">
                                 Search
                             </Label>
@@ -160,7 +160,7 @@ export default function ManagementClass({
                                 />
                             </div>
                         </div>
-                        <div className="grid w-full gap-2 md:w-80">
+                        <div className="grid min-w-0 flex-[1_1_14rem] gap-2">
                             <Label>Tahun Ajaran</Label>
                             <SearchableCombobox
                                 value={yearId}
@@ -177,7 +177,7 @@ export default function ManagementClass({
                                 emptyMessage="Tahun Ajaran tidak ditemukan."
                             />
                         </div>
-                        <div className="flex w-full gap-2 md:w-auto">
+                        <div className="flex flex-wrap gap-2">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset

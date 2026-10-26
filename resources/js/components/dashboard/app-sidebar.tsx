@@ -9,6 +9,7 @@ import {
     DoorOpen,
     Files,
     GraduationCap,
+    HeartHandshake,
     LayoutDashboard,
     LayoutGrid,
     Lock,
@@ -36,6 +37,7 @@ import {
 import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
 import { index as counselingNotes } from '@/routes/counseling/notes';
+import { index as silaras } from '@/routes/humas/silaras';
 import {
     design as lmsDesign,
     management as lmsManagement,
@@ -60,6 +62,7 @@ type PageProps = {
     canManageLmsCourses?: boolean;
     canAccessLmsMyCourses?: boolean;
     canAccessStudentViolations?: boolean;
+    canAccessSilaras?: boolean;
     auth?: {
         user?: {
             name: string;
@@ -86,6 +89,7 @@ export function AppSidebar({
         canManageLmsCourses = false,
         canAccessLmsMyCourses = false,
         canAccessStudentViolations = false,
+        canAccessSilaras = false,
     } = usePage<PageProps>().props;
     const permissions = auth?.permissions ?? [];
     const roles = auth?.roles ?? [];
@@ -107,6 +111,16 @@ export function AppSidebar({
     const effectiveCollapsible = isSynced ? sidebarCollapsible : collapsible;
 
     const counselingItems: NavMainItem[] = [];
+    const humasItems: NavMainItem[] = [];
+
+    if (canAccessSilaras) {
+        humasItems.push({
+            id: 'humas-silaras',
+            title: 'Silaras',
+            url: silaras.url(),
+            icon: HeartHandshake,
+        });
+    }
 
     if (canAccessCounseling) {
         counselingItems.push({
@@ -346,6 +360,7 @@ export function AppSidebar({
         student_affairs: studentAffairsItems,
         canteen: canteenItems,
         administration: adminItems,
+        humas: humasItems,
     };
 
     for (const item of documentNavigation) {
@@ -373,6 +388,9 @@ export function AppSidebar({
             : []),
         ...(counselingItems.length > 0
             ? [{ id: 9, label: 'Konseling', items: counselingItems }]
+            : []),
+        ...(humasItems.length > 0
+            ? [{ id: 11, label: 'Humas', items: humasItems }]
             : []),
         ...(studentAffairsItems.length > 0
             ? [{ id: 5, label: 'Kesiswaan', items: studentAffairsItems }]

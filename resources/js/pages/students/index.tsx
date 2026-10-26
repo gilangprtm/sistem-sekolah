@@ -288,8 +288,8 @@ export default function StudentsIndex({
                     </div>
                 </div>
                 <div className="grid gap-4 rounded-xl border p-4">
-                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-4">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="student-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -309,7 +309,7 @@ export default function StudentsIndex({
                                 />
                             </div>
                         </div>
-                        <div className="grid gap-2 md:col-span-2">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label>Gender</Label>
                             <SearchableCombobox
                                 value={gender}
@@ -323,7 +323,7 @@ export default function StudentsIndex({
                                 emptyMessage="Gender tidak ditemukan."
                             />
                         </div>
-                        <div className="grid gap-2 md:col-span-2">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label>Status</Label>
                             <SearchableCombobox
                                 value={status}
@@ -337,7 +337,7 @@ export default function StudentsIndex({
                                 emptyMessage="Status tidak ditemukan."
                             />
                         </div>
-                        <div className="grid gap-2 md:col-span-2">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label>Akun</Label>
                             <SearchableCombobox
                                 value={account}
@@ -355,7 +355,7 @@ export default function StudentsIndex({
                                 emptyMessage="Akun tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset

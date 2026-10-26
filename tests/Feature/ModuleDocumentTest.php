@@ -36,6 +36,7 @@ class ModuleDocumentTest extends TestCase
             '/kesiswaan/dokumen' => 'student_affairs.documents.index',
             '/kantin/dokumen' => 'canteen.documents.index',
             '/administrasi/dokumen' => 'administration.documents.index',
+            '/humas/dokumen' => 'humas.documents.index',
         ];
 
         foreach ($paths as $path => $name) {
@@ -99,9 +100,13 @@ class ModuleDocumentTest extends TestCase
         $this->assertTrue(Role::findByName('Guru', 'web')->hasPermissionTo('teacher.document.manage'));
         $this->assertTrue(Role::findByName('Sarpras', 'web')->hasPermissionTo('inventory.document.manage'));
         $this->assertTrue(Role::findByName('Kesiswaan', 'web')->hasPermissionTo('student_affairs.document.manage'));
+        $this->assertTrue(Role::findByName('Humas', 'web')->hasPermissionTo('humas.document.view'));
+        $this->assertTrue(Role::findByName('Humas', 'web')->hasPermissionTo('humas.document.manage'));
+        $this->assertTrue(Role::findByName('Super Admin', 'web')->hasPermissionTo('humas.document.manage'));
         $this->assertFalse(Role::findByName('Guru', 'web')->hasPermissionTo('curriculum.document.view'));
         $this->assertFalse(Role::findByName('Siswa', 'web')->hasPermissionTo('teacher.document.view'));
         $this->assertFalse(Role::findByName('Admin Perpustakaan', 'web')->hasPermissionTo('administration.document.view'));
+        $this->assertFalse(Role::findByName('Staff', 'web')->hasPermissionTo('humas.document.view'));
     }
 
     #[TestWith(['inventory.documents.index', '/inventaris/dokumen'])]
@@ -110,6 +115,7 @@ class ModuleDocumentTest extends TestCase
     #[TestWith(['student_affairs.documents.index', '/kesiswaan/dokumen'])]
     #[TestWith(['canteen.documents.index', '/kantin/dokumen'])]
     #[TestWith(['administration.documents.index', '/administrasi/dokumen'])]
+    #[TestWith(['humas.documents.index', '/humas/dokumen'])]
     public function test_module_documents_use_expected_canonical_route(string $routeName, string $path): void
     {
         $this->assertSame($path, route($routeName, absolute: false));
@@ -122,7 +128,7 @@ class ModuleDocumentTest extends TestCase
         $otherOwner = $this->user('Guru');
         $this->actingAs($admin);
 
-        foreach ([DocumentModule::Inventory, DocumentModule::Curriculum, DocumentModule::Teacher, DocumentModule::StudentAffairs, DocumentModule::Canteen, DocumentModule::Administration] as $module) {
+        foreach ([DocumentModule::Inventory, DocumentModule::Curriculum, DocumentModule::Teacher, DocumentModule::StudentAffairs, DocumentModule::Canteen, DocumentModule::Administration, DocumentModule::Humas] as $module) {
             $foreign = $this->folder($otherOwner, $module, 'private');
             $this->get(route($module->routeName(), ['folder' => $foreign->id]))->assertInertia(fn ($page) => $page
                 ->where('folder.id', $foreign->id)
@@ -157,7 +163,9 @@ class ModuleDocumentTest extends TestCase
         }
     }
 
-    public function test_cross_module_folder_ids_are_rejected_even_for_super_admin_without_mutation(): void
+    #[TestWith(['curriculum'])]
+    #[TestWith(['humas'])]
+    public function test_cross_module_folder_ids_are_rejected_even_for_super_admin_without_mutation(string $module): void
     {
         Storage::fake('local');
         $admin = $this->user('Super Admin');
@@ -165,12 +173,12 @@ class ModuleDocumentTest extends TestCase
         $file = $this->document($admin, DocumentModule::Teacher, 'public', 'Agenda');
         $this->actingAs($admin);
 
-        $this->get(route('curriculum.documents.index', ['folder' => $folder->id]))->assertNotFound();
-        $this->post(route('curriculum.documents.folders.store'), ['parent_id' => $folder->id, 'name' => 'Bocor'])->assertNotFound();
-        $this->delete(route('curriculum.documents.folders.destroy', $folder))->assertNotFound();
-        $this->get(route('curriculum.documents.view', $file))->assertNotFound();
-        $this->get(route('curriculum.documents.download', $file))->assertNotFound();
-        $this->delete(route('curriculum.documents.destroy', $file))->assertNotFound();
+        $this->get(route($module.'.documents.index', ['folder' => $folder->id]))->assertNotFound();
+        $this->post(route($module.'.documents.folders.store'), ['parent_id' => $folder->id, 'name' => 'Bocor'])->assertNotFound();
+        $this->delete(route($module.'.documents.folders.destroy', $folder))->assertNotFound();
+        $this->get(route($module.'.documents.view', $file))->assertNotFound();
+        $this->get(route($module.'.documents.download', $file))->assertNotFound();
+        $this->delete(route($module.'.documents.destroy', $file))->assertNotFound();
         $this->assertModelExists($folder);
         $this->assertModelExists($file);
         $this->assertDatabaseCount('m_teacher_document_folders', 1);
@@ -196,6 +204,48 @@ class ModuleDocumentTest extends TestCase
         $this->delete(route('curriculum.documents.destroy', $file))->assertForbidden();
         $this->get(route('teacher.documents.index'))->assertForbidden();
         $this->assertModelExists($file);
+    }
+
+    public function test_humas_documents_are_isolated_and_use_the_silaras_view_permission_only_as_module_access(): void
+    {
+        $humas = $this->user('Humas');
+        $silarasViewer = $this->user('Staff');
+        $silarasViewer->givePermissionTo('humas.aspiration.view');
+
+        $this->actingAs($humas)->get(route('humas.documents.index'))->assertInertia(fn ($page) => $page
+            ->where('module.key', 'humas')
+            ->where('module.label', 'Humas')
+            ->where('canManage', true)
+            ->has('documentNavigation', 1)
+            ->where('documentNavigation.0.key', 'humas')
+            ->where('documentNavigation.0.url', route('humas.documents.index')));
+        $this->get(route('teacher.documents.index'))->assertForbidden();
+
+        $this->actingAs($silarasViewer)->get(route('humas.documents.index'))->assertForbidden();
+        $this->assertDatabaseCount('m_teacher_document_folders', 0);
+        $this->assertDatabaseCount('tr_teacher_documents', 0);
+    }
+
+    public function test_humas_members_can_download_public_documents_but_cannot_read_private_or_delete_another_members_file(): void
+    {
+        Storage::fake('local');
+        $owner = $this->user('Humas');
+        $viewer = $this->user('Humas');
+        $public = $this->document($owner, DocumentModule::Humas, 'public', 'Publik Humas');
+        $private = $this->document($owner, DocumentModule::Humas, 'private', 'Pribadi Humas');
+        $this->document($this->user('Guru'), DocumentModule::Teacher, 'public', 'Publik Guru');
+        Storage::disk('local')->put($public->path, 'pdf');
+
+        $this->actingAs($viewer)->get(route('humas.documents.index'))->assertInertia(fn ($page) => $page
+            ->where('documents.total', 1)
+            ->where('documents.data.0.name', 'Publik Humas')
+            ->where('documents.data.0.canDelete', false));
+        $this->get(route('humas.documents.download', $public))->assertDownload('report.pdf');
+        $this->get(route('humas.documents.view', $private))->assertNotFound();
+        $this->delete(route('humas.documents.destroy', $public))->assertForbidden();
+        $this->assertModelExists($public);
+        $this->assertModelExists($private);
+        Storage::disk('local')->assertExists($public->path);
     }
 
     public function test_guru_manage_permission_keeps_document_navigation_when_view_permission_has_not_been_seeded(): void

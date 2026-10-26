@@ -60,9 +60,9 @@ export default function SearchableCombobox({
                     aria-invalid={ariaInvalid}
                     aria-describedby={ariaDescribedBy}
                     aria-expanded={open}
-                    className={`${className} justify-between font-normal`}
+                    className={`${className} min-w-0 justify-between font-normal`}
                 >
-                    <span className="truncate">
+                    <span className="min-w-0 truncate">
                         {selected?.label ?? placeholder}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

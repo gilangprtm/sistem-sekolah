@@ -567,8 +567,8 @@ export default function CounselingNotesIndex({
                         navigate();
                     }}
                 >
-                    <div className="grid grid-cols-1 items-end gap-3 @min-[40rem]:grid-cols-[minmax(0,2fr)_auto]">
-                        <div className="grid min-w-0 gap-2">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="counseling-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -584,7 +584,7 @@ export default function CounselingNotesIndex({
                                 />
                             </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button type="submit">Filter</Button>
                             <Button
                                 type="button"

@@ -29,6 +29,7 @@ class ModuleDocumentPermissionSeeder extends Seeder
             DocumentModule::StudentAffairs->value => ['Kesiswaan'],
             DocumentModule::Canteen->value => [],
             DocumentModule::Administration->value => [],
+            DocumentModule::Humas->value => ['Humas'],
         ];
         $readPermissionsByModule = [
             DocumentModule::Inventory->value => ['inventory.view', 'inventory.dashboard.view', 'inventory.room.view'],
@@ -37,6 +38,7 @@ class ModuleDocumentPermissionSeeder extends Seeder
             DocumentModule::StudentAffairs->value => ['student.card.view'],
             DocumentModule::Canteen->value => ['kantin.dashboard.view', 'kantin.barang.view', 'kantin.saldo.view'],
             DocumentModule::Administration->value => ['student.view', 'teacher.view', 'users.manage', 'roles.manage'],
+            DocumentModule::Humas->value => ['humas.aspiration.view'],
         ];
 
         foreach (DocumentModule::cases() as $module) {

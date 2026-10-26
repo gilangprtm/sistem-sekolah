@@ -244,7 +244,7 @@ class StudentAppProfileTest extends TestCase
         $this->assertIsString($layoutSource);
         $this->assertStringNotContainsString('StudentPreferencesControl', $layoutSource);
         $this->assertStringContainsString("currentPath === '/student/kantin'", $layoutSource);
-        $this->assertStringContainsString('isSecondaryPage = isKantin || isUas || isExam', $layoutSource);
+        $this->assertStringContainsString('isKantin || isUas || isExam || isCourse || isServices', $layoutSource);
         $this->assertStringContainsString('!isSecondaryPage && (', $layoutSource);
         $this->assertStringContainsString("'flex-1 p-0'", $layoutSource);
 

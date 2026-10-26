@@ -278,8 +278,8 @@ export default function RolesIndex({
                 </div>
 
                 <div className="grid gap-4 rounded-xl border p-4">
-                    <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
-                        <div className="grid gap-2 md:col-span-6">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid min-w-0 flex-[2_1_18rem] gap-2">
                             <Label htmlFor="role-search">Search</Label>
                             <div className="relative">
                                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
@@ -299,7 +299,7 @@ export default function RolesIndex({
                                 />
                             </div>
                         </div>
-                        <div className="grid gap-2 md:col-span-3">
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
                             <Label>Modul Permission</Label>
                             <SearchableCombobox
                                 value={module}
@@ -313,7 +313,7 @@ export default function RolesIndex({
                                 emptyMessage="Modul tidak ditemukan."
                             />
                         </div>
-                        <div className="flex gap-2 md:col-span-3">
+                        <div className="flex flex-wrap gap-2">
                             <Button onClick={applyFilters}>Filter</Button>
                             <Button variant="outline" onClick={resetFilters}>
                                 Reset

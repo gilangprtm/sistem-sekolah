@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\CounselingNoteController;
+use App\Http\Controllers\HumasAspirationController;
 use App\Http\Controllers\StudentViolationController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,10 @@ Route::middleware(['auth', 'verified'])->prefix('konseling/catatan')->name('coun
     Route::put('/{counseling_note}', [CounselingNoteController::class, 'update'])->middleware('can:update,counseling_note')->name('update');
     Route::delete('/{counseling_note}', [CounselingNoteController::class, 'destroy'])->middleware('can:delete,counseling_note')->name('destroy');
 });
+
+Route::middleware(['auth', 'verified', 'can:viewAny,App\\Models\\HumasAspiration'])
+    ->get('/humas/silaras', [HumasAspirationController::class, 'index'])
+    ->name('humas.silaras.index');
 
 require __DIR__.'/dashboard.php';
 require __DIR__.'/users.php';
