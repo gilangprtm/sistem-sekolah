@@ -23,6 +23,8 @@ class ModuleDocumentPermissionSeeder extends Seeder
             Permission::findOrCreate($module->permission('manage'), 'web');
         }
 
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         $rolesByModule = [
             DocumentModule::Inventory->value => ['Sarpras'],
             DocumentModule::Curriculum->value => [],
