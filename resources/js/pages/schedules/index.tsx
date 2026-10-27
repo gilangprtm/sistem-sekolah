@@ -13,6 +13,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTableShell from '@/components/data-table/data-table-shell';
+import Heading from '@/components/heading';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import {
@@ -236,15 +237,11 @@ export default function JadwalPelajaranIndex({
             <Head title="Jadwal Pelajaran" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 className="text-xl font-semibold tracking-tight">
-                            Jadwal Pelajaran
-                        </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Seret jadwal pada tabel untuk memindahkan slot.
-                            Perubahan disimpan otomatis.
-                        </p>
-                    </div>
+                    <Heading
+                        variant="small"
+                        title="Jadwal Pelajaran"
+                        description="Seret jadwal pada tabel untuk memindahkan slot. Perubahan disimpan otomatis."
+                    />
                     <Button
                         variant="outline"
                         asChild

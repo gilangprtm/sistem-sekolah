@@ -252,7 +252,7 @@ export default function KantinSaldoIndex({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Saldo Kantin" />
-            <div className="flex flex-1 flex-col gap-4 rounded-xl p-4">
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <Heading
                         variant="small"

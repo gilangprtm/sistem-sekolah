@@ -179,6 +179,9 @@ class RolePermissionSeeder extends Seeder
             'student.card.view',
         ]);
 
+        $this->call(TeacherQuizPermissionSeeder::class);
+        $this->call(MasterSchoolPermissionSeeder::class);
+        $this->call(LibraryPermissionSeeder::class);
         $this->call(HumasPermissionSeeder::class);
         $this->call(ModuleDocumentPermissionSeeder::class);
         $this->call(LmsPermissionSeeder::class);

@@ -15,6 +15,7 @@ class ModuleDocumentPermissionSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(CounselingRoleSeeder::class);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         foreach (DocumentModule::cases() as $module) {
@@ -30,6 +31,8 @@ class ModuleDocumentPermissionSeeder extends Seeder
             DocumentModule::Canteen->value => [],
             DocumentModule::Administration->value => [],
             DocumentModule::Humas->value => ['Humas'],
+            DocumentModule::Library->value => ['Admin Perpustakaan'],
+            DocumentModule::Counseling->value => ['Konseling'],
         ];
         $readPermissionsByModule = [
             DocumentModule::Inventory->value => ['inventory.view', 'inventory.dashboard.view', 'inventory.room.view'],
@@ -39,6 +42,8 @@ class ModuleDocumentPermissionSeeder extends Seeder
             DocumentModule::Canteen->value => ['kantin.dashboard.view', 'kantin.barang.view', 'kantin.saldo.view'],
             DocumentModule::Administration->value => ['student.view', 'teacher.view', 'users.manage', 'roles.manage'],
             DocumentModule::Humas->value => ['humas.aspiration.view'],
+            DocumentModule::Library->value => [],
+            DocumentModule::Counseling->value => [],
         ];
 
         foreach (DocumentModule::cases() as $module) {

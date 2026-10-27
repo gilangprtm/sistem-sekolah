@@ -13,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\TestWith;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -37,6 +38,8 @@ class ModuleDocumentTest extends TestCase
             '/kantin/dokumen' => 'canteen.documents.index',
             '/administrasi/dokumen' => 'administration.documents.index',
             '/humas/dokumen' => 'humas.documents.index',
+            '/perpustakaan/dokumen' => 'library.documents.index',
+            '/konseling/dokumen' => 'counseling.documents.index',
         ];
 
         foreach ($paths as $path => $name) {
@@ -102,11 +105,18 @@ class ModuleDocumentTest extends TestCase
         $this->assertTrue(Role::findByName('Kesiswaan', 'web')->hasPermissionTo('student_affairs.document.manage'));
         $this->assertTrue(Role::findByName('Humas', 'web')->hasPermissionTo('humas.document.view'));
         $this->assertTrue(Role::findByName('Humas', 'web')->hasPermissionTo('humas.document.manage'));
+        $this->assertTrue(Role::findByName('Admin Perpustakaan', 'web')->hasPermissionTo('library.document.view'));
+        $this->assertTrue(Role::findByName('Admin Perpustakaan', 'web')->hasPermissionTo('library.document.manage'));
+        $this->assertTrue(Role::findByName('Konseling', 'web')->hasPermissionTo('counseling.document.view'));
+        $this->assertTrue(Role::findByName('Konseling', 'web')->hasPermissionTo('counseling.document.manage'));
+        $this->assertTrue(Role::findByName('Super Admin', 'web')->hasPermissionTo('counseling.document.manage'));
         $this->assertTrue(Role::findByName('Super Admin', 'web')->hasPermissionTo('humas.document.manage'));
         $this->assertFalse(Role::findByName('Guru', 'web')->hasPermissionTo('curriculum.document.view'));
         $this->assertFalse(Role::findByName('Siswa', 'web')->hasPermissionTo('teacher.document.view'));
         $this->assertFalse(Role::findByName('Admin Perpustakaan', 'web')->hasPermissionTo('administration.document.view'));
         $this->assertFalse(Role::findByName('Staff', 'web')->hasPermissionTo('humas.document.view'));
+        $this->assertFalse(Role::findByName('Guru', 'web')->hasPermissionTo('library.document.view'));
+        $this->assertFalse(Role::findByName('Konseling', 'web')->hasPermissionTo('teacher.document.view'));
     }
 
     #[TestWith(['inventory.documents.index', '/inventaris/dokumen'])]
@@ -116,6 +126,8 @@ class ModuleDocumentTest extends TestCase
     #[TestWith(['canteen.documents.index', '/kantin/dokumen'])]
     #[TestWith(['administration.documents.index', '/administrasi/dokumen'])]
     #[TestWith(['humas.documents.index', '/humas/dokumen'])]
+    #[TestWith(['library.documents.index', '/perpustakaan/dokumen'])]
+    #[TestWith(['counseling.documents.index', '/konseling/dokumen'])]
     public function test_module_documents_use_expected_canonical_route(string $routeName, string $path): void
     {
         $this->assertSame($path, route($routeName, absolute: false));
@@ -128,7 +140,7 @@ class ModuleDocumentTest extends TestCase
         $otherOwner = $this->user('Guru');
         $this->actingAs($admin);
 
-        foreach ([DocumentModule::Inventory, DocumentModule::Curriculum, DocumentModule::Teacher, DocumentModule::StudentAffairs, DocumentModule::Canteen, DocumentModule::Administration, DocumentModule::Humas] as $module) {
+        foreach ([DocumentModule::Inventory, DocumentModule::Curriculum, DocumentModule::Teacher, DocumentModule::StudentAffairs, DocumentModule::Canteen, DocumentModule::Administration, DocumentModule::Humas, DocumentModule::Library, DocumentModule::Counseling] as $module) {
             $foreign = $this->folder($otherOwner, $module, 'private');
             $this->get(route($module->routeName(), ['folder' => $foreign->id]))->assertInertia(fn ($page) => $page
                 ->where('folder.id', $foreign->id)
@@ -165,6 +177,8 @@ class ModuleDocumentTest extends TestCase
 
     #[TestWith(['curriculum'])]
     #[TestWith(['humas'])]
+    #[TestWith(['library'])]
+    #[TestWith(['counseling'])]
     public function test_cross_module_folder_ids_are_rejected_even_for_super_admin_without_mutation(string $module): void
     {
         Storage::fake('local');
@@ -246,6 +260,66 @@ class ModuleDocumentTest extends TestCase
         $this->assertModelExists($public);
         $this->assertModelExists($private);
         Storage::disk('local')->assertExists($public->path);
+    }
+
+    public function test_library_staff_have_scoped_document_navigation_and_cannot_access_teacher_documents(): void
+    {
+        $librarian = $this->user('Admin Perpustakaan');
+        $this->document($librarian, DocumentModule::Library, 'public', 'Arsip Perpustakaan');
+        $this->document($this->user('Guru'), DocumentModule::Teacher, 'public', 'Arsip Guru');
+
+        $this->actingAs($librarian)->get(route('library.documents.index'))->assertInertia(fn ($page) => $page
+            ->where('module.key', 'library')
+            ->where('module.label', 'Perpustakaan')
+            ->where('canManage', true)
+            ->where('documents.total', 1)
+            ->where('documents.data.0.name', 'Arsip Perpustakaan')
+            ->has('documentNavigation', 1)
+            ->where('documentNavigation.0.key', 'library')
+            ->where('documentNavigation.0.url', route('library.documents.index')));
+        $this->get(route('teacher.documents.index'))->assertForbidden();
+    }
+
+    public function test_counselors_have_scoped_documents_without_exposing_private_files_or_other_modules(): void
+    {
+        Storage::fake('local');
+        $owner = $this->user('Konseling');
+        $viewer = $this->user('Konseling');
+        $public = $this->document($owner, DocumentModule::Counseling, 'public', 'Panduan Konseling');
+        $private = $this->document($owner, DocumentModule::Counseling, 'private', 'Arsip pribadi');
+        $this->document($this->user('Guru'), DocumentModule::Teacher, 'public', 'Arsip Guru');
+        Storage::disk('local')->put($public->path, 'pdf');
+
+        $this->actingAs($viewer)->get(route('counseling.documents.index'))->assertInertia(fn ($page) => $page
+            ->where('module.key', 'counseling')->where('module.label', 'Konseling')
+            ->where('canManage', true)->where('printOptions', [])
+            ->where('documents.total', 1)->where('documents.data.0.name', 'Panduan Konseling')
+            ->where('documents.data.0.canDelete', false)
+            ->has('documentNavigation', 1)->where('documentNavigation.0.key', 'counseling')
+            ->where('documentNavigation.0.url', route('counseling.documents.index')));
+        $this->get(route('counseling.documents.download', $public))->assertDownload('report.pdf');
+        $this->get(route('counseling.documents.view', $private))->assertNotFound();
+        $this->delete(route('counseling.documents.destroy', $public))->assertForbidden();
+        $this->get(route('teacher.documents.index'))->assertForbidden();
+        $this->assertModelExists($private);
+        $this->assertModelExists($public);
+        Storage::disk('local')->assertExists($public->path);
+    }
+
+    public function test_counseling_documents_require_their_own_permission_and_authentication(): void
+    {
+        $this->get(route('counseling.documents.index'))->assertRedirect(route('login'));
+        $this->post(route('counseling.documents.folders.store'), [])->assertRedirect(route('login'));
+        $this->post(route('counseling.documents.store'), [])->assertRedirect(route('login'));
+        $staff = $this->user('Staff');
+        $staff->givePermissionTo(Permission::findOrCreate('counseling.note.view', 'web'));
+
+        $this->actingAs($staff)->get(route('counseling.documents.index'))->assertForbidden();
+        $this->post(route('counseling.documents.folders.store'), ['name' => 'Ditolak', 'visibility' => 'public'])->assertForbidden();
+        $this->post(route('counseling.documents.store'), [])->assertForbidden();
+        $this->get(route('dashboard'))->assertInertia(fn ($page) => $page->has('documentNavigation', 0));
+        $this->assertDatabaseCount('m_teacher_document_folders', 0);
+        $this->assertDatabaseCount('tr_teacher_documents', 0);
     }
 
     public function test_guru_manage_permission_keeps_document_navigation_when_view_permission_has_not_been_seeded(): void

@@ -38,12 +38,15 @@ import type { NavMainItem } from '@/navigation/sidebar/sidebar-items';
 import { dashboard } from '@/routes';
 import { index as counselingNotes } from '@/routes/counseling/notes';
 import { index as silaras } from '@/routes/humas/silaras';
+import { index as libraryCirculation } from '@/routes/library/circulation';
+import { index as libraryCollection } from '@/routes/library/collection';
 import {
     design as lmsDesign,
     management as lmsManagement,
     myCourses as lmsMyCourses,
 } from '@/routes/lms';
 import { index as studentViolations } from '@/routes/student-affairs/violations';
+import { index as teacherQuizzes } from '@/routes/teacher/quizzes';
 
 import { usePreferencesStore } from '@/stores/preferences/preferences-provider';
 
@@ -141,9 +144,11 @@ export function AppSidebar({
     ];
     const inventoryItems: NavMainItem[] = [];
     const adminItems: NavMainItem[] = [];
+    const masterSchoolItems: NavMainItem[] = [];
     const teacherItems: NavMainItem[] = [];
     const curriculumItems: NavMainItem[] = [];
     const lmsItems: NavMainItem[] = [];
+    const libraryItems: NavMainItem[] = [];
 
     if (canDesignLmsCourses) {
         lmsItems.push({
@@ -194,6 +199,15 @@ export function AppSidebar({
         });
     }
 
+    if (can('teacher.quiz.view')) {
+        teacherItems.push({
+            id: 'teacher-quizzes',
+            title: 'Ulangan',
+            url: teacherQuizzes.url(),
+            icon: ClipboardCheck,
+        });
+    }
+
     if (canAccessStudentViolations) {
         studentAffairsItems.push({
             id: 'student-violations',
@@ -209,6 +223,24 @@ export function AppSidebar({
             title: 'Kartu Pelajar',
             url: '/students/cards',
             icon: CreditCard,
+        });
+    }
+
+    if (can('library.collection.view')) {
+        libraryItems.push({
+            id: 'library-collection',
+            title: 'Koleksi Buku',
+            url: libraryCollection.url(),
+            icon: BookOpen,
+        });
+    }
+
+    if (can('library.circulation.view')) {
+        libraryItems.push({
+            id: 'library-circulation',
+            title: 'Sirkulasi',
+            url: libraryCirculation.url(),
+            icon: BookOpenCheck,
         });
     }
 
@@ -258,7 +290,7 @@ export function AppSidebar({
     }
 
     if (can('student.view')) {
-        adminItems.push({
+        masterSchoolItems.push({
             id: 'students',
             title: 'Siswa',
             url: '/students',
@@ -267,7 +299,7 @@ export function AppSidebar({
     }
 
     if (can('teacher.view')) {
-        adminItems.push({
+        masterSchoolItems.push({
             id: 'teachers',
             title: 'Guru & Staff',
             url: '/teachers',
@@ -284,21 +316,21 @@ export function AppSidebar({
         });
     }
 
-    if (can('subject.view')) {
-        curriculumItems.push({
-            id: 'subjects',
-            title: 'Mata Pelajaran',
-            url: '/kurikulum/subjects',
-            icon: BookOpen,
-        });
-    }
-
     if (can('curriculum.rombel.view')) {
-        curriculumItems.push({
+        masterSchoolItems.push({
             id: 'rombels',
             title: 'Rombel',
             url: '/kurikulum/rombels',
             icon: School,
+        });
+    }
+
+    if (can('subject.view')) {
+        masterSchoolItems.push({
+            id: 'subjects',
+            title: 'Mata Pelajaran',
+            url: '/kurikulum/subjects',
+            icon: BookOpen,
         });
     }
 
@@ -361,6 +393,8 @@ export function AppSidebar({
         canteen: canteenItems,
         administration: adminItems,
         humas: humasItems,
+        library: libraryItems,
+        counseling: counselingItems,
     };
 
     for (const item of documentNavigation) {
@@ -374,6 +408,9 @@ export function AppSidebar({
 
     const navGroups = [
         { id: 1, label: 'Umum', items: dashboardItems },
+        ...(masterSchoolItems.length > 0
+            ? [{ id: 13, label: 'Master Sekolah', items: masterSchoolItems }]
+            : []),
         ...(inventoryItems.length > 0
             ? [{ id: 2, label: 'Sarpras', items: inventoryItems }]
             : []),
@@ -391,6 +428,9 @@ export function AppSidebar({
             : []),
         ...(humasItems.length > 0
             ? [{ id: 11, label: 'Humas', items: humasItems }]
+            : []),
+        ...(libraryItems.length > 0
+            ? [{ id: 12, label: 'Perpustakaan', items: libraryItems }]
             : []),
         ...(studentAffairsItems.length > 0
             ? [{ id: 5, label: 'Kesiswaan', items: studentAffairsItems }]

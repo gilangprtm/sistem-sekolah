@@ -15,6 +15,15 @@ const FIRST_INTERRUPTION_WARNING =
 const SECOND_INTERRUPTION_WARNING =
     'Jika kamu keluar aplikasi sekali lagi, ujian akan langsung terkunci.';
 
+export type ExamEndpoints = {
+    start: string;
+    show: string;
+    events: string;
+    complete: string;
+    index: string;
+    state: string;
+};
+
 type Props = {
     attemptId: number | null;
     linkId: number;
@@ -25,6 +34,7 @@ type Props = {
     started: boolean;
     interruptionCount: number;
     reopen: boolean;
+    endpoints?: ExamEndpoints;
 };
 
 type WakeLockSentinel = {
@@ -46,6 +56,7 @@ export default function StudentExam({
     started,
     interruptionCount: initialCount,
     reopen,
+    endpoints,
 }: Props) {
     const [attemptId] = useState<number | null>(initialAttemptId);
     const [hasStarted] = useState(started);
@@ -105,7 +116,8 @@ export default function StudentExam({
                     'meta[name="csrf-token"]',
                 )?.content;
                 const response = await fetch(
-                    `/student/uas/attempts/${attemptId}/events`,
+                    endpoints?.events ??
+                        `/student/uas/attempts/${attemptId}/events`,
                     {
                         method: 'POST',
                         credentials: 'same-origin',
@@ -152,8 +164,53 @@ export default function StudentExam({
                 );
             }
         },
-        [attemptId],
+        [attemptId, endpoints],
     );
+
+    useEffect(() => {
+        if (!hasStarted || !endpoints) {
+            return;
+        }
+
+        let inFlight = false;
+        const checkState = async () => {
+            if (inFlight) {
+                return;
+            }
+
+            inFlight = true;
+
+            try {
+                const response = await fetch(endpoints.state, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json' },
+                    cache: 'no-store',
+                });
+
+                if (response.ok) {
+                    const state = (await response.json()) as {
+                        open?: boolean;
+                        locked?: boolean;
+                    };
+
+                    if (!state.open) {
+                        window.location.replace(endpoints.index);
+                    } else if (state.locked) {
+                        window.location.reload();
+                    }
+                }
+            } catch {
+                setError(
+                    'Tidak dapat memeriksa status Ulangan. Pastikan koneksi tetap aktif.',
+                );
+            } finally {
+                inFlight = false;
+            }
+        };
+        const timer = window.setInterval(() => void checkState(), 10000);
+
+        return () => window.clearInterval(timer);
+    }, [endpoints, hasStarted]);
 
     useEffect(() => {
         if (!hasStarted) {
@@ -211,7 +268,9 @@ export default function StudentExam({
                 'meta[name="csrf-token"]',
             )?.content;
             const response = await fetch(
-                `/student/uas/${linkId}/attempt${reopen ? '?reopen=1' : ''}`,
+                endpoints
+                    ? `${endpoints.start}${reopen ? '?reopen=1' : ''}`
+                    : `/student/uas/${linkId}/attempt${reopen ? '?reopen=1' : ''}`,
                 {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -257,7 +316,11 @@ export default function StudentExam({
                 return;
             }
 
-            window.location.replace(`/student/uas/${linkId}/attempt`);
+            if (endpoints) {
+                window.location.replace(endpoints.show);
+            } else {
+                window.location.replace(`/student/uas/${linkId}/attempt`);
+            }
         } catch {
             setError(
                 'Tidak dapat menghubungi server untuk memulai ujian. Periksa koneksi Anda lalu coba kembali.',
@@ -265,7 +328,7 @@ export default function StudentExam({
         } finally {
             setIsStarting(false);
         }
-    }, [initialCount, isStarting, linkId, reopen]);
+    }, [endpoints, initialCount, isStarting, linkId, reopen]);
 
     const completeAttempt = useCallback(async () => {
         if (!attemptId || isCompleting) {
@@ -280,7 +343,8 @@ export default function StudentExam({
                 'meta[name="csrf-token"]',
             )?.content;
             const response = await fetch(
-                `/student/uas/attempts/${attemptId}/complete`,
+                endpoints?.complete ??
+                    `/student/uas/attempts/${attemptId}/complete`,
                 {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -299,7 +363,11 @@ export default function StudentExam({
                 return;
             }
 
-            window.location.replace('/student/uas');
+            if (endpoints) {
+                window.location.replace(endpoints.index);
+            } else {
+                window.location.replace('/student/uas');
+            }
         } catch {
             setCompletionError(
                 'Tidak dapat menghubungi server untuk menyelesaikan ujian. Periksa koneksi Anda lalu coba lagi.',
@@ -307,16 +375,21 @@ export default function StudentExam({
         } finally {
             setIsCompleting(false);
         }
-    }, [attemptId, isCompleting]);
+    }, [attemptId, endpoints, isCompleting]);
 
     const acknowledgeWarning = useCallback(() => {
         setWarning('');
 
         if (pendingOpen) {
             setPendingOpen(false);
-            window.location.replace(`/student/uas/${linkId}/attempt`);
+
+            if (endpoints) {
+                window.location.replace(endpoints.show);
+            } else {
+                window.location.replace(`/student/uas/${linkId}/attempt`);
+            }
         }
-    }, [linkId, pendingOpen]);
+    }, [endpoints, linkId, pendingOpen]);
 
     useEffect(() => {
         if (hasStarted || startRequested.current) {
@@ -332,7 +405,7 @@ export default function StudentExam({
             <Head title={`${category} ${subjectCode ?? ''}`.trim()} />
             <SecondaryPageShell
                 title={`${category} ${subjectCode ?? ''}`.trim()}
-                fallbackHref="/student/uas"
+                fallbackHref={endpoints?.index ?? '/student/uas'}
             >
                 <main
                     className={
@@ -342,7 +415,14 @@ export default function StudentExam({
                     }
                     aria-labelledby="exam-title"
                 >
-                    {!hasStarted ? (
+                    {endpoints && error && hasStarted ? (
+                        <section className="grid gap-3 p-4" role="alert">
+                            <p>{error}</p>
+                            <Button onClick={() => window.location.reload()}>
+                                Periksa status Ulangan
+                            </Button>
+                        </section>
+                    ) : !hasStarted ? (
                         <section
                             className="grid gap-2 p-2 text-sm"
                             aria-live="polite"
@@ -433,12 +513,21 @@ export default function StudentExam({
                     >
                         <ModalShell>
                             <DialogHeader>
-                                <DialogTitle>Selesaikan ujian?</DialogTitle>
+                                <DialogTitle>
+                                    {endpoints
+                                        ? 'Selesaikan Ulangan?'
+                                        : 'Selesaikan ujian?'}
+                                </DialogTitle>
                             </DialogHeader>
                             <DialogDescription>
-                                Setelah diselesaikan, ujian ini akan dikunci dan
-                                tidak dapat dibuka kembali tanpa bantuan
-                                administrator.
+                                Setelah diselesaikan,{' '}
+                                {endpoints ? 'Ulangan' : 'ujian'} ini akan
+                                dikunci dan tidak dapat dibuka kembali tanpa
+                                bantuan{' '}
+                                {endpoints
+                                    ? 'Guru pembuat Ulangan'
+                                    : 'administrator'}
+                                .
                             </DialogDescription>
                             {completionError && (
                                 <p

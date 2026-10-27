@@ -16,7 +16,10 @@ import {
 } from '@/components/ui/command';
 import { index as counselingNotes } from '@/routes/counseling/notes';
 import { index as silaras } from '@/routes/humas/silaras';
+import { index as libraryCirculation } from '@/routes/library/circulation';
+import { index as libraryCollection } from '@/routes/library/collection';
 import { index as studentViolations } from '@/routes/student-affairs/violations';
+import { index as teacherQuizzes } from '@/routes/teacher/quizzes';
 
 type SearchItem = {
     id: string;
@@ -28,6 +31,18 @@ type SearchItem = {
 };
 
 const searchItems: SearchItem[] = [
+    {
+        id: 'library-collection',
+        group: 'Perpustakaan',
+        label: 'Koleksi Buku',
+        url: libraryCollection.url(),
+    },
+    {
+        id: 'library-circulation',
+        group: 'Perpustakaan',
+        label: 'Sirkulasi',
+        url: libraryCirculation.url(),
+    },
     {
         id: 'humas-silaras',
         group: 'Humas',
@@ -102,13 +117,13 @@ const searchItems: SearchItem[] = [
     },
     {
         id: 'subjects',
-        group: 'Kurikulum',
+        group: 'Master Sekolah',
         label: 'Mata Pelajaran',
         url: '/kurikulum/subjects',
     },
     {
         id: 'rombels',
-        group: 'Kurikulum',
+        group: 'Master Sekolah',
         label: 'Rombel',
         url: '/kurikulum/rombels',
     },
@@ -143,14 +158,20 @@ const searchItems: SearchItem[] = [
         url: '/guru/wali-kelas',
     },
     {
+        id: 'teacher-quizzes',
+        group: 'Guru',
+        label: 'Ulangan',
+        url: teacherQuizzes.url(),
+    },
+    {
         id: 'students',
-        group: 'Administrasi',
+        group: 'Master Sekolah',
         label: 'Siswa',
         url: '/students',
     },
     {
         id: 'teachers',
-        group: 'Administrasi',
+        group: 'Master Sekolah',
         label: 'Guru & Staff',
         url: '/teachers',
     },
@@ -202,6 +223,14 @@ export function SearchDialog() {
     const can = (permission: string) =>
         isSuperAdmin || permissions.includes(permission);
     const availableItems = searchItems.filter((item) => {
+        if (item.id === 'library-collection') {
+            return can('library.collection.view');
+        }
+
+        if (item.id === 'library-circulation') {
+            return can('library.circulation.view');
+        }
+
         if (item.id === 'humas-silaras') {
             return canAccessSilaras;
         }
@@ -256,6 +285,10 @@ export function SearchDialog() {
 
         if (item.id === 'teacher-homeroom') {
             return can('teacher.homeroom.view');
+        }
+
+        if (item.id === 'teacher-quizzes') {
+            return can('teacher.quiz.view');
         }
 
         if (item.id === 'academic-years') {

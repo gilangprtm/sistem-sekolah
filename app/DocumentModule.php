@@ -14,6 +14,8 @@ enum DocumentModule: string
     case Canteen = 'canteen';
     case Administration = 'administration';
     case Humas = 'humas';
+    case Library = 'library';
+    case Counseling = 'counseling';
 
     public function label(): string
     {
@@ -25,6 +27,8 @@ enum DocumentModule: string
             self::Canteen => 'Kantin',
             self::Administration => 'Administrasi',
             self::Humas => 'Humas',
+            self::Library => 'Perpustakaan',
+            self::Counseling => 'Konseling',
         };
     }
 
@@ -38,6 +42,8 @@ enum DocumentModule: string
             self::Canteen => 'kantin/dokumen',
             self::Administration => 'administrasi/dokumen',
             self::Humas => 'humas/dokumen',
+            self::Library => 'perpustakaan/dokumen',
+            self::Counseling => 'konseling/dokumen',
         };
     }
 

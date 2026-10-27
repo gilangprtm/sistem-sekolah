@@ -44,6 +44,8 @@ class StudentAppServicesTest extends TestCase
         $dashboard = file_get_contents(resource_path('js/pages/student-app/dashboard.tsx'));
         $this->assertIsString($dashboard);
         $this->assertStringContainsString("{ label: 'Silaras', icon: HeartHandshake }", $dashboard);
+        $this->assertStringNotContainsString("{ label: 'Ulangan', icon:", $dashboard);
+        $this->assertStringNotContainsString('quizzes.url()', $dashboard);
         $this->assertStringNotContainsString("{ label: 'Ujian', icon:", $dashboard);
         $this->assertStringContainsString('<SilarasAspirationDialog', $dashboard);
 
@@ -55,6 +57,8 @@ class StudentAppServicesTest extends TestCase
         $this->assertStringContainsString('uas.url()', $page);
         $this->assertStringContainsString('studentServices.url()', $dashboard);
         $this->assertStringContainsString("label: 'Ujian'", $page);
+        $this->assertStringContainsString("label: 'Ulangan'", $page);
+        $this->assertStringContainsString('href: quizzes.url()', $page);
         $this->assertStringContainsString('<SilarasAspirationDialog', $page);
         $this->assertStringContainsString('courses.url()', $page);
         $this->assertStringContainsString('href: null', $page);

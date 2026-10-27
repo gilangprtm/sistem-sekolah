@@ -96,9 +96,11 @@ export default function AgendaIndex({
         {
             id: 'class',
             header: 'Kelas · Mata Pelajaran',
+            headerClassName: 'w-72 max-w-72',
+            cellClassName: 'w-72 max-w-72',
             cell: (agenda) => (
-                <div className="min-w-48">
-                    <p className="font-medium">
+                <div className="max-w-64 min-w-0">
+                    <p className="font-medium wrap-anywhere whitespace-normal">
                         {agenda.snapshot.rombel_code} ·{' '}
                         {agenda.snapshot.subject_name}
                     </p>
@@ -112,8 +114,12 @@ export default function AgendaIndex({
         {
             id: 'material',
             header: 'Materi',
+            headerClassName: 'max-w-xs',
+            cellClassName: 'max-w-xs',
             cell: (agenda) => (
-                <span className="line-clamp-2 max-w-md">{agenda.material}</span>
+                <span className="line-clamp-2 max-w-xs wrap-anywhere whitespace-normal">
+                    {agenda.material}
+                </span>
             ),
         },
     ];
@@ -131,14 +137,14 @@ export default function AgendaIndex({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Agenda Guru" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+            <div className="flex h-full min-w-0 flex-1 flex-col gap-4 rounded-xl p-4">
                 <Heading
                     variant="small"
                     title="Agenda Guru"
                     description="Catat materi dan kehadiran per blok jadwal mengajar."
                 />
                 <section
-                    className="grid gap-3"
+                    className="grid min-w-0 gap-4 rounded-xl border p-4"
                     aria-label="Kalender agenda mingguan"
                 >
                     <div className="flex flex-col gap-4">
@@ -241,7 +247,7 @@ export default function AgendaIndex({
                         </div>
                     </div>
                 </section>
-                <section className="rounded-xl border bg-card p-4 sm:p-6">
+                <section className="grid min-w-0 gap-4 rounded-xl border p-4">
                     <Heading
                         variant="small"
                         title="Agenda mengajar"
@@ -250,19 +256,19 @@ export default function AgendaIndex({
                     {!hasTeacherProfile ? (
                         <p
                             role="alert"
-                            className="mt-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
+                            className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
                         >
                             Akun ini belum terhubung dengan profil guru.
                         </p>
                     ) : !hasActivePeriod ? (
                         <p
                             role="status"
-                            className="mt-5 rounded-lg border p-4 text-sm text-muted-foreground"
+                            className="rounded-lg border p-4 text-sm text-muted-foreground"
                         >
                             Tahun ajaran atau semester aktif belum tersedia.
                         </p>
                     ) : (
-                        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             {blocks.length === 0 ? (
                                 <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">
                                     <ClipboardList className="mb-2 size-5" />
@@ -274,7 +280,7 @@ export default function AgendaIndex({
                                     ({ block_key, snapshot, agenda_id }) => (
                                         <article
                                             key={block_key}
-                                            className="grid content-start gap-4 rounded-xl border p-4"
+                                            className="grid min-w-0 content-start gap-4 rounded-xl border p-4 wrap-anywhere"
                                         >
                                             <div>
                                                 <p className="text-sm text-muted-foreground">
@@ -336,7 +342,7 @@ export default function AgendaIndex({
                         </div>
                     )}
                 </section>
-                <section className="grid gap-3">
+                <section className="grid min-w-0 gap-4">
                     <Heading
                         variant="small"
                         title="Riwayat Agenda"

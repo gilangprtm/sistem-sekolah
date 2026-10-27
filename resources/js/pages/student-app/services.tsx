@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import SilarasAspirationDialog from '@/components/student-app/silaras-aspiration-dialog';
-import { courses, dashboard, kantin, uas } from '@/routes/student-app';
+import { courses, dashboard, kantin, quizzes, uas } from '@/routes/student-app';
 
 const services = [
     {
@@ -22,6 +22,12 @@ const services = [
         description: 'Informasi dan akses ujian.',
         icon: ClipboardCheck,
         href: uas.url(),
+    },
+    {
+        label: 'Ulangan',
+        description: 'Ulangan yang dibuka oleh Guru.',
+        icon: ClipboardCheck,
+        href: quizzes.url(),
     },
     {
         label: 'Course',

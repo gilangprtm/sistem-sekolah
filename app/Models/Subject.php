@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Database\Factories\SubjectFactory;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,6 +32,15 @@ class Subject extends Model
             'jp_per_class' => 'integer',
             'color' => 'string',
         ];
+    }
+
+    /** @param Builder<Subject> $query */
+    #[Scope]
+    protected function taughtBy(Builder $query, User $user): void
+    {
+        $query->where('status', 'active')
+            ->whereHas('teacherSubjects.teacher', fn (Builder $teacher) => $teacher
+                ->where('user_id', $user->id)->where('status', 'active')->where('staff_type', 'guru'));
     }
 
     /** @return HasMany<TeacherSubject, $this> */

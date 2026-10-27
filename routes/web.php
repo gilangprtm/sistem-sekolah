@@ -55,3 +55,4 @@ require __DIR__.'/inventory-rooms.php';
 require __DIR__.'/kantin.php';
 require __DIR__.'/uas.php';
 require __DIR__.'/lms.php';
+require __DIR__.'/library.php';

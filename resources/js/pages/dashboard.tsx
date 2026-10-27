@@ -169,7 +169,7 @@ export default function Dashboard() {
         <>
             <Head title="Beranda" />
 
-            <div className="flex flex-1 flex-col gap-8 p-4 md:p-6">
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <Heading
                     variant="small"
                     title="Beranda"

@@ -30,10 +30,13 @@ export default function StudentAppLayout({
     const isKantin = currentPath === '/student/kantin';
     const isServices = currentPath === '/student/services';
     const isUas = currentPath === '/student/uas';
+    const isQuiz =
+        currentPath === '/student/quizzes' ||
+        /^\/student\/quizzes\/\d+$/.test(currentPath);
     const isCourse = /^\/student\/courses(?:\/\d+)?$/.test(currentPath);
     const isExam = /^\/student\/uas\/\d+\/(attempt|open)$/.test(currentPath);
     const isSecondaryPage =
-        isKantin || isUas || isExam || isCourse || isServices;
+        isKantin || isUas || isExam || isCourse || isServices || isQuiz;
     const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {
@@ -105,7 +108,7 @@ export default function StudentAppLayout({
 
                 <main
                     className={
-                        isKantin || isUas
+                        isKantin || isUas || isQuiz
                             ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
                             : isSchedule
                               ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-5 pb-28'

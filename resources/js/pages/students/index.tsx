@@ -246,7 +246,7 @@ export default function StudentsIndex({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Siswa" />
-            <div className="flex max-w-full min-w-0 flex-1 flex-col gap-4 rounded-xl p-4 pb-24 sm:pb-6">
+            <div className="flex max-w-full min-w-0 flex-1 flex-col gap-4 rounded-xl p-4">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="min-w-0 break-words">
                         <Heading

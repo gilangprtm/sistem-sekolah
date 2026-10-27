@@ -170,7 +170,7 @@ export default function KantinDashboard({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Kantin" />
-            <div className="flex flex-1 flex-col gap-4 rounded-xl p-4">
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <Heading
                     variant="small"
                     title="Dashboard Kantin"

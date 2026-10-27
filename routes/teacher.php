@@ -7,6 +7,7 @@ use App\Http\Controllers\Teacher\AttendanceReportController;
 use App\Http\Controllers\Teacher\DocumentController;
 use App\Http\Controllers\Teacher\HomeroomController;
 use App\Http\Controllers\Teacher\HomeroomSeatingController;
+use App\Http\Controllers\Teacher\QuizController;
 use App\Http\Controllers\Teacher\StudentAttendanceController;
 use App\Http\Controllers\Teacher\StudentNoteController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,15 @@ foreach (DocumentModule::cases() as $module) {
         Route::delete('/files/{document}', [DocumentController::class, 'destroy'])->name('destroy');
     });
 }
+
+Route::middleware(['auth', 'verified', 'can:teacher.quiz.view'])->prefix('guru/ulangan')->name('teacher.quizzes.')->group(function (): void {
+    Route::get('/', [QuizController::class, 'index'])->name('index');
+    Route::post('/', [QuizController::class, 'store'])->name('store');
+    Route::patch('/{quiz}', [QuizController::class, 'update'])->name('update');
+    Route::patch('/{quiz}/availability', [QuizController::class, 'availability'])->name('availability');
+    Route::delete('/{quiz}', [QuizController::class, 'destroy'])->name('destroy');
+    Route::post('/attempts/{attempt}/unlock', [QuizController::class, 'unlock'])->name('attempts.unlock');
+});
 
 Route::get('/guru/agenda/cetak', AgendaReportController::class)
     ->middleware(['auth', 'verified', 'can:teacher.agenda.manage'])->name('teacher.agenda.report');
