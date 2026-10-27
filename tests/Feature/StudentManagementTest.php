@@ -180,12 +180,51 @@ class StudentManagementTest extends TestCase
         file_put_contents($path, $response->streamedContent());
         $this->assertSame(true, $archive->open($path));
         $sheet = $archive->getFromName('xl/worksheets/sheet1.xml');
+        $styleXml = $archive->getFromName('xl/styles.xml');
+        $this->assertSame(false, $archive->locateName('xl/media/image1.png'));
         $archive->close();
         @unlink($path);
         $this->assertIsString($sheet);
+        $this->assertIsString($styleXml);
         $this->assertStringContainsString('nis', $sheet);
         $this->assertStringContainsString('Nomor Induk Siswa', $sheet);
         $this->assertStringContainsString('Siti Aminah', $sheet);
+        $sheetXml = simplexml_load_string($sheet, \SimpleXMLElement::class, LIBXML_NONET);
+        $styles = simplexml_load_string($styleXml, \SimpleXMLElement::class, LIBXML_NONET);
+        $this->assertInstanceOf(\SimpleXMLElement::class, $sheetXml);
+        $this->assertInstanceOf(\SimpleXMLElement::class, $styles);
+        $sheetXml->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $styles->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $this->assertCount(3, $sheetXml->xpath('//x:sheetData/x:row'));
+        $this->assertSame(StudentCsvImporter::HEADERS, array_map(
+            static fn (\SimpleXMLElement $cell): string => (string) $cell,
+            $sheetXml->xpath('//x:row[@r="1"]/x:c/x:is/x:t'),
+        ));
+
+        $headerCells = $sheetXml->xpath('//x:row[@r="2"]/x:c');
+        $this->assertCount(15, $headerCells);
+        $cellStyles = $styles->xpath('//x:cellXfs/x:xf');
+        $fills = $styles->xpath('//x:fills/x:fill');
+        $fonts = $styles->xpath('//x:fonts/x:font');
+
+        foreach ($headerCells as $cell) {
+            $style = $cellStyles[(int) $cell['s']];
+            $fill = $fills[(int) $style['fillId']];
+            $font = $fonts[(int) $style['fontId']];
+            $this->assertSame('FF2563EB', (string) $fill->patternFill->fgColor['rgb']);
+            $this->assertSame('FFFFFFFF', (string) $font->color['rgb']);
+        }
+
+        $widths = $sheetXml->xpath('//x:cols/x:col');
+        $expectedWidths = [21.0, 30.0, 18.0, 16.0, 23.0, 16.0, 30.0, 10.0, 17.0, 12.0, 13.0, 17.0, 18.0, 20.0, 28.0];
+        $this->assertCount(15, $widths);
+
+        foreach ($widths as $index => $column) {
+            $this->assertSame($index + 1, (int) $column['min']);
+            $this->assertSame($index + 1, (int) $column['max']);
+            $this->assertSame($expectedWidths[$index], (float) $column['width']);
+            $this->assertSame('1', (string) $column['customWidth']);
+        }
     }
 
     public function test_student_excel_import_ignores_metadata_and_example_rows(): void
@@ -401,8 +440,6 @@ class StudentManagementTest extends TestCase
         $this->assertTrue($archive->open($path));
         $sheet = $archive->getFromName('xl/worksheets/sheet1.xml');
         $this->assertIsString($sheet);
-        $this->assertFalse(str_contains($sheet, '<cols>'));
-        $this->assertFalse($archive->locateName('xl/styles.xml') !== false);
         $data = '';
 
         foreach ($rows as $rowIndex => $row) {

@@ -310,7 +310,16 @@ final class StudentCsvImporter
             ['NIS-001', '1234567890', '2024', 'Siti Aminah', 'P', 'Denpasar', '2012-01-02', 'Jl. Melati', '081234567890', 'Ibu Siti', 'Bapak Amin', 'Guru', 'Wiraswasta', '081298765432', 'active'],
         ];
 
-        return app(XlsxWriter::class)->write($rows, 'Master Siswa');
+        $columnWidths = [];
+
+        foreach ($rows[1] as $index => $label) {
+            $columnWidths[$index + 1] = (float) mb_strwidth($label) + 4.0;
+        }
+
+        return app(XlsxWriter::class)->write($rows, 'Master Siswa', [
+            'columnWidths' => $columnWidths,
+            'headerRow' => 2,
+        ]);
     }
 
     /**
