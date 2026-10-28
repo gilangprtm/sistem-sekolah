@@ -175,6 +175,8 @@ class StudentCardTest extends TestCase
         $this->assertStringContainsString('whitespace-nowrap', $visualSource);
         $this->assertStringContainsString('T.T.L', $visualSource);
         $this->assertStringContainsString('Alamat', $visualSource);
+        $this->assertStringContainsString('wrapStudentCardAddress(student.address)', $visualSource);
+        $this->assertStringContainsString('whitespace-pre-line', $visualSource);
         $this->assertStringContainsString('renderStudentCardPng', $cardSource);
         $this->assertStringContainsString('qrCode={qrCode}', $cardSource);
         $this->assertStringContainsString('formatStudentNumbers(', $visualSource);

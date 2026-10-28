@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
+import { wrapStudentCardAddress } from '@/lib/student-card-address';
 
 export type StudentCardStudent = {
     id?: number;
@@ -277,13 +278,13 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                                 {birthDetails || '-'}
                             </span>
                         </div>
-                        <div className="flex items-center text-left">
+                        <div className="flex items-start text-left">
                             <span className="w-[21.5%] shrink-0 whitespace-nowrap">
                                 Alamat
                             </span>
                             <span className="w-[1.9%] shrink-0">:</span>
-                            <span className="min-w-0 truncate">
-                                {student.address || '-'}
+                            <span className="min-w-0 whitespace-pre-line">
+                                {wrapStudentCardAddress(student.address)}
                             </span>
                         </div>
                     </div>
