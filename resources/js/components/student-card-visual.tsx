@@ -235,12 +235,12 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                         KARTU PELAJAR SISWA
                     </div>
                     <div className="absolute top-[44.3%] right-[3.5%] left-[32.54%] text-[25px] leading-[1.45] font-bold text-[#024059]">
-                        <div className="flex items-center text-left">
+                        <div className="flex items-start text-left">
                             <span className="w-[21.5%] shrink-0 whitespace-nowrap">
                                 Nama
                             </span>
                             <span className="w-[1.9%] shrink-0">:</span>
-                            <span className="min-w-0 truncate">
+                            <span className="min-w-0 flex-1 leading-none wrap-anywhere">
                                 {student.full_name}
                             </span>
                         </div>
