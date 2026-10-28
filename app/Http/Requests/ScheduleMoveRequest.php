@@ -18,6 +18,7 @@ class ScheduleMoveRequest extends FormRequest
         return [
             'schedule_plan_id' => ['required', 'integer', Rule::exists('tr_curriculum_schedule_plans', 'id')->where('status', 'published')],
             'schedule_entry_id' => ['required', 'integer', Rule::exists('tr_curriculum_schedule_entries', 'id')],
+            'target_rombel_id' => ['nullable', 'integer', Rule::exists('m_rombels', 'id')],
             'day' => ['required', Rule::in(['monday', 'tuesday', 'wednesday', 'thursday', 'friday'])],
             'lesson_number' => ['required', 'integer', 'min:1', 'max:15'],
             'selected_rombel_ids' => ['nullable', 'array', 'max:50'],

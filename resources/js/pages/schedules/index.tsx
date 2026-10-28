@@ -8,7 +8,7 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { Head, router } from '@inertiajs/react';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
@@ -23,6 +23,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import ModalShell from '@/components/ui/modal-shell';
 import {
     Table,
@@ -34,6 +35,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
+import { activity, place } from '@/routes/schedule';
 import type { BreadcrumbItem } from '@/types';
 
 type Period = {
@@ -76,6 +78,16 @@ type ScheduleDay = {
     rows: ScheduleRow[];
 };
 
+type PlacementOption = {
+    rombel_id: number;
+    subject_id: number;
+    subject_name: string;
+    teacher_subject_id: number;
+    label: string;
+    weekly_jp: number;
+    remaining_jp: number;
+};
+
 type Props = {
     periods: Period[];
     selectedPeriod: Period | null;
@@ -84,6 +96,9 @@ type Props = {
     selectedRombelIds: number[];
     days: ScheduleDay[];
     entries: ScheduleEntry[];
+    editablePlanId: number | null;
+    canManageSchedule: boolean;
+    placementOptions: PlacementOption[];
     scheduleMeta: {
         lessonDurationMinutes: number;
         breakDurationMinutes: number;
@@ -99,14 +114,21 @@ function formatTime(start: string, end: string) {
     return `${start} - ${end}`;
 }
 
-function DraggableScheduleEntry({ entry }: { entry: ScheduleEntry }) {
+function DraggableScheduleEntry({
+    entry,
+    disabled,
+}: {
+    entry: ScheduleEntry;
+    disabled: boolean;
+}) {
     const { attributes, listeners, setNodeRef, transform, isDragging } =
-        useDraggable({ id: `entry:${entry.schedule_entry_id}` });
+        useDraggable({ id: `entry:${entry.schedule_entry_id}`, disabled });
 
     return (
         <button
             ref={setNodeRef}
             type="button"
+            disabled={disabled}
             className="w-full rounded p-1 text-center font-medium text-foreground"
             style={{
                 backgroundColor: entry.subject_color,
@@ -127,18 +149,34 @@ function DraggableScheduleEntry({ entry }: { entry: ScheduleEntry }) {
 function DroppableScheduleCell({
     id,
     children,
+    canPlace,
+    onPlace,
+    placementLabel,
 }: {
     id: string;
     children: ReactNode;
+    canPlace: boolean;
+    onPlace: () => void;
+    placementLabel: string;
 }) {
     const { isOver, setNodeRef } = useDroppable({ id });
 
     return (
         <TableCell
             ref={setNodeRef}
-            className={`border-r text-center align-middle text-muted-foreground ${isOver ? 'bg-primary/20' : ''}`}
+            className={`border-r p-1 text-center align-middle text-muted-foreground ${isOver ? 'bg-primary/20' : ''}`}
         >
-            {children}
+            {children ||
+                (canPlace ? (
+                    <button
+                        type="button"
+                        onClick={onPlace}
+                        aria-label={placementLabel}
+                        className="flex min-h-8 w-full items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    >
+                        <Plus className="size-4" aria-hidden="true" />
+                    </button>
+                ) : null)}
         </TableCell>
     );
 }
@@ -152,9 +190,52 @@ export default function JadwalPelajaranIndex({
     days,
     scheduleMeta,
     entries,
+    editablePlanId,
+    canManageSchedule,
+    placementOptions,
 }: Props) {
+    const [activitySlot, setActivitySlot] = useState<{
+        day: string;
+        lessonNumber: number;
+    } | null>(null);
+    const [activityName, setActivityName] = useState('');
+    const [activityError, setActivityError] = useState<string | null>(null);
+    const [isSavingActivity, setIsSavingActivity] = useState(false);
     const [moveError, setMoveError] = useState<string | null>(null);
+    const [placementError, setPlacementError] = useState<string | null>(null);
+    const [placementSlot, setPlacementSlot] = useState<{
+        day: string;
+        lessonNumber: number;
+        rombelId: number;
+    } | null>(null);
+    const [selectedSubjectId, setSelectedSubjectId] = useState('');
+    const [selectedTeacherSubjectId, setSelectedTeacherSubjectId] =
+        useState('');
+    const [isPlacing, setIsPlacing] = useState(false);
+    const [isMoving, setIsMoving] = useState(false);
     const sensors = useSensors(useSensor(PointerSensor));
+
+    const currentPlacementOptions = placementOptions.filter(
+        (option) => option.rombel_id === placementSlot?.rombelId,
+    );
+    const subjectOptions = Array.from(
+        new Map(
+            currentPlacementOptions.map((option) => [
+                option.subject_id,
+                {
+                    value: option.subject_id.toString(),
+                    label: option.subject_name,
+                },
+            ]),
+        ).values(),
+    );
+    const teacherPlacementOptions = currentPlacementOptions.filter(
+        (option) => option.subject_id.toString() === selectedSubjectId,
+    );
+    const selectedPlacement = teacherPlacementOptions.find(
+        (option) =>
+            option.teacher_subject_id.toString() === selectedTeacherSubjectId,
+    );
 
     const resolveMoveError = (errors: Record<string, string | string[]>) => {
         const message = errors.move ?? Object.values(errors)[0];
@@ -163,27 +244,135 @@ export default function JadwalPelajaranIndex({
         return friendlyMessage || 'Posisi jadwal belum dapat diperbarui.';
     };
 
+    const openPlacement = (
+        day: string,
+        lessonNumber: number,
+        rombelId: number,
+    ) => {
+        setPlacementSlot({ day, lessonNumber, rombelId });
+        setSelectedSubjectId('');
+        setSelectedTeacherSubjectId('');
+        setPlacementError(null);
+    };
+
+    const submitPlacement = () => {
+        if (!placementSlot || !selectedPlacement || editablePlanId === null) {
+            return;
+        }
+
+        if (isPlacing) {
+            return;
+        }
+
+        setPlacementError(null);
+        setIsPlacing(true);
+        router.post(
+            place.url(),
+            {
+                schedule_plan_id: editablePlanId,
+                rombel_id: placementSlot.rombelId,
+                teacher_subject_id: selectedPlacement.teacher_subject_id,
+                day: placementSlot.day,
+                lesson_number: placementSlot.lessonNumber,
+                selected_rombel_ids: selectedRombelIds,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setPlacementSlot(null),
+                onError: (errors) =>
+                    setPlacementError(resolveMoveError(errors)),
+                onFinish: () => setIsPlacing(false),
+            },
+        );
+    };
+
+    const openActivity = (day: string, row: ScheduleRow) => {
+        if (row.number === undefined) {
+            return;
+        }
+
+        setActivitySlot({ day, lessonNumber: row.number });
+        setActivityName(row.type === 'custom' ? (row.label ?? '') : '');
+        setActivityError(null);
+    };
+
+    const submitActivity = () => {
+        if (
+            !activitySlot ||
+            editablePlanId === null ||
+            !activityName.trim() ||
+            isSavingActivity
+        ) {
+            return;
+        }
+
+        setActivityError(null);
+        setIsSavingActivity(true);
+        router.post(
+            activity.url(),
+            {
+                schedule_plan_id: editablePlanId,
+                day: activitySlot.day,
+                lesson_number: activitySlot.lessonNumber,
+                label: activityName.trim(),
+                selected_rombel_ids: selectedRombelIds,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setActivitySlot(null),
+                onError: (errors) =>
+                    setActivityError(
+                        Object.values(errors)[0] ||
+                            'Kegiatan belum dapat disimpan.',
+                    ),
+                onFinish: () => setIsSavingActivity(false),
+            },
+        );
+    };
+
     const handleDragEnd = ({ active, over }: DragEndEvent) => {
-        if (!over) {
+        if (!over || !canManageSchedule || isMoving) {
             return;
         }
 
         const entry = entries.find(
             (item) => `entry:${item.schedule_entry_id}` === active.id,
         );
-        const [day, lessonNumber] = over.id.toString().split(':');
+        const [day, lessonNumber, targetRombelId] = over.id
+            .toString()
+            .split(':');
         const lesson = Number(lessonNumber);
+        const rombelId = Number(targetRombelId);
 
-        if (!entry || !day || !Number.isInteger(lesson)) {
+        if (
+            !entry ||
+            !day ||
+            !Number.isInteger(lesson) ||
+            !Number.isInteger(rombelId)
+        ) {
+            return;
+        }
+
+        if (rombelId !== entry.rombel_id) {
+            setMoveError(
+                'Jadwal hanya dapat dipindahkan atau ditukar dalam rombel yang sama.',
+            );
+
+            return;
+        }
+
+        if (entry.day === day && entry.lesson_number === lesson) {
             return;
         }
 
         setMoveError(null);
+        setIsMoving(true);
         router.post(
             '/kurikulum/schedule/move',
             {
                 schedule_plan_id: entry.schedule_plan_id,
                 schedule_entry_id: entry.schedule_entry_id,
+                target_rombel_id: rombelId,
                 selected_rombel_ids: selectedRombelIds,
                 day,
                 lesson_number: lesson,
@@ -191,6 +380,7 @@ export default function JadwalPelajaranIndex({
             {
                 preserveScroll: true,
                 onError: (errors) => setMoveError(resolveMoveError(errors)),
+                onFinish: () => setIsMoving(false),
             },
         );
     };
@@ -240,7 +430,7 @@ export default function JadwalPelajaranIndex({
                     <Heading
                         variant="small"
                         title="Jadwal Pelajaran"
-                        description="Seret jadwal pada tabel untuk memindahkan slot. Perubahan disimpan otomatis."
+                        description="Klik angka jam untuk menambahkan kegiatan seluruh kelas. Pilih slot kosong untuk mengisi JP mingguan. Seret kotak untuk memindahkan atau menukar posisi dalam kelas yang sama. Perubahan disimpan otomatis."
                     />
                     <Button
                         variant="outline"
@@ -372,7 +562,32 @@ export default function JadwalPelajaranIndex({
                                                         </TableCell>
                                                     )}
                                                     <TableCell className="border-r text-center text-muted-foreground">
-                                                        {row.number ?? ''}
+                                                        {row.number !==
+                                                            undefined &&
+                                                        canManageSchedule &&
+                                                        editablePlanId !==
+                                                            null ? (
+                                                            <button
+                                                                type="button"
+                                                                className="inline-flex min-h-9 min-w-9 items-center justify-center rounded font-medium text-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                                                disabled={
+                                                                    isSavingActivity ||
+                                                                    isMoving ||
+                                                                    isPlacing
+                                                                }
+                                                                aria-label={`Jadwal Kegiatan ${day.label}, jam ke-${row.number}`}
+                                                                onClick={() =>
+                                                                    openActivity(
+                                                                        day.key,
+                                                                        row,
+                                                                    )
+                                                                }
+                                                            >
+                                                                {row.number}
+                                                            </button>
+                                                        ) : (
+                                                            (row.number ?? '')
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="border-r font-medium whitespace-nowrap">
                                                         {formatTime(
@@ -418,20 +633,33 @@ export default function JadwalPelajaranIndex({
                                                                     <DroppableScheduleCell
                                                                         key={`${day.key}-${row.start}-${rombel.id}`}
                                                                         id={`${day.key}:${row.number}:${rombel.id}`}
+                                                                        canPlace={
+                                                                            canManageSchedule &&
+                                                                            editablePlanId !==
+                                                                                null &&
+                                                                            !entry
+                                                                        }
+                                                                        placementLabel={`Tambahkan jadwal ${rombel.code}, ${day.label}, jam ke-${row.number}`}
+                                                                        onPlace={() =>
+                                                                            openPlacement(
+                                                                                day.key,
+                                                                                row.number ??
+                                                                                    0,
+                                                                                rombel.id,
+                                                                            )
+                                                                        }
                                                                     >
                                                                         {entry ? (
                                                                             <DraggableScheduleEntry
+                                                                                disabled={
+                                                                                    !canManageSchedule ||
+                                                                                    isMoving
+                                                                                }
                                                                                 entry={
                                                                                     entry
                                                                                 }
                                                                             />
-                                                                        ) : (
-                                                                            <span className="sr-only">
-                                                                                Belum
-                                                                                ada
-                                                                                jadwal
-                                                                            </span>
-                                                                        )}
+                                                                        ) : null}
                                                                     </DroppableScheduleCell>
                                                                 );
                                                             },
@@ -447,10 +675,195 @@ export default function JadwalPelajaranIndex({
                     </div>
                 </DataTableShell>
                 <p className="text-xs text-muted-foreground">
-                    Durasi pelajaran: {scheduleMeta.lessonDurationMinutes}{' '}
-                    menit. Perubahan posisi jadwal disimpan otomatis.
+                    Slot kosong dapat dipilih untuk menjadwalkan sisa JP
+                    mingguan. Durasi pelajaran:{' '}
+                    {scheduleMeta.lessonDurationMinutes} menit. Perubahan posisi
+                    jadwal disimpan otomatis.
                 </p>
             </div>
+            <Dialog
+                open={activitySlot !== null}
+                onOpenChange={(open) => {
+                    if (!open && !isSavingActivity) {
+                        setActivitySlot(null);
+                    }
+                }}
+            >
+                <ModalShell size="medium">
+                    <DialogHeader>
+                        <DialogTitle>Jadwal Kegiatan</DialogTitle>
+                        <DialogDescription>
+                            {
+                                days.find(
+                                    (day) => day.key === activitySlot?.day,
+                                )?.label
+                            }{' '}
+                            · Jam ke-{activitySlot?.lessonNumber}. Berlaku untuk
+                            seluruh kelas jenjang {grade} pada periode ini,
+                            termasuk kelas yang tidak sedang ditampilkan. Baris
+                            harus kosong dari mata pelajaran.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        className="grid gap-4"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submitActivity();
+                        }}
+                    >
+                        <div className="grid gap-2">
+                            <label
+                                htmlFor="schedule-activity-name"
+                                className="text-sm font-medium"
+                            >
+                                Nama Kegiatan
+                            </label>
+                            <Input
+                                id="schedule-activity-name"
+                                value={activityName}
+                                onChange={(event) =>
+                                    setActivityName(event.target.value)
+                                }
+                                placeholder="Contoh: Literasi"
+                                required
+                                maxLength={120}
+                                disabled={isSavingActivity}
+                                aria-invalid={!!activityError}
+                                aria-describedby={
+                                    activityError
+                                        ? 'schedule-activity-error'
+                                        : undefined
+                                }
+                            />
+                        </div>
+                        {activityError && (
+                            <p
+                                id="schedule-activity-error"
+                                role="alert"
+                                className="text-sm text-destructive"
+                            >
+                                {activityError}
+                            </p>
+                        )}
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isSavingActivity}
+                                onClick={() => setActivitySlot(null)}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={
+                                    isSavingActivity || !activityName.trim()
+                                }
+                            >
+                                {isSavingActivity ? 'Menyimpan...' : 'Simpan'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </ModalShell>
+            </Dialog>
+            <Dialog
+                open={placementSlot !== null}
+                onOpenChange={(open) => {
+                    if (!open && !isPlacing) {
+                        setPlacementSlot(null);
+                        setPlacementError(null);
+                    }
+                }}
+            >
+                <ModalShell size="medium">
+                    <DialogHeader>
+                        <DialogTitle>Isi slot jadwal kosong</DialogTitle>
+                        <DialogDescription>
+                            {
+                                selectedRombels.find(
+                                    (rombel) =>
+                                        rombel.id === placementSlot?.rombelId,
+                                )?.code
+                            }{' '}
+                            ·{' '}
+                            {
+                                days.find(
+                                    (day) => day.key === placementSlot?.day,
+                                )?.label
+                            }{' '}
+                            · Jam ke-{placementSlot?.lessonNumber}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="schedule-placement-subject"
+                            className="text-sm font-medium"
+                        >
+                            Mata pelajaran
+                        </label>
+                        <SearchableCombobox
+                            id="schedule-placement-subject"
+                            value={selectedSubjectId}
+                            options={subjectOptions}
+                            onChange={(value) => {
+                                setSelectedSubjectId(value);
+                                setSelectedTeacherSubjectId('');
+                                setPlacementError(null);
+                            }}
+                            disabled={isPlacing}
+                            placeholder="Pilih mata pelajaran"
+                            searchPlaceholder="Cari mata pelajaran..."
+                            emptyMessage="Tidak ada mata pelajaran dengan sisa JP untuk kelas ini."
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="schedule-placement-teacher"
+                            className="text-sm font-medium"
+                        >
+                            Guru mata pelajaran
+                        </label>
+                        <SearchableCombobox
+                            id="schedule-placement-teacher"
+                            value={selectedTeacherSubjectId}
+                            options={teacherPlacementOptions.map((option) => ({
+                                value: option.teacher_subject_id.toString(),
+                                label: option.label,
+                            }))}
+                            onChange={(value) => {
+                                setSelectedTeacherSubjectId(value);
+                                setPlacementError(null);
+                            }}
+                            disabled={isPlacing || selectedSubjectId === ''}
+                            placeholder="Pilih guru mata pelajaran"
+                            searchPlaceholder="Cari kode atau nama guru..."
+                            emptyMessage="Tidak ada guru dengan sisa JP untuk mata pelajaran ini."
+                        />
+                    </div>
+                    {placementError && (
+                        <p role="alert" className="text-sm text-destructive">
+                            {placementError}
+                        </p>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setPlacementSlot(null)}
+                            disabled={isPlacing}
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={submitPlacement}
+                            disabled={!selectedPlacement || isPlacing}
+                        >
+                            {isPlacing ? 'Menjadwalkan...' : 'Jadwalkan'}
+                        </Button>
+                    </DialogFooter>
+                </ModalShell>
+            </Dialog>
             <Dialog
                 open={moveError !== null}
                 onOpenChange={(open) => {

@@ -263,6 +263,8 @@ export default function ScheduleGenerate({
     const [processing, setProcessing] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [deleteProcessing, setDeleteProcessing] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     const [manualPlacements, setManualPlacements] = useState<
         Record<string, ManualPlacement>
     >(() =>
@@ -507,7 +509,7 @@ export default function ScheduleGenerate({
             .filter((item) => item.subject_id === subjectId)
             .map((item) => ({
                 value: item.id.toString(),
-                label: item.teacher_name,
+                label: `${item.code} - ${item.teacher_name}`,
             }));
     const addTeacherAssignment = (subjectId: number) => {
         setAssignments((current) => ({
@@ -689,7 +691,10 @@ export default function ScheduleGenerate({
                                 <Button
                                     variant="destructive"
                                     size="sm"
-                                    onClick={() => setDeleteOpen(true)}
+                                    onClick={() => {
+                                        setDeleteError(null);
+                                        setDeleteOpen(true);
+                                    }}
                                 >
                                     Hapus Jadwal
                                 </Button>
@@ -758,7 +763,14 @@ export default function ScheduleGenerate({
                     jadwal tersimpan dapat diubah kembali.
                 </p>
             </SecondaryPageShell>
-            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <Dialog
+                open={deleteOpen}
+                onOpenChange={(nextOpen) => {
+                    if (!deleteProcessing) {
+                        setDeleteOpen(nextOpen);
+                    }
+                }}
+            >
                 <ModalShell size="small">
                     <DialogHeader>
                         <DialogTitle>Hapus jadwal jenjang?</DialogTitle>
@@ -766,27 +778,50 @@ export default function ScheduleGenerate({
                             Jadwal {grade} pada periode ini akan dihapus
                             permanen. Tindakan ini tidak dapat dibatalkan.
                         </DialogDescription>
+                        {deleteError && (
+                            <p
+                                role="alert"
+                                className="text-sm text-destructive"
+                            >
+                                {deleteError}
+                            </p>
+                        )}
                     </DialogHeader>
                     <DialogFooter>
                         <Button
                             variant="outline"
+                            disabled={deleteProcessing}
                             onClick={() => setDeleteOpen(false)}
                         >
                             Batal
                         </Button>
                         <Button
                             variant="destructive"
+                            disabled={deleteProcessing}
                             onClick={() =>
                                 router.delete('/kurikulum/schedule', {
                                     data: {
                                         academic_period_id: selectedPeriod?.id,
                                         grade,
                                     },
+                                    onStart: () => {
+                                        setDeleteProcessing(true);
+                                        setDeleteError(null);
+                                    },
+                                    onError: (errors) => {
+                                        setDeleteError(
+                                            Object.values(errors)[0] ??
+                                                'Jadwal belum dapat dihapus.',
+                                        );
+                                    },
                                     onSuccess: () => setDeleteOpen(false),
+                                    onFinish: () => setDeleteProcessing(false),
                                 })
                             }
                         >
-                            Hapus Permanen
+                            {deleteProcessing
+                                ? 'Menghapus...'
+                                : 'Hapus Permanen'}
                         </Button>
                     </DialogFooter>
                 </ModalShell>

@@ -17,6 +17,8 @@ Route::middleware(['auth', 'verified', 'can:curriculum.schedule.manage'])
     ->group(function (): void {
         Route::post('/schedule', [ScheduleController::class, 'save'])->name('schedule.save');
         Route::post('/schedule/move', [ScheduleController::class, 'move'])->name('schedule.move');
+        Route::post('/schedule/place', [ScheduleController::class, 'place'])->name('schedule.place');
+        Route::post('/schedule/activity', [ScheduleController::class, 'saveActivity'])->name('schedule.activity');
         Route::delete('/schedule', [ScheduleController::class, 'destroy'])->name('schedule.destroy');
     });
 
@@ -45,5 +47,7 @@ Route::middleware(['auth', 'verified', 'can:curriculum.view'])->group(function (
 Route::middleware(['auth', 'verified', 'can:curriculum.schedule.manage'])->group(function (): void {
     Route::post('/schedule', [ScheduleController::class, 'save']);
     Route::post('/schedule/move', [ScheduleController::class, 'move']);
+    Route::post('/schedule/place', [ScheduleController::class, 'place']);
+    Route::post('/schedule/activity', [ScheduleController::class, 'saveActivity']);
     Route::delete('/schedule', [ScheduleController::class, 'destroy']);
 });

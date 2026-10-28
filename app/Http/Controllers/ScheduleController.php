@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ScheduleActivityRequest;
 use App\Http\Requests\ScheduleMoveRequest;
+use App\Http\Requests\SchedulePlaceRequest;
 use App\Http\Requests\ScheduleSaveRequest;
 use App\Models\AcademicPeriod;
 use App\Models\LmsCourseRun;
@@ -73,6 +75,11 @@ class ScheduleController extends Controller
             'selectedRombelIds' => $selectedRombelIds,
             'days' => $days,
             'entries' => $readService->entriesForWeb($selectedPeriod?->id, $selectedRombelIds, $readPlan?->id),
+            'editablePlanId' => $readPlan?->status === 'published' ? $readPlan->id : null,
+            'canManageSchedule' => $request->user()?->can('curriculum.schedule.manage') ?? false,
+            'placementOptions' => $request->user()?->can('curriculum.schedule.manage') && $readPlan?->status === 'published'
+                ? $this->placementOptions($readPlan, $selectedRombels)
+                : [],
             'scheduleMeta' => [
                 'lessonDurationMinutes' => config('schedule.lesson_duration_minutes'),
                 'breakDurationMinutes' => config('schedule.break_duration_minutes'),
@@ -249,25 +256,230 @@ class ScheduleController extends Controller
         ]);
     }
 
+    public function place(SchedulePlaceRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $plan = DB::transaction(function () use ($data): SchedulePlan {
+            $planPeriodId = SchedulePlan::query()->whereKey($data['schedule_plan_id'])->value('academic_period_id');
+            $period = AcademicPeriod::query()->with('academicYear')->lockForUpdate()->whereKey($planPeriodId)->firstOrFail();
+            if ($period->status !== 'active' || $period->academicYear->status !== 'active') {
+                throw ValidationException::withMessages(['schedule' => 'Periode atau Tahun Ajaran tidak aktif.']);
+            }
+            $plan = SchedulePlan::query()->lockForUpdate()->whereKey($data['schedule_plan_id'])->firstOrFail();
+            if ($plan->status !== 'published') {
+                throw ValidationException::withMessages(['schedule' => 'Jadwal telah berubah. Muat ulang sebelum mengisi slot.']);
+            }
+            $rombel = Rombel::query()->where('status', 'active')->whereKey($data['rombel_id'])->firstOrFail();
+            $selectedPlanRombelIds = $plan->getAttribute('selected_rombel_ids');
+            $planRombelIds = array_values(array_unique(array_map('intval', [
+                ...(is_array($selectedPlanRombelIds) ? $selectedPlanRombelIds : []),
+                ...$plan->teachingAssignments()->pluck('rombel_id')->all(),
+            ])));
+            if ($rombel->grade_level !== $plan->grade_level || ! in_array($rombel->id, $planRombelIds, true)) {
+                throw ValidationException::withMessages(['schedule' => 'Rombel tidak termasuk dalam jadwal jenjang ini.']);
+            }
+            $relation = TeacherSubject::query()->with(['subject', 'teacher'])
+                ->whereHas('subject', fn ($query) => $query->where('status', 'active'))
+                ->whereHas('teacher', fn ($query) => $query->where('status', 'active')->where('staff_type', 'guru'))
+                ->whereKey($data['teacher_subject_id'])->first();
+            if ($relation === null) {
+                throw ValidationException::withMessages(['teacher_subject_id' => 'Relasi Guru Mata Pelajaran tidak aktif.']);
+            }
+            $assignment = $plan->teachingAssignments()->where('rombel_id', $rombel->id)->where('subject_id', $relation->subject_id)->first();
+            if ($assignment !== null && $assignment->teacher_subject_id !== $relation->id) {
+                throw ValidationException::withMessages(['teacher_subject_id' => 'Mata pelajaran ini sudah memiliki guru lain pada rombel tersebut.']);
+            }
+            $assignment ??= $plan->teachingAssignments()->create([
+                'academic_period_id' => $period->id,
+                'rombel_id' => $rombel->id,
+                'subject_id' => $relation->subject_id,
+                'teacher_subject_id' => $relation->id,
+                'teacher_id' => $relation->teacher_id,
+                'weekly_jp' => $relation->subject->jp_per_class,
+                'subject_code' => $relation->subject->code,
+                'subject_name' => $relation->subject->name,
+                'teacher_name' => $relation->teacher->full_name,
+                'rombel_code' => $rombel->code,
+                'status' => 'active',
+            ]);
+            $existingEntryCount = $plan->entries()->where('teaching_assignment_id', $assignment->id)->count();
+            $masterWeeklyJp = (int) $relation->subject->jp_per_class;
+            if ($existingEntryCount > $masterWeeklyJp) {
+                throw $this->assignmentValidationException(
+                    $assignment,
+                    "Jadwal yang sudah ada melebihi {$masterWeeklyJp} JP per minggu dari Master Mata Pelajaran. Periksa jadwal sebelum menambah JP.",
+                );
+            }
+            if ($assignment->weekly_jp !== $masterWeeklyJp) {
+                $assignment->update(['weekly_jp' => $masterWeeklyJp]);
+                $assignment->refresh();
+            }
+            $this->createDraftEntries($plan, $assignment, [
+                'day' => $data['day'],
+                'lesson_number' => (int) $data['lesson_number'],
+            ]);
+            $this->refreshPlanPayload($plan);
+
+            return $plan;
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'JP mingguan berhasil dijadwalkan.']);
+
+        return redirect()->route('schedule.index', [
+            'academic_period_id' => $plan->academic_period_id,
+            'grade' => $plan->grade_level,
+            'rombel_ids' => $data['selected_rombel_ids'] ?? $plan->selected_rombel_ids ?? [],
+        ]);
+    }
+
+    /**
+     * @param  Collection<int, Rombel>  $rombels
+     * @return array<int, array{rombel_id: int, subject_id: int, subject_name: string, teacher_subject_id: int, label: string, weekly_jp: int, remaining_jp: int}>
+     */
+    private function placementOptions(SchedulePlan $plan, Collection $rombels): array
+    {
+        $assignments = $plan->teachingAssignments()->get()->keyBy(fn (ScheduleTeachingAssignment $assignment): string => $assignment->rombel_id.':'.$assignment->subject_id);
+        $counts = $plan->entries()->get(['teaching_assignment_id'])->countBy('teaching_assignment_id');
+        $relations = TeacherSubject::query()->with(['subject', 'teacher'])
+            ->whereHas('subject', fn ($query) => $query->where('status', 'active'))
+            ->whereHas('teacher', fn ($query) => $query->where('status', 'active')->where('staff_type', 'guru'))
+            ->orderBy('subject_id')->orderBy('teacher_id')->get();
+        $options = [];
+        foreach ($rombels as $rombel) {
+            foreach ($relations as $relation) {
+                $assignment = $assignments->get($rombel->id.':'.$relation->subject_id);
+                if ($assignment !== null && $assignment->teacher_subject_id !== $relation->id) {
+                    continue;
+                }
+                $weeklyJp = (int) $relation->subject->jp_per_class;
+                $remaining = $weeklyJp - ($assignment === null ? 0 : $counts->get($assignment->id, 0));
+                if ($remaining > 0) {
+                    $options[] = [
+                        'rombel_id' => $rombel->id,
+                        'subject_id' => $relation->subject_id,
+                        'subject_name' => $relation->subject->name,
+                        'teacher_subject_id' => $relation->id,
+                        'label' => $relation->code.' - '.$relation->teacher->full_name,
+                        'weekly_jp' => $weeklyJp,
+                        'remaining_jp' => $remaining,
+                    ];
+                }
+            }
+        }
+
+        return $options;
+    }
+
+    public function saveActivity(ScheduleActivityRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $activity = trim($data['label']);
+        $plan = DB::transaction(function () use ($data, $activity): SchedulePlan {
+            $planPeriodId = SchedulePlan::query()->whereKey($data['schedule_plan_id'])->value('academic_period_id');
+            $period = AcademicPeriod::query()->with('academicYear')->lockForUpdate()->whereKey($planPeriodId)->firstOrFail();
+            $plan = SchedulePlan::query()->lockForUpdate()->whereKey($data['schedule_plan_id'])->firstOrFail();
+            if ($plan->status !== 'published') {
+                throw ValidationException::withMessages([
+                    'activity' => 'Jadwal telah berubah. Muat ulang sebelum menambahkan kegiatan.',
+                ]);
+            }
+            if ($period->status !== 'active' || $period->academicYear->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'activity' => 'Periode atau Tahun Ajaran tidak aktif.',
+                ]);
+            }
+            $slot = collect($this->lessonSlotsByDay()[$data['day']] ?? [])
+                ->firstWhere('number', (int) $data['lesson_number']);
+            if ($slot === null) {
+                throw ValidationException::withMessages([
+                    'activity' => 'Slot kegiatan tidak sesuai konfigurasi jadwal.',
+                ]);
+            }
+            $customSlot = $plan->customSlots()->where('day', $data['day'])
+                ->where('lesson_number', $data['lesson_number'])->lockForUpdate()->first();
+            $entries = $plan->entries()->where('day', $data['day'])
+                ->where('lesson_number', $data['lesson_number'])->lockForUpdate()->get();
+            if ($entries->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'activity' => 'Masih ada mata pelajaran pada baris ini. Hapus atau pindahkan jadwal pelajaran sebelum menambahkan kegiatan.',
+                ]);
+            }
+
+            if ($customSlot === null) {
+                $plan->customSlots()->create([
+                    'academic_period_id' => $period->id,
+                    'day' => $data['day'],
+                    'lesson_number' => (int) $data['lesson_number'],
+                    'start_time' => $slot['start'],
+                    'end_time' => $slot['end'],
+                    'label' => $activity,
+                ]);
+            } else {
+                $customSlot->update(['label' => $activity]);
+            }
+
+            $this->refreshPlanPayload($plan);
+
+            return $plan;
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Kegiatan jadwal berhasil disimpan.']);
+
+        return redirect()->route('schedule.index', [
+            'academic_period_id' => $plan->academic_period_id,
+            'grade' => $plan->grade_level,
+            'rombel_ids' => $data['selected_rombel_ids'] ?? $plan->selected_rombel_ids ?? [],
+        ]);
+    }
+
+    private function refreshPlanPayload(SchedulePlan $plan): void
+    {
+        $assignments = $plan->teachingAssignments()->get();
+        $entriesByAssignment = $plan->entries()->get()->groupBy('teaching_assignment_id');
+        $canonicalAssignments = $this->canonicalAssignments($assignments->map(fn (ScheduleTeachingAssignment $item): array => [
+            'teacher_subject_id' => $item->teacher_subject_id,
+            'rombel_ids' => [$item->rombel_id],
+        ])->all());
+        $manualPlacements = $this->canonicalManualPlacements($assignments->map(fn (ScheduleTeachingAssignment $item): array => [
+            'teacher_subject_id' => $item->teacher_subject_id,
+            'rombel_id' => $item->rombel_id,
+            'slots' => $entriesByAssignment->get($item->id, collect())->map(fn (ScheduleEntry $entry): array => [
+                'day' => $entry->day,
+                'lesson_number' => $entry->lesson_number,
+            ])->all(),
+        ])->all());
+        $customSlots = $this->canonicalCustomSlots($plan->customSlots()->get(['day', 'lesson_number', 'label'])->toArray());
+        $plan->update([
+            'payload_hash' => $this->schedulePayloadHash($canonicalAssignments, $customSlots, $manualPlacements),
+            'revision' => $plan->revision + 1,
+        ]);
+    }
+
     public function move(ScheduleMoveRequest $request): RedirectResponse
     {
         $data = $request->validated();
         $periodId = DB::transaction(function () use ($data): int {
+            $planPeriodId = SchedulePlan::query()->whereKey($data['schedule_plan_id'])->value('academic_period_id');
+            $period = AcademicPeriod::query()->with('academicYear')->lockForUpdate()->whereKey($planPeriodId)->firstOrFail();
+            $plan = SchedulePlan::query()->lockForUpdate()->whereKey($data['schedule_plan_id'])->firstOrFail();
             /** @var ScheduleEntry $entry */
             $entry = ScheduleEntry::query()
-                ->with(['schedulePlan', 'teachingAssignment'])
                 ->lockForUpdate()
                 ->whereKey($data['schedule_entry_id'])
                 ->where('schedule_plan_id', $data['schedule_plan_id'])
                 ->firstOrFail();
-            $plan = $entry->schedulePlan;
             if ($plan->status !== 'published') {
                 throw ValidationException::withMessages([
                     'move' => 'Jadwal yang dipindahkan bukan jadwal terbit.',
                 ]);
             }
 
-            $period = $plan->academicPeriod()->with('academicYear')->firstOrFail();
+            if (isset($data['target_rombel_id']) && (int) $data['target_rombel_id'] !== $entry->rombel_id) {
+                throw ValidationException::withMessages([
+                    'move' => 'Jadwal hanya dapat dipindahkan atau ditukar dalam rombel yang sama.',
+                ]);
+            }
+
             if ($period->status !== 'active' || $period->academicYear->status !== 'active') {
                 throw ValidationException::withMessages([
                     'move' => 'Periode atau Tahun Ajaran tidak aktif.',
@@ -289,26 +501,58 @@ class ScheduleController extends Controller
                     'move' => 'Slot tujuan merupakan kegiatan khusus.',
                 ]);
             }
-            $hasConflict = ScheduleEntry::query()
-                ->where('schedule_plan_id', $plan->id)
-                ->where('id', '<>', $entry->id)
-                ->where(function ($query) use ($entry, $data): void {
-                    $query->where(function ($query) use ($entry, $data): void {
-                        $query->where('teacher_id', $entry->teacher_id)
-                            ->where('day', $data['day'])
-                            ->where('lesson_number', $data['lesson_number']);
-                    })->orWhere(function ($query) use ($entry, $data): void {
-                        $query->where('rombel_id', $entry->rombel_id)
-                            ->where('day', $data['day'])
-                            ->where('lesson_number', $data['lesson_number']);
-                    });
-                })
-                ->exists();
+            $target = $plan->entries()
+                ->where('rombel_id', $entry->rombel_id)
+                ->where('day', $data['day'])
+                ->where('lesson_number', $data['lesson_number'])
+                ->lockForUpdate()->first();
 
-            if ($hasConflict) {
-                throw ValidationException::withMessages([
-                    'move' => 'Slot tujuan bertabrakan dengan jadwal lain.',
-                ]);
+            if ($target?->id === $entry->id) {
+                return $period->id;
+            }
+
+            $sourcePosition = $entry->only(['day', 'lesson_number', 'start_time', 'end_time']);
+            $positions = [[
+                'teacher_id' => $entry->teacher_id,
+                'day' => $data['day'],
+                'lesson_number' => (int) $data['lesson_number'],
+            ]];
+            if ($target !== null) {
+                $sourceSlot = collect($this->lessonSlotsByDay()[$entry->day] ?? [])->firstWhere('number', $entry->lesson_number);
+                if ($sourceSlot === null || $plan->customSlots()->where('day', $entry->day)->where('lesson_number', $entry->lesson_number)->exists()) {
+                    throw ValidationException::withMessages(['move' => 'Slot jadwal tidak sesuai konfigurasi hari.']);
+                }
+                $sourcePosition['start_time'] = $sourceSlot['start'];
+                $sourcePosition['end_time'] = $sourceSlot['end'];
+                $positions[] = [
+                    'teacher_id' => $target->teacher_id,
+                    'day' => $entry->day,
+                    'lesson_number' => $entry->lesson_number,
+                ];
+            }
+
+            foreach ($positions as $position) {
+                $hasConflict = ScheduleEntry::query()
+                    ->where('academic_period_id', $period->id)
+                    ->whereHas('schedulePlan', fn ($query) => $query->where('status', 'published'))
+                    ->whereNotIn('id', array_filter([$entry->id, $target?->id]))
+                    ->where('day', $position['day'])
+                    ->where('lesson_number', $position['lesson_number'])
+                    ->where(function ($query) use ($entry, $position): void {
+                        $query->where('teacher_id', $position['teacher_id'])
+                            ->orWhere('rombel_id', $entry->rombel_id);
+                    })->exists();
+                if ($hasConflict) {
+                    throw ValidationException::withMessages([
+                        'move' => 'Slot tujuan bertabrakan dengan jadwal lain.',
+                    ]);
+                }
+            }
+
+            if ($target !== null) {
+                // Free the unique slot inside this transaction without deleting either entry.
+                $entry->update(['day' => '__swap__']);
+                $target->update($sourcePosition);
             }
             $entry->update([
                 'day' => $data['day'],
@@ -339,7 +583,8 @@ class ScheduleController extends Controller
             $plan = SchedulePlan::query()
                 ->where('academic_period_id', $validated['academic_period_id'])
                 ->where('grade_level', $validated['grade'])
-                ->whereIn('status', ['published', 'draft', 'archived'])
+                ->where('status', 'published')
+                ->latest('id')
                 ->lockForUpdate()
                 ->first();
 
@@ -362,7 +607,7 @@ class ScheduleController extends Controller
             $plan->delete();
         });
 
-        Inertia::flash('toast', ['type' => 'error', 'message' => 'Jadwal jenjang berhasil dihapus.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal jenjang berhasil dihapus.']);
 
         return redirect()->route('schedule.index', [
             'academic_period_id' => $validated['academic_period_id'],
@@ -756,12 +1001,21 @@ class ScheduleController extends Controller
         }
     }
 
-    private function createDraftEntries(SchedulePlan $plan, ScheduleTeachingAssignment $assignment): void
+    /** @param array{day: string, lesson_number: int}|null $preferredSlot */
+    private function createDraftEntries(SchedulePlan $plan, ScheduleTeachingAssignment $assignment, ?array $preferredSlot = null): void
     {
         $slotsByDay = $this->lessonSlotsByDay();
         $dayOrder = array_keys($slotsByDay);
-        $remaining = $assignment->weekly_jp;
-        $dailyCounts = array_fill_keys($dayOrder, 0);
+        $existingEntries = $plan->entries()->where('teaching_assignment_id', $assignment->id)->get(['day']);
+        $remaining = $assignment->weekly_jp - $existingEntries->count();
+        $dailyCounts = array_replace(array_fill_keys($dayOrder, 0), $existingEntries->countBy('day')->all());
+        $anchorPending = $preferredSlot !== null;
+        if ($anchorPending && $remaining <= 0) {
+            throw $this->assignmentValidationException($assignment, 'Seluruh JP mingguan sudah terjadwal.');
+        }
+        if ($anchorPending && ($dailyCounts[$preferredSlot['day']] ?? 0) >= 3) {
+            throw $this->assignmentValidationException($assignment, 'Batas maksimal 3 JP pada hari yang dipilih sudah terpenuhi.');
+        }
         $customSlotKeys = $plan->customSlots()
             ->get(['day', 'lesson_number'])
             ->mapWithKeys(fn (ScheduleCustomSlot $slot): array => [$slot->day.':'.$slot->lesson_number => true]);
@@ -775,13 +1029,21 @@ class ScheduleController extends Controller
                 }
 
                 $availableSlots = collect($slotsByDay[$day])
-                    ->filter(function (array $candidate) use ($plan, $assignment, $day, $customSlotKeys): bool {
+                    ->filter(function (array $candidate) use ($plan, $assignment, $day, $customSlotKeys, $preferredSlot): bool {
                         if ($customSlotKeys->has($day.':'.$candidate['number'])) {
                             return false;
                         }
 
                         return ! ScheduleEntry::query()
-                            ->where('schedule_plan_id', $plan->id)
+                            ->where(function ($query) use ($plan, $preferredSlot): void {
+                                $query->where('schedule_plan_id', $plan->id);
+                                if ($preferredSlot !== null) {
+                                    $query->orWhere(function ($query) use ($plan): void {
+                                        $query->where('academic_period_id', $plan->academic_period_id)
+                                            ->whereHas('schedulePlan', fn ($query) => $query->where('status', 'published'));
+                                    });
+                                }
+                            })
                             ->where(function ($query) use ($assignment, $day, $candidate): void {
                                 $query->where(function ($query) use ($assignment, $day, $candidate): void {
                                     $query->where('teacher_id', $assignment->teacher_id)
@@ -798,6 +1060,9 @@ class ScheduleController extends Controller
                     ->values();
 
                 foreach ($availableSlots as $startIndex => $startSlot) {
+                    if ($anchorPending && ($day !== $preferredSlot['day'] || $startSlot['number'] !== $preferredSlot['lesson_number'])) {
+                        continue;
+                    }
                     $block = [$startSlot];
                     foreach ($availableSlots->slice($startIndex + 1) as $nextSlot) {
                         $previousSlot = $block[array_key_last($block)];
@@ -822,12 +1087,18 @@ class ScheduleController extends Controller
                 }
             }
 
-            usort($candidates, fn (array $left, array $right): int => [$right['length'], $left['teacher_load'], $left['day_index'], $left['slots'][0]['number']]
-                <=>
-                [$left['length'], $right['teacher_load'], $right['day_index'], $right['slots'][0]['number']]
-            );
+            usort($candidates, function (array $left, array $right) use ($preferredSlot): int {
+                $leftPreferred = $preferredSlot !== null && $left['day'] === $preferredSlot['day'] ? 0 : 1;
+                $rightPreferred = $preferredSlot !== null && $right['day'] === $preferredSlot['day'] ? 0 : 1;
+
+                return [$leftPreferred, $right['length'], $left['teacher_load'], $left['day_index'], $left['slots'][0]['number']]
+                    <=> [$rightPreferred, $left['length'], $right['teacher_load'], $right['day_index'], $right['slots'][0]['number']];
+            });
             $selected = $candidates[0] ?? null;
             if ($selected === null) {
+                if ($anchorPending) {
+                    throw $this->assignmentValidationException($assignment, 'Slot yang dipilih tidak tersedia, bertabrakan dengan jadwal lain, atau merupakan kegiatan khusus.');
+                }
                 throw $this->assignmentValidationException(
                     $assignment,
                     "Penempatan otomatis belum menemukan slot untuk {$remaining} JP tersisa. Periksa beban Guru/Rombel, posisi manual, dan kegiatan khusus.",
@@ -853,6 +1124,7 @@ class ScheduleController extends Controller
                 ]);
             }
 
+            $anchorPending = false;
             $dailyCounts[$selected['day']] += $selected['length'];
             $remaining -= $selected['length'];
         }
