@@ -17,6 +17,7 @@ use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -1022,6 +1023,139 @@ class ScheduleManagementTest extends TestCase
             ->all());
     }
 
+    public function test_save_places_all_manual_slots_before_auto_assignments_when_custom_slots_are_present(): void
+    {
+        $period = $this->activePeriod();
+        $rombels = Rombel::factory()->count(8)->create(['grade_level' => 'VII', 'status' => 'active']);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $automaticSubject = Subject::factory()->create(['jp_per_class' => 1]);
+        $manualSubject = Subject::factory()->create(['jp_per_class' => 1]);
+        $automaticTeacherSubject = TeacherSubject::factory()->create([
+            'teacher_id' => $teacher->id,
+            'subject_id' => $automaticSubject->id,
+        ]);
+        $manualTeacherSubject = TeacherSubject::factory()->create([
+            'teacher_id' => $teacher->id,
+            'subject_id' => $manualSubject->id,
+        ]);
+        $rombelIds = $rombels->pluck('id')->all();
+
+        $response = $this->actingAs($this->admin())
+            ->post('/kurikulum/schedule', [
+                'academic_period_id' => $period->id,
+                'selected_rombel_ids' => $rombelIds,
+                'custom_slots' => [[
+                    'day' => 'tuesday',
+                    'lesson_number' => 4,
+                    'label' => 'Kegiatan Khusus',
+                ]],
+                'assignments' => [
+                    ['teacher_subject_id' => $automaticTeacherSubject->id, 'rombel_ids' => $rombelIds],
+                    ['teacher_subject_id' => $manualTeacherSubject->id, 'rombel_ids' => $rombelIds],
+                ],
+                'manual_placements' => array_map(
+                    fn (int $rombelId): array => [
+                        'teacher_subject_id' => $manualTeacherSubject->id,
+                        'rombel_id' => $rombelId,
+                        'slots' => [['day' => 'monday', 'lesson_number' => array_search($rombelId, $rombelIds, true) + 1]],
+                    ],
+                    $rombelIds,
+                ),
+            ]);
+
+        $response->assertRedirect()->assertSessionHasNoErrors();
+        $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
+        $this->assertSame(16, ScheduleEntry::query()->where('schedule_plan_id', $plan->id)->count());
+        $this->assertSame(8, ScheduleEntry::query()
+            ->where('schedule_plan_id', $plan->id)
+            ->where('subject_id', $automaticSubject->id)
+            ->count());
+        foreach ($rombelIds as $index => $rombelId) {
+            $this->assertDatabaseHas('tr_curriculum_schedule_entries', [
+                'schedule_plan_id' => $plan->id,
+                'subject_id' => $manualSubject->id,
+                'rombel_id' => $rombelId,
+                'day' => 'monday',
+                'lesson_number' => $index + 1,
+            ]);
+        }
+        $this->assertCount(16, $plan->entries()->get()->unique(
+            fn (ScheduleEntry $entry): string => $entry->teacher_id.':'.$entry->day.':'.$entry->lesson_number,
+        ));
+        $this->assertDatabaseMissing('tr_curriculum_schedule_entries', [
+            'schedule_plan_id' => $plan->id,
+            'day' => 'tuesday',
+            'lesson_number' => 4,
+        ]);
+    }
+
+    public function test_activity_conflicting_with_manual_slot_returns_actionable_error_without_saving(): void
+    {
+        $period = $this->activePeriod();
+        $rombel = Rombel::factory()->create(['grade_level' => 'VII', 'status' => 'active']);
+        $subject = Subject::factory()->create(['name' => 'Matematika', 'jp_per_class' => 1]);
+        $teacher = Teacher::factory()->create(['full_name' => 'Guru Matematika', 'status' => 'active', 'staff_type' => 'guru']);
+        $relation = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
+
+        $this->actingAs($this->admin())->from('/kurikulum/schedule/generate')
+            ->post('/kurikulum/schedule', [
+                'academic_period_id' => $period->id,
+                'custom_slots' => [['day' => 'wednesday', 'lesson_number' => 5, 'label' => 'Literasi']],
+                'assignments' => [['teacher_subject_id' => $relation->id, 'rombel_ids' => [$rombel->id]]],
+                'manual_placements' => [[
+                    'teacher_subject_id' => $relation->id,
+                    'rombel_id' => $rombel->id,
+                    'slots' => [['day' => 'wednesday', 'lesson_number' => 5]],
+                ]],
+            ])
+            ->assertRedirect('/kurikulum/schedule/generate')
+            ->assertSessionHasErrors([
+                'schedule' => "Matematika — Guru Matematika — {$rombel->code}: Slot manual bertabrakan dengan kegiatan khusus. Pindahkan posisi pelajaran atau ubah slot kegiatan.",
+            ]);
+
+        $this->assertDatabaseCount('tr_curriculum_schedule_plans', 0);
+        $this->assertDatabaseCount('tr_curriculum_schedule_entries', 0);
+        $this->assertDatabaseCount('tr_curriculum_schedule_custom_slots', 0);
+    }
+
+    public function test_unavailable_slots_return_form_error_and_preserve_previous_published_schedule(): void
+    {
+        $period = $this->activePeriod();
+        $rombel = Rombel::factory()->create(['grade_level' => 'VII', 'status' => 'active']);
+        $subject = Subject::factory()->create(['jp_per_class' => 1]);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $relation = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
+        $payload = [
+            'academic_period_id' => $period->id,
+            'assignments' => [['teacher_subject_id' => $relation->id, 'rombel_ids' => [$rombel->id]]],
+        ];
+        $this->actingAs($this->admin())->post('/kurikulum/schedule', $payload)->assertRedirect()->assertSessionHasNoErrors();
+        $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
+        $originalPlan = $plan->getAttributes();
+        $originalEntries = $plan->entries()->get()->toArray();
+        $originalAssignments = $plan->teachingAssignments()->get()->toArray();
+        $customSlots = [];
+        foreach (['monday' => 9, 'tuesday' => 9, 'wednesday' => 9, 'thursday' => 9, 'friday' => 7] as $day => $lessonCount) {
+            for ($lesson = 1; $lesson <= $lessonCount; $lesson++) {
+                $customSlots[] = ['day' => $day, 'lesson_number' => $lesson, 'label' => 'Kegiatan'];
+            }
+        }
+
+        $this->from('/kurikulum/schedule/generate')->post('/kurikulum/schedule', [
+            ...$payload,
+            'source_plan_id' => $plan->id,
+            'custom_slots' => $customSlots,
+        ])->assertRedirect('/kurikulum/schedule/generate')->assertSessionHasErrors([
+            'schedule' => "{$subject->name} — {$teacher->full_name} — {$rombel->code}: Penempatan otomatis belum menemukan slot untuk 1 JP tersisa. Periksa beban Guru/Rombel, posisi manual, dan kegiatan khusus.",
+        ]);
+
+        $this->assertSame($originalPlan, $plan->fresh()->getAttributes());
+        $this->assertSame($originalEntries, $plan->entries()->get()->toArray());
+        $this->assertSame($originalAssignments, $plan->teachingAssignments()->get()->toArray());
+        $this->assertDatabaseCount('tr_curriculum_schedule_custom_slots', 0);
+        $this->assertDatabaseCount('tr_curriculum_schedule_plans', 1);
+    }
+
     public function test_schedule_mutation_requires_dedicated_permission(): void
     {
         $period = $this->activePeriod();
@@ -1120,11 +1254,11 @@ class ScheduleManagementTest extends TestCase
             'code' => 'CAP3',
         ]);
 
-        $this->actingAs($admin)->post('/kurikulum/schedule', [
+        $this->actingAs($admin)->postJson('/kurikulum/schedule', [
             'academic_period_id' => $period->id,
             'source_plan_id' => $plan->id,
             'assignments' => [...$assignments, ['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
-        ])->assertStatus(422);
+        ])->assertUnprocessable()->assertJsonValidationErrors('schedule');
         $this->assertDatabaseHas('tr_curriculum_schedule_plans', ['id' => $plan->id, 'status' => 'published']);
         $this->assertDatabaseCount('tr_curriculum_schedule_entries', 30);
     }
@@ -1234,6 +1368,68 @@ class ScheduleManagementTest extends TestCase
 
         $this->actingAs($user)->get('/kurikulum/schedule')->assertForbidden();
         $this->actingAs($user)->get('/kurikulum/schedule/generate')->assertForbidden();
+    }
+
+    /**
+     * @return array<string, array{array<int, array{day: string, lesson_number: int, label: string}>}>
+     */
+    public static function activitySlotCases(): array
+    {
+        return [
+            'without activities' => [[]],
+            'monday opening' => [[['day' => 'monday', 'lesson_number' => 1, 'label' => 'Upacara']]],
+            'tuesday middle' => [[['day' => 'tuesday', 'lesson_number' => 5, 'label' => 'Literasi']]],
+            'wednesday ending' => [[['day' => 'wednesday', 'lesson_number' => 9, 'label' => 'Kegiatan']]],
+            'thursday middle' => [[['day' => 'thursday', 'lesson_number' => 2, 'label' => 'Kegiatan']]],
+            'friday opening' => [[['day' => 'friday', 'lesson_number' => 1, 'label' => 'Melali']]],
+            'friday ending' => [[['day' => 'friday', 'lesson_number' => 7, 'label' => 'Kegiatan']]],
+            'multiple activities' => [[
+                ['day' => 'monday', 'lesson_number' => 1, 'label' => 'Upacara'],
+                ['day' => 'wednesday', 'lesson_number' => 5, 'label' => 'Literasi'],
+                ['day' => 'friday', 'lesson_number' => 1, 'label' => 'Melali'],
+            ]],
+        ];
+    }
+
+    /**
+     * @param  array<int, array{day: string, lesson_number: int, label: string}>  $customSlots
+     */
+    #[DataProvider('activitySlotCases')]
+    public function test_eight_rombels_can_be_scheduled_with_or_without_activities(array $customSlots): void
+    {
+        $period = $this->activePeriod();
+        $rombels = Rombel::factory()->count(8)->create(['grade_level' => 'VII', 'status' => 'active']);
+        $subject = Subject::factory()->create(['jp_per_class' => 5]);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $relation = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
+        $rombelIds = $rombels->pluck('id')->all();
+
+        $this->actingAs($this->admin())->post('/kurikulum/schedule', [
+            'academic_period_id' => $period->id,
+            'selected_rombel_ids' => $rombelIds,
+            'custom_slots' => $customSlots,
+            'assignments' => [['teacher_subject_id' => $relation->id, 'rombel_ids' => $rombelIds]],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
+        $entries = $plan->entries()->get();
+        $this->assertCount(40, $entries);
+        foreach ($rombels as $rombel) {
+            $rombelEntries = $entries->where('rombel_id', $rombel->id);
+            $this->assertCount(5, $rombelEntries);
+            foreach ($rombelEntries->groupBy('day') as $dailyEntries) {
+                $this->assertLessThanOrEqual(3, $dailyEntries->count());
+            }
+        }
+        $this->assertCount(40, $entries->unique(fn (ScheduleEntry $entry): string => $entry->day.':'.$entry->lesson_number));
+        foreach ($customSlots as $customSlot) {
+            $this->assertDatabaseHas('tr_curriculum_schedule_custom_slots', ['schedule_plan_id' => $plan->id, ...$customSlot]);
+            $this->assertDatabaseMissing('tr_curriculum_schedule_entries', [
+                'schedule_plan_id' => $plan->id,
+                'day' => $customSlot['day'],
+                'lesson_number' => $customSlot['lesson_number'],
+            ]);
+        }
     }
 
     public function test_allocator_prefers_contiguous_three_then_two_slot_blocks_without_crossing_breaks(): void
@@ -1391,14 +1587,19 @@ class ScheduleManagementTest extends TestCase
                     ['day' => 'monday', 'lesson_number' => 1, 'label' => 'Kegiatan B'],
                 ],
             ])
-            ->assertStatus(422);
+            ->assertRedirect()
+            ->assertSessionHasErrors(['custom_slots' => 'Satu slot hanya dapat memiliki satu kegiatan khusus.']);
 
         $this->actingAs($this->admin())
             ->post('/kurikulum/schedule', [
                 ...$payload,
                 'custom_slots' => [['day' => 'friday', 'lesson_number' => 8, 'label' => 'Kegiatan Tidak Valid']],
             ])
-            ->assertStatus(422);
+            ->assertRedirect()
+            ->assertSessionHasErrors(['custom_slots' => 'Slot kegiatan khusus tidak sesuai konfigurasi jadwal.']);
+
+        $this->assertDatabaseCount('tr_curriculum_schedule_plans', 0);
+        $this->assertDatabaseCount('tr_curriculum_schedule_custom_slots', 0);
     }
 
     public function test_grade_filter_rejects_values_outside_school_levels(): void

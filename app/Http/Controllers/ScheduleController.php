@@ -195,6 +195,7 @@ class ScheduleController extends Controller
             }
 
             $seenAssignments = [];
+            $automaticAssignments = [];
             foreach ($data['assignments'] as $assignment) {
                 $relation = $relations->get($assignment['teacher_subject_id']);
                 abort_unless($relation !== null, 422, 'Relasi Guru Mata Pelajaran tidak aktif.');
@@ -222,8 +223,16 @@ class ScheduleController extends Controller
                         fn (array $placement): bool => $placement['teacher_subject_id'] === $relation->id
                             && $placement['rombel_id'] === $rombel->id,
                     );
-                    $this->createEntriesForAssignment($plan, $teachingAssignment, $manualPlacement);
+                    if ($manualPlacement !== null) {
+                        $this->createEntriesForAssignment($plan, $teachingAssignment, $manualPlacement);
+                    } else {
+                        $automaticAssignments[] = $teachingAssignment;
+                    }
                 }
+            }
+
+            foreach ($automaticAssignments as $teachingAssignment) {
+                $this->createDraftEntries($plan, $teachingAssignment);
             }
 
             $plan->update(['published_at' => now()]);
@@ -580,7 +589,11 @@ class ScheduleController extends Controller
             ->values();
 
         $keys = $canonical->map(fn (array $slot): string => $slot['day'].':'.$slot['lesson_number']);
-        abort_if($keys->unique()->count() !== $keys->count(), 422, 'Satu slot hanya dapat memiliki satu kegiatan khusus.');
+        if ($keys->unique()->count() !== $keys->count()) {
+            throw ValidationException::withMessages([
+                'custom_slots' => 'Satu slot hanya dapat memiliki satu kegiatan khusus.',
+            ]);
+        }
 
         return $canonical->all();
     }
@@ -596,7 +609,11 @@ class ScheduleController extends Controller
         return collect($customSlots)->map(function (array $customSlot) use ($configuredSlots): array {
             $slot = collect($configuredSlots[$customSlot['day']] ?? [])
                 ->firstWhere('number', $customSlot['lesson_number']);
-            abort_unless($slot !== null, 422, 'Slot kegiatan khusus tidak sesuai konfigurasi jadwal.');
+            if ($slot === null) {
+                throw ValidationException::withMessages([
+                    'custom_slots' => 'Slot kegiatan khusus tidak sesuai konfigurasi jadwal.',
+                ]);
+            }
 
             return [
                 'day' => $customSlot['day'],
@@ -683,7 +700,9 @@ class ScheduleController extends Controller
             return;
         }
 
-        abort_unless(count($manualPlacement['slots']) === $assignment->weekly_jp, 422, 'Jumlah slot manual tidak sesuai JP mingguan.');
+        if (count($manualPlacement['slots']) !== $assignment->weekly_jp) {
+            throw $this->assignmentValidationException($assignment, 'Jumlah slot manual tidak sesuai JP mingguan.');
+        }
         $configuredSlots = $this->lessonSlotsByDay();
         $customSlotKeys = $plan->customSlots()
             ->get(['day', 'lesson_number'])
@@ -693,9 +712,15 @@ class ScheduleController extends Controller
             $key = $manualSlot['day'].':'.$manualSlot['lesson_number'];
             $slot = collect($configuredSlots[$manualSlot['day']] ?? [])
                 ->firstWhere('number', $manualSlot['lesson_number']);
-            abort_unless($slot !== null, 422, 'Slot manual tidak sesuai konfigurasi jadwal.');
-            abort_if($customSlotKeys->has($key), 422, 'Slot manual bertabrakan dengan kegiatan khusus.');
-            abort_if(isset($seenSlots[$key]), 422, 'Slot manual duplikat.');
+            if ($slot === null) {
+                throw $this->assignmentValidationException($assignment, 'Slot manual tidak sesuai konfigurasi jadwal.');
+            }
+            if ($customSlotKeys->has($key)) {
+                throw $this->assignmentValidationException($assignment, 'Slot manual bertabrakan dengan kegiatan khusus. Pindahkan posisi pelajaran atau ubah slot kegiatan.');
+            }
+            if (isset($seenSlots[$key])) {
+                throw $this->assignmentValidationException($assignment, 'Slot manual duplikat.');
+            }
             $teacherBusy = ScheduleEntry::query()
                 ->where('schedule_plan_id', $plan->id)
                 ->where('teacher_id', $assignment->teacher_id)
@@ -708,7 +733,9 @@ class ScheduleController extends Controller
                 ->where('day', $manualSlot['day'])
                 ->where('lesson_number', $manualSlot['lesson_number'])
                 ->exists();
-            abort_if($teacherBusy || $rombelBusy, 422, 'Slot manual bertabrakan dengan jadwal lain.');
+            if ($teacherBusy || $rombelBusy) {
+                throw $this->assignmentValidationException($assignment, 'Slot manual bertabrakan dengan jadwal lain.');
+            }
             $seenSlots[$key] = true;
             ScheduleEntry::query()->create([
                 'schedule_plan_id' => $plan->id,
@@ -800,7 +827,12 @@ class ScheduleController extends Controller
                 [$left['length'], $right['teacher_load'], $right['day_index'], $right['slots'][0]['number']]
             );
             $selected = $candidates[0] ?? null;
-            abort_if($selected === null, 422, 'Kapasitas slot Guru atau Rombel tidak mencukupi.');
+            if ($selected === null) {
+                throw $this->assignmentValidationException(
+                    $assignment,
+                    "Penempatan otomatis belum menemukan slot untuk {$remaining} JP tersisa. Periksa beban Guru/Rombel, posisi manual, dan kegiatan khusus.",
+                );
+            }
 
             foreach ($selected['slots'] as $slot) {
                 ScheduleEntry::query()->create([
@@ -824,6 +856,13 @@ class ScheduleController extends Controller
             $dailyCounts[$selected['day']] += $selected['length'];
             $remaining -= $selected['length'];
         }
+    }
+
+    private function assignmentValidationException(ScheduleTeachingAssignment $assignment, string $reason): ValidationException
+    {
+        return ValidationException::withMessages([
+            'schedule' => "{$assignment->subject_name} — {$assignment->teacher_name} — {$assignment->rombel_code}: {$reason}",
+        ]);
     }
 
     /**
