@@ -39,12 +39,22 @@ class CurriculumDataTableShellTest extends TestCase
                 $source,
                 $page,
             );
-            $this->assertStringNotContainsString(
-                "from '@/components/ui/checkbox'",
+            $this->assertDoesNotMatchRegularExpression(
+                '/<Checkbox\b[^>]*\bchecked=\{selected\b/s',
                 $source,
                 $page,
             );
         }
+    }
+
+    public function test_subject_combined_option_uses_the_shared_checkbox_component(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/subjects/index.tsx'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString("import { Checkbox } from '@/components/ui/checkbox';", $source);
+        $this->assertMatchesRegularExpression('/<Checkbox\s+id="subject-allow-combined"\s+checked=\{form\.allow_combined\}/s', $source);
+        $this->assertStringNotContainsString('type="checkbox"', $source);
     }
 
     public function test_generic_data_table_shell_uses_sixteen_pixel_horizontal_cell_padding(): void

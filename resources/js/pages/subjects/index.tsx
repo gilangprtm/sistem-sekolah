@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Plus, Search } from 'lucide-react';
+import { CircleAlert, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
@@ -7,6 +7,7 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
@@ -19,6 +20,11 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ModalShell from '@/components/ui/modal-shell';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -29,6 +35,7 @@ type Subject = {
     status: string;
     jp_per_class: number;
     color: string;
+    allow_combined: boolean;
 };
 type Props = {
     subjects: {
@@ -60,6 +67,7 @@ export default function SubjectsIndex({
         name: '',
         status: 'active',
         jp_per_class: 1,
+        allow_combined: false,
         color: '#F3F4F6',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -80,6 +88,7 @@ export default function SubjectsIndex({
             name: '',
             status: 'active',
             jp_per_class: 1,
+            allow_combined: false,
             color: '#F3F4F6',
         });
         setErrors({});
@@ -92,6 +101,7 @@ export default function SubjectsIndex({
             name: subject.name,
             status: subject.status,
             jp_per_class: subject.jp_per_class,
+            allow_combined: subject.allow_combined,
             color: subject.color,
         });
         setErrors({});
@@ -146,6 +156,11 @@ export default function SubjectsIndex({
             id: 'jp-per-class',
             header: 'JP per Kelas',
             cell: (subject) => subject.jp_per_class,
+        },
+        {
+            id: 'allow-combined',
+            header: 'Boleh Gabung',
+            cell: (subject) => (subject.allow_combined ? 'Ya' : 'Tidak'),
         },
         {
             id: 'color',
@@ -340,7 +355,7 @@ export default function SubjectsIndex({
                                     <InputError message={errors.name} />
                                 </div>
                             </div>
-                            <div className="grid items-start gap-4 @min-[28rem]:grid-cols-[minmax(0,0.8fr)_minmax(9rem,1fr)_minmax(0,1.2fr)]">
+                            <div className="grid items-start gap-4 @min-[28rem]:grid-cols-2 @min-[40rem]:grid-cols-[minmax(0,0.75fr)_minmax(9.5rem,0.95fr)_minmax(9rem,1fr)_minmax(0,1fr)]">
                                 <div className="grid gap-2">
                                     <Label htmlFor="subject-jp-per-class">
                                         JP per Kelas
@@ -369,6 +384,51 @@ export default function SubjectsIndex({
                                         }}
                                     />
                                     <InputError message={errors.jp_per_class} />
+                                </div>
+                                <div className="grid content-start gap-2 @min-[28rem]:pt-[1.375rem]">
+                                    <div className="flex h-9 items-center gap-2">
+                                        <Checkbox
+                                            id="subject-allow-combined"
+                                            checked={form.allow_combined}
+                                            onCheckedChange={(checked) =>
+                                                setForm({
+                                                    ...form,
+                                                    allow_combined:
+                                                        checked === true,
+                                                })
+                                            }
+                                        />
+                                        <Label
+                                            htmlFor="subject-allow-combined"
+                                            className="flex min-h-9 cursor-pointer items-center leading-normal"
+                                        >
+                                            Boleh Gabung
+                                        </Label>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-7 shrink-0 text-muted-foreground"
+                                                    aria-label="Penjelasan Boleh Gabung"
+                                                >
+                                                    <CircleAlert
+                                                        className="size-4"
+                                                        aria-hidden="true"
+                                                    />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                Guru yang sama boleh mengajar
+                                                mapel ini di rombel berbeda pada
+                                                hari dan jam yang sama.
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <InputError
+                                        message={errors.allow_combined}
+                                    />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="subject-color">

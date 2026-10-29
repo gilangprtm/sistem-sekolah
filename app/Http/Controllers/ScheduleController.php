@@ -514,6 +514,7 @@ class ScheduleController extends Controller
             $sourcePosition = $entry->only(['day', 'lesson_number', 'start_time', 'end_time']);
             $positions = [[
                 'teacher_id' => $entry->teacher_id,
+                'subject_id' => $entry->subject_id,
                 'day' => $data['day'],
                 'lesson_number' => (int) $data['lesson_number'],
             ]];
@@ -526,6 +527,7 @@ class ScheduleController extends Controller
                 $sourcePosition['end_time'] = $sourceSlot['end'];
                 $positions[] = [
                     'teacher_id' => $target->teacher_id,
+                    'subject_id' => $target->subject_id,
                     'day' => $entry->day,
                     'lesson_number' => $entry->lesson_number,
                 ];
@@ -538,10 +540,8 @@ class ScheduleController extends Controller
                     ->whereNotIn('id', array_filter([$entry->id, $target?->id]))
                     ->where('day', $position['day'])
                     ->where('lesson_number', $position['lesson_number'])
-                    ->where(function ($query) use ($entry, $position): void {
-                        $query->where('teacher_id', $position['teacher_id'])
-                            ->orWhere('rombel_id', $entry->rombel_id);
-                    })->exists();
+                    ->conflictingWith($position['teacher_id'], $position['subject_id'], $entry->rombel_id)
+                    ->exists();
                 if ($hasConflict) {
                     throw ValidationException::withMessages([
                         'move' => 'Slot tujuan bertabrakan dengan jadwal lain.',
@@ -787,6 +787,10 @@ class ScheduleController extends Controller
             'assignments' => $assignments,
             'custom_slots' => $customSlots,
             'manual_placements' => $manualPlacements,
+            'combined_subjects' => TeacherSubject::query()
+                ->whereIn('id', array_column($assignments, 'teacher_subject_id'))
+                ->whereHas('subject', fn ($query) => $query->where('allow_combined', true))
+                ->orderBy('id')->pluck('id')->all(),
         ], JSON_THROW_ON_ERROR));
     }
 
@@ -966,19 +970,19 @@ class ScheduleController extends Controller
             if (isset($seenSlots[$key])) {
                 throw $this->assignmentValidationException($assignment, 'Slot manual duplikat.');
             }
-            $teacherBusy = ScheduleEntry::query()
-                ->where('schedule_plan_id', $plan->id)
-                ->where('teacher_id', $assignment->teacher_id)
+            $hasConflict = ScheduleEntry::query()
+                ->where(function ($query) use ($plan, $assignment): void {
+                    $query->where('schedule_plan_id', $plan->id)
+                        ->orWhere(function ($query) use ($assignment): void {
+                            $query->where('academic_period_id', $assignment->academic_period_id)
+                                ->whereHas('schedulePlan', fn ($query) => $query->where('status', 'published'));
+                        });
+                })
                 ->where('day', $manualSlot['day'])
                 ->where('lesson_number', $manualSlot['lesson_number'])
+                ->conflictingWith($assignment->teacher_id, $assignment->subject_id, $assignment->rombel_id)
                 ->exists();
-            $rombelBusy = ScheduleEntry::query()
-                ->where('schedule_plan_id', $plan->id)
-                ->where('rombel_id', $assignment->rombel_id)
-                ->where('day', $manualSlot['day'])
-                ->where('lesson_number', $manualSlot['lesson_number'])
-                ->exists();
-            if ($teacherBusy || $rombelBusy) {
+            if ($hasConflict) {
                 throw $this->assignmentValidationException($assignment, 'Slot manual bertabrakan dengan jadwal lain.');
             }
             $seenSlots[$key] = true;
@@ -1029,32 +1033,22 @@ class ScheduleController extends Controller
                 }
 
                 $availableSlots = collect($slotsByDay[$day])
-                    ->filter(function (array $candidate) use ($plan, $assignment, $day, $customSlotKeys, $preferredSlot): bool {
+                    ->filter(function (array $candidate) use ($plan, $assignment, $day, $customSlotKeys): bool {
                         if ($customSlotKeys->has($day.':'.$candidate['number'])) {
                             return false;
                         }
 
                         return ! ScheduleEntry::query()
-                            ->where(function ($query) use ($plan, $preferredSlot): void {
-                                $query->where('schedule_plan_id', $plan->id);
-                                if ($preferredSlot !== null) {
-                                    $query->orWhere(function ($query) use ($plan): void {
+                            ->where(function ($query) use ($plan): void {
+                                $query->where('schedule_plan_id', $plan->id)
+                                    ->orWhere(function ($query) use ($plan): void {
                                         $query->where('academic_period_id', $plan->academic_period_id)
                                             ->whereHas('schedulePlan', fn ($query) => $query->where('status', 'published'));
                                     });
-                                }
                             })
-                            ->where(function ($query) use ($assignment, $day, $candidate): void {
-                                $query->where(function ($query) use ($assignment, $day, $candidate): void {
-                                    $query->where('teacher_id', $assignment->teacher_id)
-                                        ->where('day', $day)
-                                        ->where('lesson_number', $candidate['number']);
-                                })->orWhere(function ($query) use ($assignment, $day, $candidate): void {
-                                    $query->where('rombel_id', $assignment->rombel_id)
-                                        ->where('day', $day)
-                                        ->where('lesson_number', $candidate['number']);
-                                });
-                            })
+                            ->where('day', $day)
+                            ->where('lesson_number', $candidate['number'])
+                            ->conflictingWith($assignment->teacher_id, $assignment->subject_id, $assignment->rombel_id)
                             ->exists();
                     })
                     ->values();

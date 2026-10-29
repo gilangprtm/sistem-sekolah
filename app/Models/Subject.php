@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $status
  * @property int $jp_per_class
  * @property string $color
+ * @property bool $allow_combined
  */
 class Subject extends Model
 {
@@ -24,13 +25,14 @@ class Subject extends Model
 
     protected $table = 'm_subjects';
 
-    protected $fillable = ['code', 'name', 'status', 'jp_per_class', 'color'];
+    protected $fillable = ['code', 'name', 'status', 'jp_per_class', 'color', 'allow_combined'];
 
     protected function casts(): array
     {
         return [
             'jp_per_class' => 'integer',
             'color' => 'string',
+            'allow_combined' => 'boolean',
         ];
     }
 

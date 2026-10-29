@@ -17,6 +17,7 @@ class SubjectFactory extends Factory
             'name' => fake()->unique()->words(2, true),
             'status' => 'active',
             'jp_per_class' => 1,
+            'allow_combined' => false,
             'color' => '#F3F4F6',
         ];
     }

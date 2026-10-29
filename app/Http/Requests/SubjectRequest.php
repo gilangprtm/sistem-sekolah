@@ -66,6 +66,7 @@ class SubjectRequest extends FormRequest
             ],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
             'jp_per_class' => ['sometimes', 'integer', 'between:1,15'],
+            'allow_combined' => ['sometimes', 'boolean'],
             'color' => ['required', 'string', 'regex:/^#[0-9A-F]{6}$/'],
         ];
     }

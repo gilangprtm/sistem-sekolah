@@ -61,6 +61,7 @@ class SubjectManagementTest extends TestCase
             'name' => 'Ilmu Pengetahuan Alam',
             'status' => 'active',
             'jp_per_class' => 1,
+            'allow_combined' => false,
             'color' => '#DCEBFF',
         ]);
     }
@@ -97,6 +98,37 @@ class SubjectManagementTest extends TestCase
         $subject->refresh();
         $this->assertSame(12, $subject->jp_per_class);
         $this->assertSame('#BFDBFE', $subject->color);
+    }
+
+    public function test_subject_can_enable_and_disable_combined_scheduling_and_exposes_boolean_prop(): void
+    {
+        $this->actingAs($this->admin())->post('/kurikulum/subjects', [
+            'code' => 'PJOK', 'name' => 'Olahraga', 'allow_combined' => true,
+        ])->assertRedirect('/kurikulum/subjects')->assertSessionHasNoErrors();
+        $subject = Subject::query()->where('code', 'PJOK')->firstOrFail();
+        $this->assertTrue($subject->allow_combined);
+        $this->get('/kurikulum/subjects')->assertInertia(fn ($page) => $page
+            ->where('subjects.data.0.allow_combined', true));
+
+        $this->patch("/kurikulum/subjects/{$subject->id}", [
+            'code' => 'PJOK', 'name' => 'Olahraga', 'allow_combined' => false,
+        ])->assertRedirect('/kurikulum/subjects')->assertSessionHasNoErrors();
+
+        $this->assertFalse($subject->refresh()->allow_combined);
+    }
+
+    public function test_subject_combined_flag_requires_a_boolean_and_update_permission(): void
+    {
+        $subject = Subject::factory()->create();
+        $payload = ['code' => $subject->code, 'name' => $subject->name, 'allow_combined' => 'on'];
+        $this->actingAs($this->admin())->patch("/kurikulum/subjects/{$subject->id}", $payload)
+            ->assertSessionHasErrors('allow_combined');
+        $this->assertFalse($subject->refresh()->allow_combined);
+
+        $this->actingAs(User::factory()->create())->patch("/kurikulum/subjects/{$subject->id}", [
+            ...$payload, 'allow_combined' => true,
+        ])->assertForbidden();
+        $this->assertFalse($subject->refresh()->allow_combined);
     }
 
     public function test_subject_rejects_invalid_color(): void
