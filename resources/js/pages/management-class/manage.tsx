@@ -1,7 +1,20 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { AlertCircle, Plus, Search, UsersRound } from 'lucide-react';
-import { useState } from 'react';
+import { Head, Link, router, useHttp } from '@inertiajs/react';
+import {
+    AlertCircle,
+    Download,
+    FileSpreadsheet,
+    Plus,
+    Search,
+    UsersRound,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
+import {
+    importClassStudents,
+    downloadClassStudentTemplate,
+} from '@/actions/App/Http/Controllers/ManagementClassController';
 import SecondaryPageShell from '@/components/admin/secondary-page-shell';
+import AlertError from '@/components/alert-error';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import InputError from '@/components/input-error';
@@ -33,7 +46,13 @@ type Rombel = {
     grade_level: string;
     parallel_code: string;
 };
-type Student = { id: number; full_name: string; nis?: string | null };
+type Student = {
+    id: number;
+    full_name: string;
+    nis?: string | null;
+    nisn?: string | null;
+};
+type ImportResponse = { students: Student[] };
 type Teacher = { id: number; full_name: string };
 type ClassRow = {
     id: number;
@@ -107,6 +126,12 @@ export default function ManagementClassManage({
     const [processing, setProcessing] = useState(false);
     const [registeredRombelNoticeOpen, setRegisteredRombelNoticeOpen] =
         useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const [importErrors, setImportErrors] = useState<string[]>([]);
+    const fileInput = useRef<HTMLInputElement>(null);
+    const importer = useHttp<{ file: File | null }, ImportResponse>({
+        file: null,
+    }).withAllErrors();
 
     const selectedStudentRows = selectedStudentIds
         .map((id) => selectedStudentDetails[id])
@@ -171,8 +196,9 @@ export default function ManagementClassManage({
     const selectedStudentColumns: DataTableColumn<Student>[] = [
         {
             id: 'nis',
-            header: 'NIS',
-            cell: (student) => student.nis ?? '-',
+            header: 'NIS/NISN',
+            cell: (student) =>
+                [student.nis, student.nisn].filter(Boolean).join(' / ') || '-',
             cellClassName: 'font-mono text-xs',
         },
         {
@@ -185,8 +211,9 @@ export default function ManagementClassManage({
     const lookupColumns: DataTableColumn<Student>[] = [
         {
             id: 'nis',
-            header: 'NIS',
-            cell: (student) => student.nis ?? '-',
+            header: 'NIS/NISN',
+            cell: (student) =>
+                [student.nis, student.nisn].filter(Boolean).join(' / ') || '-',
             cellClassName: 'font-mono text-xs',
         },
         {
@@ -196,6 +223,64 @@ export default function ManagementClassManage({
             cellClassName: 'font-medium',
         },
     ];
+
+    const submitImport = () => {
+        if (
+            !importer.data.file ||
+            !selectedYear ||
+            !rombelId ||
+            importer.processing
+        ) {
+            return;
+        }
+
+        setImportErrors([]);
+        importer.transform((data) => ({
+            ...data,
+            academic_year_id: selectedYear.id,
+            rombel_id: Number(rombelId),
+        }));
+        void importer
+            .post(importClassStudents.url(), {
+                onSuccess: ({ students }) => {
+                    setSelectedStudentDetails((current) => ({
+                        ...current,
+                        ...Object.fromEntries(
+                            students.map((student) => [student.id, student]),
+                        ),
+                    }));
+                    setSelectedStudentIds((current) =>
+                        Array.from(
+                            new Set([
+                                ...current,
+                                ...students.map((student) => student.id),
+                            ]),
+                        ),
+                    );
+                    setImportOpen(false);
+                    importer.reset();
+
+                    if (fileInput.current) {
+                        fileInput.current.value = '';
+                    }
+
+                    toast.success(
+                        'Daftar siswa berhasil diimpor. Klik Simpan Perubahan untuk menyimpan kelas.',
+                    );
+                },
+                onError: (validationErrors) =>
+                    setImportErrors(Object.values(validationErrors).flat()),
+                onHttpException: () =>
+                    setImportErrors([
+                        'Impor gagal. Periksa akses dan muat ulang halaman bila sesi berakhir.',
+                    ]),
+                onNetworkError: () =>
+                    setImportErrors([
+                        'Koneksi bermasalah. Silakan coba kembali.',
+                    ]),
+            })
+            .catch(() => undefined);
+    };
 
     const submit = () => {
         if (!selectedYear || !rombelId) {
@@ -230,6 +315,26 @@ export default function ManagementClassManage({
                 description="Atur tahun ajaran, wali kelas, dan siswa dalam satu kelas"
                 backHref="/kurikulum/management-class"
                 backLabel="Kembali ke daftar manajemen kelas"
+                actions={
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={
+                            processing ||
+                            !selectedYear ||
+                            !rombelId ||
+                            selectedYear.status !== 'active'
+                        }
+                        onClick={() => {
+                            importer.setData('file', null);
+                            setImportErrors([]);
+                            setImportOpen(true);
+                        }}
+                    >
+                        <FileSpreadsheet />
+                        Import Excel
+                    </Button>
+                }
                 footerActions={
                     <>
                         <Button asChild variant="outline">
@@ -241,6 +346,7 @@ export default function ManagementClassManage({
                             onClick={submit}
                             disabled={
                                 processing ||
+                                importer.processing ||
                                 !selectedYear ||
                                 !rombelId ||
                                 !teacherId
@@ -428,6 +534,95 @@ export default function ManagementClassManage({
                 </div>
             </SecondaryPageShell>
 
+            <Dialog
+                open={importOpen}
+                onOpenChange={(open) => {
+                    if (!importer.processing) {
+                        setImportOpen(open);
+                    }
+                }}
+            >
+                <ModalShell
+                    showCloseButton={!importer.processing}
+                    onEscapeKeyDown={(event) => {
+                        if (importer.processing) {
+                            event.preventDefault();
+                        }
+                    }}
+                    onPointerDownOutside={(event) => {
+                        if (importer.processing) {
+                            event.preventDefault();
+                        }
+                    }}
+                >
+                    <DialogHeader>
+                        <DialogTitle>Import Siswa ke Kelas</DialogTitle>
+                        <DialogDescription>
+                            Gunakan template NISN dan Nama Siswa. Isi data mulai
+                            baris 4, maksimal 300 siswa dan ukuran file 1 MB.
+                            Siswa harus sudah terdaftar di Master Siswa. Impor
+                            hanya menambahkan pilihan; klik Simpan Perubahan
+                            untuk menyimpan kelas.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid min-w-0 gap-3">
+                        <Button asChild variant="outline">
+                            <a
+                                href={downloadClassStudentTemplate.url()}
+                                download
+                            >
+                                <Download />
+                                Download Template Excel
+                            </a>
+                        </Button>
+                        <Label htmlFor="class-students-file">
+                            File Excel (.xlsx)
+                        </Label>
+                        <Input
+                            id="class-students-file"
+                            ref={fileInput}
+                            type="file"
+                            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            disabled={importer.processing}
+                            onChange={(event) => {
+                                importer.setData(
+                                    'file',
+                                    event.target.files?.[0] ?? null,
+                                );
+                                setImportErrors([]);
+                            }}
+                        />
+                        {importErrors.length > 0 && (
+                            <AlertError
+                                title="Import Excel gagal — tidak ada siswa ditambahkan"
+                                errors={importErrors}
+                            />
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={importer.processing}
+                            onClick={() => setImportOpen(false)}
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            type="button"
+                            disabled={
+                                importer.processing || !importer.data.file
+                            }
+                            onClick={submitImport}
+                        >
+                            {importer.processing
+                                ? 'Memeriksa...'
+                                : 'Import Excel'}
+                        </Button>
+                    </DialogFooter>
+                </ModalShell>
+            </Dialog>
+
             <Dialog open={lookupOpen} onOpenChange={setLookupOpen}>
                 <ModalShell size="medium">
                     <DialogHeader>
@@ -451,7 +646,7 @@ export default function ManagementClassManage({
                                             lookupStudents();
                                         }
                                     }}
-                                    placeholder="Cari NIS atau nama siswa..."
+                                    placeholder="Cari NIS/NISN atau nama siswa..."
                                     className="pl-8"
                                     aria-label="Cari siswa dalam lookup"
                                 />

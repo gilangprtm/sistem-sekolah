@@ -10,6 +10,8 @@ Route::middleware(['auth', 'verified', 'can:curriculum.view'])
     ->group(function (): void {
         Route::get('/management-class', [ManagementClassController::class, 'index'])->name('management-class.index');
         Route::get('/management-class/manage', [ManagementClassController::class, 'manage'])->middleware('can:curriculum.update')->name('management-class.manage');
+        Route::get('/management-class/students/import/template', [ManagementClassController::class, 'downloadClassStudentTemplate'])->middleware('can:curriculum.update')->name('management-class.students.import.template');
+        Route::post('/management-class/students/import', [ManagementClassController::class, 'importClassStudents'])->middleware('can:curriculum.update')->name('management-class.students.import');
         Route::post('/management-class/classes', [ManagementClassController::class, 'storeClass'])->middleware('can:curriculum.update')->name('management-class.classes.store');
         Route::post('/management-class/classes/update', [ManagementClassController::class, 'updateClass'])->middleware('can:curriculum.update')->name('management-class.classes.update');
         Route::post('/management-class/classes/promote', [ManagementClassController::class, 'promoteClass'])->middleware('can:curriculum.update')->name('management-class.classes.promote');

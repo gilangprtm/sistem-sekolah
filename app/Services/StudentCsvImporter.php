@@ -7,8 +7,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use SimpleXMLElement;
-use ZipArchive;
 
 final class StudentCsvImporter
 {
@@ -151,155 +149,14 @@ final class StudentCsvImporter
      */
     private function readXlsxRows(UploadedFile $file): array
     {
-        $path = $file->getRealPath();
-        $archive = new ZipArchive;
-
-        if ($path === false || $archive->open($path) !== true) {
-            $this->fail('File Excel tidak valid.');
-        }
-
-        $sheetXml = $archive->getFromName('xl/worksheets/sheet1.xml');
-        $sharedStringsXml = $archive->getFromName('xl/sharedStrings.xml');
-        $archive->close();
-
-        if ($sheetXml === false) {
-            $this->fail('File Excel tidak valid.');
-        }
-
-        $sheet = $this->parseXml($sheetXml);
-        $sharedStrings = $sharedStringsXml === false ? [] : $this->readSharedStrings($sharedStringsXml);
-        $rows = [];
-        $maxRow = 0;
-        $sheetRoot = $sheet->children('http://schemas.openxmlformats.org/spreadsheetml/2006/main');
-
-        foreach ($sheetRoot->sheetData->row ?? [] as $sheetRow) {
-            $rowAttributes = $sheetRow->attributes();
-            $rowNumber = (int) ($rowAttributes['r'] ?? 0);
-            $rowNumber = $rowNumber > 0 ? $rowNumber : $maxRow + 1;
-            $maxRow = max($maxRow, $rowNumber);
-            $values = array_fill(0, count(self::HEADERS), null);
-
-            foreach ($sheetRow->c ?? [] as $cell) {
-                $cellAttributes = $cell->attributes();
-                $reference = (string) ($cellAttributes['r'] ?? '');
-                $column = $this->xlsxColumnIndex($reference);
-
-                if ($column === null) {
-                    $this->fail('File Excel memiliki referensi kolom yang tidak valid.');
-                }
-
-                if ($column >= count(self::HEADERS)) {
-                    $this->fail("Baris {$rowNumber}: jumlah kolom tidak sesuai template.", "rows.{$rowNumber}");
-                }
-
-                $values[$column] = $this->xlsxCellValue($cell, $sharedStrings);
-            }
-
-            $rows[$rowNumber] = $values;
-        }
-
-        if ($maxRow < 3 || ! isset($rows[1], $rows[2], $rows[3])) {
-            $this->fail('Template Excel harus memiliki tiga baris metadata di awal.');
-        }
-
-        $header = array_map(static fn (?string $value): string => trim((string) $value), $rows[1]);
-
-        if ($header !== self::HEADERS) {
-            $this->fail('Header Excel tidak sesuai template Master Siswa.');
-        }
-
-        $dataRows = [];
-
-        for ($rowNumber = 4; $rowNumber <= $maxRow; $rowNumber++) {
-            $values = $rows[$rowNumber] ?? array_fill(0, count(self::HEADERS), null);
-
-            if (count(array_filter($values, static fn (?string $value): bool => $value !== null)) === 0) {
-                $this->fail("Baris {$rowNumber}: baris Excel tidak boleh kosong.", "rows.{$rowNumber}");
-            }
-
-            $row = array_combine(self::HEADERS, $values);
+        $dataRows = app(XlsxTemplateReader::class)->read($file, self::HEADERS, 'Master Siswa');
+        foreach ($dataRows as $rowNumber => $row) {
             $this->validateRow($row, $rowNumber);
-            $dataRows[] = $row;
-
-            if (count($dataRows) > 300) {
-                $this->fail('Excel maksimal berisi 300 baris.');
-            }
         }
-
-        if ($dataRows === []) {
-            $this->fail('Excel harus berisi minimal satu baris data mulai baris 4.');
-        }
-
+        $dataRows = array_values($dataRows);
         $this->validateUniqueIdentities($dataRows);
 
         return $dataRows;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function readSharedStrings(string $xml): array
-    {
-        $shared = $this->parseXml($xml)->children('http://schemas.openxmlformats.org/spreadsheetml/2006/main');
-        $strings = [];
-
-        foreach ($shared->si ?? [] as $item) {
-            $strings[] = trim(implode('', array_map(
-                static fn (SimpleXMLElement $text): string => (string) $text,
-                iterator_to_array($item->xpath('.//*[local-name()="t"]') ?: []),
-            )));
-        }
-
-        return $strings;
-    }
-
-    /**
-     * @param  array<int, string>  $sharedStrings
-     */
-    private function xlsxCellValue(SimpleXMLElement $cell, array $sharedStrings): ?string
-    {
-        $attributes = $cell->attributes();
-        $type = (string) ($attributes['t'] ?? '');
-        $value = $type === 'inlineStr'
-            ? implode('', array_map(
-                static fn (SimpleXMLElement $text): string => (string) $text,
-                iterator_to_array($cell->xpath('.//*[local-name()="t"]') ?: []),
-            ))
-            : (string) ($cell->v ?? '');
-
-        if ($type === 's') {
-            $value = $sharedStrings[(int) $value] ?? '';
-        }
-
-        return self::nullableValue($value);
-    }
-
-    private function xlsxColumnIndex(string $reference): ?int
-    {
-        if (! preg_match('/^([A-Z]+)\\d+$/i', $reference, $matches)) {
-            return null;
-        }
-
-        $index = 0;
-
-        foreach (str_split(strtoupper($matches[1])) as $letter) {
-            $index = ($index * 26) + ord($letter) - 64;
-        }
-
-        return $index - 1;
-    }
-
-    private function parseXml(string $xml): SimpleXMLElement
-    {
-        libxml_use_internal_errors(true);
-        $parsed = simplexml_load_string($xml, SimpleXMLElement::class, LIBXML_NONET | LIBXML_NOCDATA);
-        libxml_clear_errors();
-
-        if ($parsed === false) {
-            $this->fail('File Excel tidak valid.');
-        }
-
-        return $parsed;
     }
 
     public function templateXlsx(): string

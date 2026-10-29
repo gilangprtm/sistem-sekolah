@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ImportClassStudentsRequest;
 use App\Models\AcademicYear;
 use App\Models\HomeroomAssignment;
 use App\Models\Rombel;
@@ -9,9 +10,12 @@ use App\Models\Student;
 use App\Models\StudentPlacement;
 use App\Models\Teacher;
 use App\Models\YearClass;
+use App\Services\ClassStudentImporter;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -69,7 +73,7 @@ class ManagementClassController extends Controller
                 $selectedClass->setRelation('homeroomAssignments', $homerooms);
 
                 $selectedStudents = StudentPlacement::query()
-                    ->with('student:id,nis,full_name')
+                    ->with('student:id,nis,nisn,full_name')
                     ->where('academic_year_id', $selectedYear->id)
                     ->where('rombel_id', $selectedClass->rombel_id)
                     ->where('status', 'active')
@@ -79,6 +83,7 @@ class ManagementClassController extends Controller
                     ->map(fn (StudentPlacement $placement): array => [
                         'id' => $placement->student_id,
                         'nis' => $placement->student?->nis,
+                        'nisn' => $placement->student?->nisn,
                         'full_name' => $placement->student?->full_name,
                     ]);
             }
@@ -92,11 +97,12 @@ class ManagementClassController extends Controller
                 $query->where(function ($studentQuery) use ($lookupSearch): void {
                     $studentQuery
                         ->where('full_name', 'like', "%{$lookupSearch}%")
-                        ->orWhere('nis', 'like', "%{$lookupSearch}%");
+                        ->orWhere('nis', 'like', "%{$lookupSearch}%")
+                        ->orWhere('nisn', 'like', "%{$lookupSearch}%");
                 });
             })
             ->orderBy('full_name')
-            ->paginate($lookupPerPage, ['id', 'nis', 'full_name'], 'lookup_page')
+            ->paginate($lookupPerPage, ['id', 'nis', 'nisn', 'full_name'], 'lookup_page')
             ->withQueryString();
 
         return Inertia::render('management-class/manage', [
@@ -321,6 +327,21 @@ class ManagementClassController extends Controller
         ]);
 
         return back();
+    }
+
+    public function downloadClassStudentTemplate(ClassStudentImporter $importer): HttpResponse
+    {
+        return response($importer->template(), 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="template-import-siswa-kelas.xlsx"',
+        ]);
+    }
+
+    public function importClassStudents(ImportClassStudentsRequest $request, ClassStudentImporter $importer): JsonResponse
+    {
+        $data = $request->validated();
+
+        return response()->json($importer->preview($data['file'], (int) $data['academic_year_id'], (int) $data['rombel_id']));
     }
 
     public function storeStudent(Request $request): RedirectResponse
