@@ -1564,6 +1564,60 @@ class ScheduleManagementTest extends TestCase
         $this->assertDatabaseCount('tr_curriculum_teaching_assignments', 0);
     }
 
+    /** @return array<string, array{string}> */
+    public static function scheduleGrades(): array
+    {
+        return [
+            'grade VII' => ['VII'],
+            'grade VIII' => ['VIII'],
+            'grade IX' => ['IX'],
+        ];
+    }
+
+    #[DataProvider('scheduleGrades')]
+    public function test_viewer_move_redirect_preserves_plan_grade_and_selected_rombels(string $grade): void
+    {
+        $period = $this->activePeriod();
+        $rombel = Rombel::factory()->create(['grade_level' => $grade, 'status' => 'active']);
+        $subject = Subject::factory()->create(['jp_per_class' => 1]);
+        $teacher = Teacher::factory()->create(['status' => 'active', 'staff_type' => 'guru']);
+        $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacher->id, 'subject_id' => $subject->id]);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->post('/kurikulum/schedule', [
+            'academic_period_id' => $period->id,
+            'grade' => $grade,
+            'selected_rombel_ids' => [$rombel->id],
+            'assignments' => [['teacher_subject_id' => $teacherSubject->id, 'rombel_ids' => [$rombel->id]]],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $plan = SchedulePlan::query()->where('status', 'published')->firstOrFail();
+        $entry = $plan->entries()->firstOrFail();
+
+        $response = $this->actingAs($admin)->post('/kurikulum/schedule/move', [
+            'schedule_plan_id' => $plan->id,
+            'schedule_entry_id' => $entry->id,
+            'selected_rombel_ids' => [$rombel->id],
+            'day' => 'tuesday',
+            'lesson_number' => 4,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $location = $response->headers->get('Location');
+        $this->assertStringContainsString('grade='.$grade, $location);
+        $this->assertStringContainsString('rombel_ids%5B0%5D='.$rombel->id, $location);
+        $this->actingAs($admin)
+            ->get(parse_url($location, PHP_URL_PATH).'?'.parse_url($location, PHP_URL_QUERY))
+            ->assertSessionHasNoErrors()
+            ->assertInertia(fn ($page) => $page
+                ->where('grade', $grade)
+                ->where('selectedRombelIds.0', $rombel->id)
+                ->has('entries', 1));
+        $this->assertDatabaseHas('tr_curriculum_schedule_entries', [
+            'id' => $entry->id,
+            'day' => 'tuesday',
+            'lesson_number' => 4,
+        ]);
+    }
+
     public function test_viewer_move_preserves_all_selected_rombels_when_assignment_covers_subset(): void
     {
         $period = $this->activePeriod();

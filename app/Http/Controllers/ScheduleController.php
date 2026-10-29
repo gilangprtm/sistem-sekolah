@@ -458,7 +458,7 @@ class ScheduleController extends Controller
     public function move(ScheduleMoveRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $periodId = DB::transaction(function () use ($data): int {
+        $plan = DB::transaction(function () use ($data): SchedulePlan {
             $planPeriodId = SchedulePlan::query()->whereKey($data['schedule_plan_id'])->value('academic_period_id');
             $period = AcademicPeriod::query()->with('academicYear')->lockForUpdate()->whereKey($planPeriodId)->firstOrFail();
             $plan = SchedulePlan::query()->lockForUpdate()->whereKey($data['schedule_plan_id'])->firstOrFail();
@@ -508,7 +508,7 @@ class ScheduleController extends Controller
                 ->lockForUpdate()->first();
 
             if ($target?->id === $entry->id) {
-                return $period->id;
+                return $plan;
             }
 
             $sourcePosition = $entry->only(['day', 'lesson_number', 'start_time', 'end_time']);
@@ -561,13 +561,14 @@ class ScheduleController extends Controller
                 'end_time' => $configuredSlot['end'],
             ]);
 
-            return $period->id;
+            return $plan;
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Posisi jadwal berhasil diperbarui.']);
 
         return redirect()->route('schedule.index', [
-            'academic_period_id' => $periodId,
+            'academic_period_id' => $plan->academic_period_id,
+            'grade' => $plan->grade_level,
             'rombel_ids' => array_values(array_unique(array_map('intval', $data['selected_rombel_ids'] ?? []))),
         ]);
     }
