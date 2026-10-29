@@ -177,6 +177,7 @@ class RolePermissionSeeder extends Seeder
         // Kesiswaan hanya mengelola akses kartu pelajar, tanpa CRUD master siswa.
         Role::findByName('Kesiswaan', 'web')->syncPermissions([
             'student.card.view',
+            'student.card.print',
         ]);
 
         $this->call(TeacherQuizPermissionSeeder::class);

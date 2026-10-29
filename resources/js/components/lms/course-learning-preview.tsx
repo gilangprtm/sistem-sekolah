@@ -81,7 +81,7 @@ export default function CourseLearningPreview({
             aria-label={
                 isStudent ? 'Materi pembelajaran' : 'Pratinjau tampilan siswa'
             }
-            className="mx-auto grid w-full max-w-6xl min-w-0 gap-6"
+            className="grid w-full min-w-0 gap-6"
         >
             {(!isStudent || !isPageSubmitted) && (
                 <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
@@ -152,31 +152,33 @@ export default function CourseLearningPreview({
                                     onValueChange={setActivePageId}
                                     className="min-w-0 gap-5"
                                 >
-                                    <div className="w-full min-w-0 overflow-x-auto pb-1">
-                                        <TabsList
-                                            variant="line"
-                                            aria-label={`Materi dan bagian ${material.title}`}
-                                            className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0"
+                                    <TabsList
+                                        variant="line"
+                                        aria-label={`Materi dan bagian ${material.title}`}
+                                        className="w-full min-w-0 justify-start gap-1 rounded-none bg-transparent p-0 group-data-horizontal/tabs:h-10"
+                                    >
+                                        <TabsTrigger
+                                            value="material"
+                                            title={material.title}
+                                            className="h-10 min-w-0 flex-1 basis-0 rounded-none px-2.5 py-1.5 text-sm group-data-horizontal/tabs:after:bottom-0"
                                         >
-                                            <TabsTrigger
-                                                value="material"
-                                                className="h-auto min-h-8 min-w-0 flex-1 rounded-none px-2.5 py-1.5 text-sm wrap-anywhere whitespace-normal"
-                                            >
+                                            <span className="truncate">
                                                 {material.title}
+                                            </span>
+                                        </TabsTrigger>
+                                        {material.sections.map((section) => (
+                                            <TabsTrigger
+                                                key={section.id}
+                                                value={section.id}
+                                                title={section.title}
+                                                className="h-10 min-w-0 flex-1 basis-0 rounded-none px-2.5 py-1.5 text-sm group-data-horizontal/tabs:after:bottom-0"
+                                            >
+                                                <span className="truncate">
+                                                    {section.title}
+                                                </span>
                                             </TabsTrigger>
-                                            {material.sections.map(
-                                                (section) => (
-                                                    <TabsTrigger
-                                                        key={section.id}
-                                                        value={section.id}
-                                                        className="h-auto min-h-8 min-w-0 flex-1 rounded-none px-2.5 py-1.5 text-sm wrap-anywhere whitespace-normal"
-                                                    >
-                                                        {section.title}
-                                                    </TabsTrigger>
-                                                ),
-                                            )}
-                                        </TabsList>
-                                    </div>
+                                        ))}
+                                    </TabsList>
                                     <TabsContent
                                         value="material"
                                         className="min-w-0"

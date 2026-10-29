@@ -85,45 +85,40 @@ export async function renderStudentCardPng(card: HTMLElement): Promise<Blob> {
         copy.style.transform = 'none';
         const markup = new XMLSerializer().serializeToString(copy);
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${STUDENT_CARD_WIDTH}" height="${STUDENT_CARD_HEIGHT}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%">${markup}</div></foreignObject></svg>`;
-        const svgUrl = URL.createObjectURL(
-            new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }),
-        );
+        // Blob-backed SVG foreignObjects taint the canvas in Chromium.
+        const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-        try {
-            const image = new Image();
-            await new Promise<void>((resolve, reject) => {
-                image.onload = () => resolve();
-                image.onerror = () =>
-                    reject(
-                        new Error(
-                            'Browser tidak dapat merender kartu. Coba browser lain.',
-                        ),
-                    );
-                image.src = svgUrl;
-            });
-            const canvas = document.createElement('canvas');
-            canvas.width = STUDENT_CARD_WIDTH;
-            canvas.height = STUDENT_CARD_HEIGHT;
-            const context = canvas.getContext('2d');
+        const image = new Image();
+        await new Promise<void>((resolve, reject) => {
+            image.onload = () => resolve();
+            image.onerror = () =>
+                reject(
+                    new Error(
+                        'Browser tidak dapat merender kartu. Coba browser lain.',
+                    ),
+                );
+            image.src = svgUrl;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = STUDENT_CARD_WIDTH;
+        canvas.height = STUDENT_CARD_HEIGHT;
+        const context = canvas.getContext('2d');
 
-            if (!context) {
-                throw new Error('Canvas tidak tersedia.');
-            }
-
-            context.drawImage(image, 0, 0);
-
-            return await new Promise<Blob>((resolve, reject) =>
-                canvas.toBlob(
-                    (blob) =>
-                        blob
-                            ? resolve(blob)
-                            : reject(new Error('Gagal mengekspor PNG.')),
-                    'image/png',
-                ),
-            );
-        } finally {
-            URL.revokeObjectURL(svgUrl);
+        if (!context) {
+            throw new Error('Canvas tidak tersedia.');
         }
+
+        context.drawImage(image, 0, 0);
+
+        return await new Promise<Blob>((resolve, reject) =>
+            canvas.toBlob(
+                (blob) =>
+                    blob
+                        ? resolve(blob)
+                        : reject(new Error('Gagal mengekspor PNG.')),
+                'image/png',
+            ),
+        );
     } finally {
         host.remove();
     }

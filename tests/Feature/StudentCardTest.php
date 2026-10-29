@@ -337,19 +337,26 @@ class StudentCardTest extends TestCase
                 ->where('students.0.qrCode', null));
     }
 
-    public function test_kesiswaan_can_view_student_cards_without_master_student_access(): void
+    public function test_kesiswaan_can_view_and_download_student_cards_without_master_student_access(): void
     {
         $kesiswaan = User::factory()->create();
         $kesiswaan->assignRole('Kesiswaan');
         $student = Student::factory()->create();
 
-        $this->actingAs($kesiswaan)->get('/students/cards')->assertOk();
-        $this->actingAs($kesiswaan)->get("/students/cards/{$student->id}")->assertOk();
+        $this->actingAs($kesiswaan)->get('/students/cards')->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('auth.permissions', fn ($permissions): bool => $permissions->contains('student.card.print')));
+        $this->actingAs($kesiswaan)->get("/students/cards/{$student->id}")->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('auth.permissions', fn ($permissions): bool => $permissions->contains('student.card.print')));
         $this->actingAs($kesiswaan)->get('/students')->assertForbidden();
         $this->actingAs($kesiswaan)->get('/students/create')->assertForbidden();
-        $this->actingAs($kesiswaan)->get('/students/cards/print')->assertForbidden();
+        $this->actingAs($kesiswaan)->get('/students/cards/print')->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('students/cards-print')
+                ->where('students.0.student.id', $student->id));
         $this->assertTrue($kesiswaan->can('student.card.view'));
-        $this->assertFalse($kesiswaan->can('student.card.print'));
+        $this->assertTrue($kesiswaan->can('student.card.print'));
         $this->assertFalse($kesiswaan->can('student.view'));
         $this->assertFalse($kesiswaan->can('student.create'));
         $this->assertFalse($kesiswaan->can('student.update'));
