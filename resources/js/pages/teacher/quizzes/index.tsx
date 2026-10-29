@@ -1,13 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import {
-    ExternalLink,
-    LockKeyhole,
-    Pencil,
-    Plus,
-    Search,
-    Trash2,
-    UnlockKeyhole,
-} from 'lucide-react';
+import { ExternalLink, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
@@ -346,17 +338,7 @@ export default function TeacherQuizzes({
                         render: (quiz) => (
                             <>
                                 <DropdownMenuItem onSelect={() => toggle(quiz)}>
-                                    {quiz.is_open ? (
-                                        <>
-                                            <LockKeyhole />
-                                            Kunci
-                                        </>
-                                    ) : (
-                                        <>
-                                            <UnlockKeyhole />
-                                            Buka untuk Semua Siswa
-                                        </>
-                                    )}
+                                    {quiz.is_open ? 'Kunci' : 'Buka'}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onSelect={() => {
@@ -368,19 +350,17 @@ export default function TeacherQuizzes({
                                         });
                                     }}
                                 >
-                                    Monitoring Siswa
+                                    Monitoring
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onSelect={() => openForm(quiz)}
                                 >
-                                    <Pencil />
                                     Ubah
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     variant="destructive"
                                     onSelect={() => setDeleteTarget(quiz)}
                                 >
-                                    <Trash2 />
                                     Hapus
                                 </DropdownMenuItem>
                             </>

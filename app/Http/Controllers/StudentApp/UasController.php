@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\StudentExamAttempt;
 use App\Models\UasLink;
+use App\Services\StudentExamAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,21 +15,23 @@ use Inertia\Response;
 
 class UasController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, StudentExamAccess $examAccess): Response
     {
         $student = $request->user()->student;
         $year = AcademicYear::query()->where('status', 'active')->latest('id')->first();
         $period = $year?->periods()->where('status', 'active')->latest('id')->first();
         $now = now();
-        $links = $period === null
+        $gradeLevel = $examAccess->activeGradeLevel($student);
+        $links = $period === null || $gradeLevel === null
             ? collect()
             : UasLink::query()
                 ->with('subject:id,code,name')
                 ->where('academic_year_id', $year->id)
                 ->where('academic_period_id', $period->id)
+                ->where('grade_level', $gradeLevel)
                 ->orderBy('category')
                 ->orderBy('subject_id')
-                ->get(['id', 'subject_id', 'category', 'link', 'opens_at'])
+                ->get(['id', 'subject_id', 'category', 'grade_level', 'link', 'opens_at'])
                 ->map(function (UasLink $link) use ($student, $now): array {
                     $attempt = $student === null
                         ? null
@@ -51,13 +54,14 @@ class UasController extends Controller
         return Inertia::render('student-app/uas', [
             'academicYear' => $year?->only(['year']),
             'academicPeriod' => $period?->only(['name']),
+            'gradeLevel' => $gradeLevel,
             'links' => $links->where('category', 'UAS')->values(),
             'utsLinks' => $links->where('category', 'UTS')->values(),
-            'status' => $student === null ? 'student_unlinked' : ($period === null ? 'no_active_period' : 'ready'),
+            'status' => $student === null ? 'student_unlinked' : ($period === null ? 'no_active_period' : ($gradeLevel === null ? 'no_active_class' : 'ready')),
         ]);
     }
 
-    public function open(Request $request, UasLink $uasLink): RedirectResponse
+    public function open(Request $request, UasLink $uasLink, StudentExamAccess $examAccess): RedirectResponse
     {
         $student = $request->user()->student;
         $year = $student === null ? null : AcademicYear::query()->where('status', 'active')->latest('id')->first();
@@ -67,7 +71,8 @@ class UasController extends Controller
             $student !== null
                 && $period !== null
                 && $uasLink->academic_year_id === $year->id
-                && $uasLink->academic_period_id === $period->id,
+                && $uasLink->academic_period_id === $period->id
+                && $examAccess->canAccess($student, $uasLink),
             404,
         );
 

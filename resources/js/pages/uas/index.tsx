@@ -25,6 +25,7 @@ type Subject = { id: number; code: string; name: string };
 type UasLink = {
     id: number;
     category: 'UTS' | 'UAS';
+    grade_level: 'VII' | 'VIII' | 'IX' | null;
     academic_year: string;
     academic_period: string;
     subject: Subject;
@@ -89,6 +90,8 @@ export default function UasIndex({
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<UasLink | null>(null);
     const [subjectId, setSubjectId] = useState('');
+    const [examCategory, setExamCategory] = useState<'UTS' | 'UAS'>(category);
+    const [gradeLevel, setGradeLevel] = useState('');
     const [url, setUrl] = useState('');
     const [opensAtDate, setOpensAtDate] = useState('');
     const [opensAtTime, setOpensAtTime] = useState('');
@@ -129,7 +132,9 @@ export default function UasIndex({
     }));
     const openCreate = () => {
         setEditing(null);
+        setExamCategory(activeCategory);
         setSubjectId('');
+        setGradeLevel('');
         setUrl('');
         setOpensAtDate('');
         setOpensAtTime('');
@@ -138,7 +143,9 @@ export default function UasIndex({
     };
     const openEdit = (link: UasLink) => {
         setEditing(link);
+        setExamCategory(link.category);
         setSubjectId(String(link.subject.id));
+        setGradeLevel(link.grade_level ?? '');
         setUrl(link.link);
         setOpensAtDate(link.opens_at?.slice(0, 10) ?? '');
         setOpensAtTime(link.opens_at?.slice(11, 16) ?? '');
@@ -147,6 +154,11 @@ export default function UasIndex({
     };
     const columns: DataTableColumn<UasLink>[] = [
         { id: 'category', header: 'Kategori', cell: (item) => item.category },
+        {
+            id: 'grade-level',
+            header: 'Jenjang',
+            cell: (item) => item.grade_level ?? 'Belum ditentukan',
+        },
         {
             id: 'subject',
             header: 'Mata Pelajaran',
@@ -200,7 +212,8 @@ export default function UasIndex({
     const submit = () => {
         setProcessing(true);
         const data = {
-            category: activeCategory,
+            category: examCategory,
+            grade_level: gradeLevel,
             subject_id: subjectId,
             link: url,
             opens_at_date: opensAtDate,
@@ -671,7 +684,7 @@ export default function UasIndex({
                         <DialogHeader>
                             <DialogTitle>
                                 {editing
-                                    ? `Ubah Data ${activeCategory}`
+                                    ? `Ubah Data ${editing.category}`
                                     : 'Tambah Ujian'}
                             </DialogTitle>
                             <DialogDescription>
@@ -680,6 +693,42 @@ export default function UasIndex({
                             </DialogDescription>
                         </DialogHeader>
                         <div className="@container grid gap-4">
+                            <div className="grid min-w-0 gap-2">
+                                <Label htmlFor="uas-category">
+                                    Kategori Ujian
+                                </Label>
+                                <SearchableCombobox
+                                    id="uas-category"
+                                    aria-invalid={Boolean(errors.category)}
+                                    aria-describedby={
+                                        errors.category
+                                            ? 'uas-category-error'
+                                            : undefined
+                                    }
+                                    value={examCategory}
+                                    options={(['UTS', 'UAS'] as const).map(
+                                        (examType) => ({
+                                            value: examType,
+                                            label: examType,
+                                        }),
+                                    )}
+                                    onChange={(value) => {
+                                        if (
+                                            value === 'UTS' ||
+                                            value === 'UAS'
+                                        ) {
+                                            setExamCategory(value);
+                                        }
+                                    }}
+                                    placeholder="Pilih kategori ujian"
+                                    searchPlaceholder="Cari kategori..."
+                                    emptyMessage="Kategori tidak ditemukan."
+                                />
+                                <InputError
+                                    id="uas-category-error"
+                                    message={errors.category}
+                                />
+                            </div>
                             <div className="grid items-start gap-4 @min-[28rem]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)]">
                                 <div className="grid min-w-0 gap-2">
                                     <Label>Konteks akademik aktif</Label>
@@ -706,6 +755,43 @@ export default function UasIndex({
                                     />
                                     <InputError message={errors.subject_id} />
                                 </div>
+                            </div>
+                            <div className="grid min-w-0 gap-2">
+                                <Label htmlFor="uas-grade-level">
+                                    Jenjang Kelas
+                                </Label>
+                                <SearchableCombobox
+                                    id="uas-grade-level"
+                                    aria-invalid={Boolean(errors.grade_level)}
+                                    aria-describedby={
+                                        errors.grade_level
+                                            ? 'uas-grade-level-error'
+                                            : undefined
+                                    }
+                                    value={gradeLevel}
+                                    options={(
+                                        ['VII', 'VIII', 'IX'] as const
+                                    ).map((grade) => ({
+                                        value: grade,
+                                        label: `Kelas ${grade}`,
+                                    }))}
+                                    onChange={(value) => {
+                                        if (
+                                            value === 'VII' ||
+                                            value === 'VIII' ||
+                                            value === 'IX'
+                                        ) {
+                                            setGradeLevel(value);
+                                        }
+                                    }}
+                                    placeholder="Pilih jenjang"
+                                    searchPlaceholder="Cari jenjang..."
+                                    emptyMessage="Jenjang tidak ditemukan."
+                                />
+                                <InputError
+                                    id="uas-grade-level-error"
+                                    message={errors.grade_level}
+                                />
                             </div>
                             <div className="grid gap-2">
                                 <div className="grid min-w-0 grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] items-start gap-3">

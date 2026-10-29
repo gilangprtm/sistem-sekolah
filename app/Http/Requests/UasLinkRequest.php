@@ -37,6 +37,7 @@ class UasLinkRequest extends FormRequest
 
         return [
             'category' => ['required', Rule::in(['UTS', 'UAS'])],
+            'grade_level' => ['required', Rule::in(['VII', 'VIII', 'IX'])],
             'subject_id' => [
                 'required',
                 'integer',
@@ -45,6 +46,7 @@ class UasLinkRequest extends FormRequest
                     ->where('academic_year_id', $yearId)
                     ->where('academic_period_id', $periodId)
                     ->where('category', $this->input('category'))
+                    ->where('grade_level', $this->input('grade_level'))
                     ->ignore($link instanceof UasLink ? $link->id : null),
             ],
             'link' => [

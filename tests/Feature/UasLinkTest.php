@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
+use App\Models\Rombel;
 use App\Models\Student;
 use App\Models\StudentExamAttempt;
+use App\Models\StudentPlacement;
 use App\Models\Subject;
 use App\Models\UasLink;
 use App\Models\User;
@@ -37,9 +39,15 @@ class UasLinkTest extends TestCase
         $this->assertStringContainsString('Hapus data {deleteTarget?.category}?', $source);
         $this->assertStringContainsString('Data {deleteTarget?.category} untuk', $source);
         $this->assertStringContainsString('Hapus Permanen', $source);
+        $this->assertStringContainsString('Jenjang Kelas', $source);
+        $this->assertStringContainsString('grade_level', $source);
+        $this->assertStringContainsString('grade_level', file_get_contents(app_path('Http/Controllers/UasLinkController.php')));
         $this->assertStringContainsString("router.get('/kurikulum/ujian'", $source);
         $this->assertStringContainsString("['UTS', 'UAS']", $source);
         $this->assertStringContainsString('<Label>Kategori</Label>', $source);
+        $this->assertStringContainsString('Kategori Ujian', $source);
+        $this->assertStringContainsString('value={examCategory}', $source);
+        $this->assertStringContainsString('category: examCategory', $source);
         $this->assertStringNotContainsString('role="tablist"', $source);
         $this->assertStringContainsString('Tambah Ujian', $source);
 
@@ -50,15 +58,17 @@ class UasLinkTest extends TestCase
         $this->assertStringContainsString('role="tablist"', $studentUasSource);
         $this->assertStringContainsString('shrink-0 grid-cols-2 rounded-2xl bg-muted p-1', $studentUasSource);
         $this->assertStringContainsString('min-h-0 flex-1 overflow-y-auto overscroll-contain', $studentUasSource);
-        $this->assertStringContainsString('<DialogTitle>Mulai ujian</DialogTitle>', $studentUasSource);
-        $this->assertStringContainsString("\n                                        Mulai\n", $studentUasSource);
+        $this->assertStringContainsString("import ExamConsentDialog from '@/components/student-app/exam-consent-dialog';", $studentUasSource);
+        $this->assertStringContainsString('title="Mulai ujian"', $studentUasSource);
+        $consentSource = file_get_contents(resource_path('js/components/student-app/exam-consent-dialog.tsx'));
+        $this->assertStringContainsString('<Link href={href}>Mulai</Link>', $consentSource);
         $this->assertStringContainsString('Aktivitas halaman ujian dicatat untuk audit.', $studentUasSource);
         $this->assertStringContainsString('setSelectedExam(null)', $studentUasSource);
-        $this->assertStringContainsString('href={`/student/uas/${selectedExam.id}/attempt`}', $studentUasSource);
+        $this->assertStringContainsString('`/student/uas/${selectedExam.id}/attempt`', $studentUasSource);
 
         $studentLayoutSource = file_get_contents(resource_path('js/layouts/student-app-layout.tsx'));
         $this->assertIsString($studentLayoutSource);
-        $this->assertStringContainsString('isSecondaryPage = isKantin || isUas || isExam', $studentLayoutSource);
+        $this->assertStringContainsString('isKantin || isUas || isExam', $studentLayoutSource);
         $this->assertStringContainsString('isKantin || isUas', $studentLayoutSource);
         $this->assertStringContainsString("category: 'UAS'", $source);
         $this->assertStringContainsString('academic_year_id', $source);
@@ -413,6 +423,7 @@ class UasLinkTest extends TestCase
                 'category' => 'UAS',
                 'subject_id' => $subject->id,
                 'link' => 'https://forms.gle/matematika-uas',
+                'grade_level' => 'VII',
             ])
             ->assertRedirect(route('uas.index', ['category' => 'UAS']))
             ->assertSessionHasNoErrors();
@@ -427,6 +438,7 @@ class UasLinkTest extends TestCase
         $this->actingAs($operator)
             ->post(route('uas.store'), [
                 'category' => 'UTS',
+                'grade_level' => 'VII',
                 'subject_id' => $subject->id,
                 'link' => 'https://forms.gle/matematika-uts',
             ])
@@ -446,6 +458,7 @@ class UasLinkTest extends TestCase
                 'category' => 'UAS',
                 'subject_id' => $subject->id,
                 'link' => 'https://docs.google.com/forms/d/matematika-uas/edit',
+                'grade_level' => 'VII',
             ])
             ->assertRedirect(route('uas.index', ['category' => 'UAS']))
             ->assertSessionHasNoErrors();
@@ -463,6 +476,7 @@ class UasLinkTest extends TestCase
 
         $this->actingAs($operator)->post(route('uas.store'), [
             'category' => 'UAS',
+            'grade_level' => 'VII',
             'subject_id' => $subject->id,
             'link' => 'https://forms.gle/scheduled',
             'opens_at_date' => '2026-11-01',
@@ -476,6 +490,7 @@ class UasLinkTest extends TestCase
 
         $this->from(route('uas.index'))->post(route('uas.store'), [
             'category' => 'UAS',
+            'grade_level' => 'VII',
             'subject_id' => Subject::factory()->create()->id,
             'link' => 'https://forms.gle/unpaired',
             'opens_at_date' => '2026-11-01',
@@ -484,6 +499,7 @@ class UasLinkTest extends TestCase
 
         $this->from(route('uas.index'))->post(route('uas.store'), [
             'category' => 'UAS',
+            'grade_level' => 'VII',
             'subject_id' => Subject::factory()->create()->id,
             'link' => 'https://forms.gle/invalid',
             'opens_at_date' => '2026-02-30',
@@ -497,7 +513,7 @@ class UasLinkTest extends TestCase
         $subject = Subject::factory()->create(['name' => 'Bahasa Indonesia']);
         $studentUser = User::factory()->create();
         $studentUser->assignRole('Siswa');
-        Student::factory()->create(['user_id' => $studentUser->id]);
+        $this->placeStudent($studentUser, $year);
         $opensAt = Carbon::parse('2026-11-01 01:30:00', 'UTC');
         $link = UasLink::query()->create([
             'academic_year_id' => $year->id,
@@ -505,6 +521,7 @@ class UasLinkTest extends TestCase
             'subject_id' => $subject->id,
             'category' => 'UAS',
             'link' => 'https://forms.gle/secret-form-url',
+            'grade_level' => 'VII',
             'opens_at' => $opensAt,
         ]);
 
@@ -545,13 +562,14 @@ class UasLinkTest extends TestCase
         $subject = Subject::factory()->create();
         $studentUser = User::factory()->create();
         $studentUser->assignRole('Siswa');
-        Student::factory()->create(['user_id' => $studentUser->id]);
+        $this->placeStudent($studentUser, $year);
         $link = UasLink::query()->create([
             'academic_year_id' => $year->id,
             'academic_period_id' => $period->id,
             'subject_id' => $subject->id,
             'category' => 'UAS',
             'link' => 'https://forms.gle/legacy',
+            'grade_level' => 'VII',
             'opens_at' => null,
         ]);
 
@@ -606,7 +624,7 @@ class UasLinkTest extends TestCase
         $period->update(['status' => 'inactive']);
         $this->actingAs($operator)
             ->from(route('uas.index'))
-            ->post(route('uas.store'), ['subject_id' => $subject->id, 'link' => 'https://forms.gle/test'])
+            ->post(route('uas.store'), ['subject_id' => $subject->id, 'grade_level' => 'VII', 'link' => 'https://forms.gle/test'])
             ->assertSessionHasErrors('subject_id');
 
         $this->assertDatabaseCount('tr_curriculum_uas_links', 0);
@@ -618,13 +636,13 @@ class UasLinkTest extends TestCase
         [$year, $period] = $this->activeContext();
         $subject = Subject::factory()->create(['code' => 'IPA', 'name' => 'IPA']);
         $otherSubject = Subject::factory()->create(['code' => 'IPS', 'name' => 'IPS']);
-        UasLink::query()->create(['academic_year_id' => $year->id, 'academic_period_id' => $period->id, 'subject_id' => $subject->id, 'link' => 'https://forms.gle/ipa']);
+        UasLink::query()->create(['academic_year_id' => $year->id, 'academic_period_id' => $period->id, 'subject_id' => $subject->id, 'grade_level' => 'VII', 'link' => 'https://forms.gle/ipa']);
         $oldYear = AcademicYear::query()->create(['year' => '2025/2026', 'status' => 'inactive']);
         $oldPeriod = AcademicPeriod::query()->create(['academic_year_id' => $oldYear->id, 'code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'active']);
         UasLink::query()->create(['academic_year_id' => $oldYear->id, 'academic_period_id' => $oldPeriod->id, 'subject_id' => $otherSubject->id, 'link' => 'https://forms.gle/old']);
         $studentUser = User::factory()->create();
         $studentUser->assignRole('Siswa');
-        Student::factory()->create(['user_id' => $studentUser->id]);
+        $this->placeStudent($studentUser, $year);
 
         $this->actingAs($studentUser)
             ->get(route('student-app.uas'))
@@ -637,6 +655,18 @@ class UasLinkTest extends TestCase
                 ->missing('links.0.student_id')
                 ->missing('links.0.student')
                 ->missing('links.1'));
+    }
+
+    private function placeStudent(User $user, AcademicYear $year): void
+    {
+        $student = Student::factory()->create(['user_id' => $user->id]);
+        $rombel = Rombel::factory()->create(['grade_level' => 'VII']);
+        StudentPlacement::query()->create([
+            'student_id' => $student->id,
+            'academic_year_id' => $year->id,
+            'rombel_id' => $rombel->id,
+            'status' => 'active',
+        ]);
     }
 
     /** @return array{0: AcademicYear, 1: AcademicPeriod} */

@@ -1,6 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
-import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
-import { Button } from '@/components/ui/button';
+import ExamLockedScreen from '@/components/student-app/exam-locked-screen';
 import StudentExam from '@/pages/student-app/exam';
 import type { ExamEndpoints } from '@/pages/student-app/exam';
 import { quizzes as index } from '@/routes/student-app';
@@ -23,25 +21,12 @@ type Props = {
 export default function StudentQuizAttempt(props: Props) {
     if (props.locked) {
         return (
-            <>
-                <Head title="Ulangan terkunci" />
-                <SecondaryPageShell title="Ulangan" fallbackHref={index.url()}>
-                    <div className="flex min-h-80 flex-col items-center justify-center gap-3 p-6 text-center">
-                        <h1 className="text-xl font-semibold">
-                            Ulangan terkunci
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            Hubungi Guru pembuat Ulangan untuk meminta pembukaan
-                            blokir.
-                        </p>
-                        <Button asChild variant="outline">
-                            <Link href={index.url()}>
-                                Kembali ke daftar Ulangan
-                            </Link>
-                        </Button>
-                    </div>
-                </SecondaryPageShell>
-            </>
+            <ExamLockedScreen
+                category={props.category}
+                subjectCode={props.subjectCode}
+                fallbackHref={index.url()}
+                message="Hubungi Guru pembuat Ulangan untuk pemeriksaan dan pembukaan kembali."
+            />
         );
     }
 

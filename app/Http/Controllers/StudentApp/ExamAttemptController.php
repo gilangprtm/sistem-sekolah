@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\Student;
 use App\Models\StudentExamAttempt;
 use App\Models\UasLink;
+use App\Services\StudentExamAccess;
 use App\Services\StudentExamAttemptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +18,8 @@ use Inertia\Response;
 
 class ExamAttemptController extends Controller
 {
+    public function __construct(private StudentExamAccess $examAccess) {}
+
     public function show(Request $request, UasLink $uasLink): Response|RedirectResponse
     {
         $student = $request->user()->student;
@@ -77,6 +80,7 @@ class ExamAttemptController extends Controller
     public function complete(Request $request, StudentExamAttempt $attempt, StudentExamAttemptService $service): JsonResponse
     {
         abort_unless($request->user()->student?->id === $attempt->student_id, 404);
+        $this->ensureAvailableToStudent($request->user()->student, $attempt->uasLink);
         $completedAttempt = $service->complete($attempt);
 
         return response()->json([
@@ -88,6 +92,7 @@ class ExamAttemptController extends Controller
     public function event(Request $request, StudentExamAttempt $attempt, StudentExamAttemptService $service): JsonResponse
     {
         abort_unless($request->user()->student?->id === $attempt->student_id, 404);
+        $this->ensureAvailableToStudent($request->user()->student, $attempt->uasLink);
         $data = $request->validate([
             'event_type' => ['required', Rule::in(['exam_page_hidden', 'exam_page_visible'])],
         ]);
@@ -115,7 +120,7 @@ class ExamAttemptController extends Controller
 
     private function ensureAvailableToStudent(?Student $student, UasLink $uasLink): void
     {
-        abort_if($student === null, 404);
+        abort_if($student === null || ! $this->examAccess->canAccess($student, $uasLink), 404);
         $year = AcademicYear::query()->where('status', 'active')->latest('id')->first();
         $period = $year?->periods()->where('status', 'active')->latest('id')->first();
 

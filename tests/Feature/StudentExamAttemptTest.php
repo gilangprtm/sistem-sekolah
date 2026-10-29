@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
+use App\Models\Rombel;
 use App\Models\Student;
 use App\Models\StudentExamAttempt;
+use App\Models\StudentPlacement;
 use App\Models\Subject;
 use App\Models\UasLink;
 use App\Models\User;
@@ -499,10 +501,18 @@ class StudentExamAttemptTest extends TestCase
             'subject_id' => $subject->id,
             'category' => 'UAS',
             'link' => 'https://forms.gle/example',
+            'grade_level' => 'VII',
         ]);
         $studentUser = User::factory()->create();
         $studentUser->assignRole('Siswa');
-        Student::factory()->create(['user_id' => $studentUser->id]);
+        $student = Student::factory()->create(['user_id' => $studentUser->id]);
+        $rombel = Rombel::factory()->create(['grade_level' => 'VII']);
+        StudentPlacement::query()->create([
+            'student_id' => $student->id,
+            'academic_year_id' => $year->id,
+            'rombel_id' => $rombel->id,
+            'status' => 'active',
+        ]);
 
         return [$link, $studentUser];
     }

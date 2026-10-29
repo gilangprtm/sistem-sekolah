@@ -19,6 +19,7 @@ class UasLink extends Model
 
     protected $fillable = [
         'category',
+        'grade_level',
         'academic_year_id',
         'academic_period_id',
         'subject_id',

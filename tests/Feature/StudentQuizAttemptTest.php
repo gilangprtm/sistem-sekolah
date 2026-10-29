@@ -23,6 +23,36 @@ class StudentQuizAttemptTest extends TestCase
         $this->seed(RolePermissionSeeder::class);
     }
 
+    public function test_student_quiz_list_requires_opening_the_rules_modal_before_starting(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/student-app/quizzes/index.tsx'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString("import ExamConsentDialog from '@/components/student-app/exam-consent-dialog';", $source);
+        $this->assertStringContainsString("import { ExternalLink } from 'lucide-react';", $source);
+        $this->assertStringContainsString('Buka Form', $source);
+        $this->assertStringContainsString('title="Mulai Ulangan"', $source);
+        $this->assertStringContainsString('title="Mulai ujian"', file_get_contents(resource_path('js/pages/student-app/uas.tsx')));
+        $this->assertStringContainsString('Aktivitas halaman Ulangan dicatat untuk audit.', $source);
+        $this->assertStringContainsString('onClick={() => setSelectedQuiz(quiz)}', $source);
+        $this->assertStringContainsString('show.url(quiz.id', $source);
+        $this->assertStringContainsString("only: ['quizzes']", $source);
+        $this->assertStringNotContainsString('Lanjutkan', $source);
+        $this->assertStringContainsString("import ExamLockedScreen from '@/components/student-app/exam-locked-screen';", file_get_contents(resource_path('js/pages/student-app/quizzes/attempt.tsx')));
+    }
+
+    public function test_quiz_page_reuses_the_exam_attempt_and_locked_components(): void
+    {
+        $source = file_get_contents(resource_path('js/components/student-app/exam-locked-screen.tsx'));
+        $examLocked = file_get_contents(resource_path('js/pages/student-app/exam-locked.tsx'));
+
+        $this->assertStringContainsString('Percobaan ujian terkunci', $source);
+        $this->assertStringContainsString('/student/uas', $examLocked);
+        $this->assertStringContainsString('<ExamLockedScreen', $examLocked);
+        $this->assertStringContainsString('<StudentExam {...props} endpoints={endpoints}', file_get_contents(resource_path('js/pages/student-app/quizzes/attempt.tsx')));
+        $this->assertStringContainsString('Guru pembuat Ulangan', file_get_contents(resource_path('js/pages/student-app/quizzes/attempt.tsx')));
+    }
+
     public function test_all_students_can_access_an_open_quiz_and_attempt_locks_after_three_exits(): void
     {
         [$student, $studentUser] = $this->student();
@@ -102,6 +132,98 @@ class StudentQuizAttemptTest extends TestCase
         $this->actingAs($user)->postJson(route('student-app.quizzes.attempt.complete', $attempt))->assertOk();
         $this->assertDatabaseCount('tr_teacher_quiz_attempt_events', 3);
         $this->actingAs($user)->get(route('student-app.quizzes.show', $quiz))->assertInertia(fn ($page) => $page->where('locked', true)->where('formUrl', null));
+    }
+
+    public function test_quiz_reopening_follows_exam_warnings_and_locks_without_revealing_the_form(): void
+    {
+        [, $user] = $this->student();
+        $quiz = $this->quiz(true);
+        $start = route('student-app.quizzes.attempt.start', $quiz);
+        $show = route('student-app.quizzes.show', $quiz);
+
+        $this->actingAs($user)->postJson($start, ['expected_count' => 0])
+            ->assertOk()->assertJsonPath('interruptionCount', 1)->assertJsonPath('warning', false);
+
+        foreach ([1, 2] as $expectedCount) {
+            $this->get($show.'?reopen=1')
+                ->assertInertia(fn ($page) => $page
+                    ->where('reopen', true)
+                    ->where('started', false)
+                    ->where('formUrl', null)
+                    ->where('interruptionCount', $expectedCount));
+            $this->postJson($start.'?reopen=1', ['expected_count' => $expectedCount])
+                ->assertOk()
+                ->assertJsonPath('interruptionCount', $expectedCount + 1)
+                ->assertJsonPath('warning', true)
+                ->assertJsonPath('locked', false);
+            $this->get($show)
+                ->assertInertia(fn ($page) => $page
+                    ->where('started', true)
+                    ->where('formUrl', $quiz->link));
+        }
+
+        $this->postJson($start.'?reopen=1', ['expected_count' => 3])
+            ->assertStatus(423)
+            ->assertJsonPath('interruptionCount', 4)
+            ->assertJsonPath('locked', true);
+        $this->get($show.'?reopen=1')
+            ->assertInertia(fn ($page) => $page
+                ->component('student-app/quizzes/attempt')
+                ->where('locked', true)
+                ->where('category', 'Ulangan')
+                ->where('started', false)
+                ->where('formUrl', null));
+        $this->assertDatabaseCount('tr_teacher_quiz_attempt_events', 4);
+    }
+
+    public function test_teacher_unlock_keeps_history_and_requires_a_fresh_start_before_exposing_the_form(): void
+    {
+        [$teacher, $subject] = $this->teacherAndSubject();
+        [$student, $user] = $this->student();
+        $quiz = $this->quiz(true, $teacher, $subject);
+        $attempt = StudentQuizAttempt::query()->create([
+            'student_id' => $student->id,
+            'teacher_quiz_id' => $quiz->id,
+            'status' => 'locked',
+            'interruption_count' => 4,
+            'started_at' => now(),
+            'locked_at' => now(),
+        ]);
+        $previousEvent = $attempt->events()->create([
+            'event_type' => 'exam_page_visible',
+            'occurred_at' => now(),
+            'interruption_count' => 4,
+        ]);
+
+        $this->actingAs($teacher)->post(route('teacher.quizzes.attempts.unlock', $attempt), [
+            'reason' => 'Siswa diizinkan memulai kembali',
+        ])->assertRedirect();
+
+        $this->actingAs($user)->get(route('student-app.quizzes'))
+            ->assertInertia(fn ($page) => $page
+                ->where('quizzes.data.0.attempt.status', 'active')
+                ->where('quizzes.data.0.attempt.interruption_count', 0));
+        $this->get(route('student-app.quizzes.show', $quiz))
+            ->assertInertia(fn ($page) => $page
+                ->where('started', false)
+                ->where('reopen', false)
+                ->where('formUrl', null)
+                ->where('interruptionCount', 0));
+        $this->assertSame(2, $attempt->events()->count());
+        $this->assertModelExists($previousEvent);
+
+        $this->postJson(route('student-app.quizzes.attempt.start', $quiz), ['expected_count' => 0])
+            ->assertOk()
+            ->assertJsonPath('interruptionCount', 1)
+            ->assertJsonPath('warning', false)
+            ->assertJsonPath('locked', false);
+
+        $this->assertDatabaseCount('tr_teacher_quiz_attempts', 1);
+        $this->assertSame(3, $attempt->events()->count());
+        $this->get(route('student-app.quizzes.show', $quiz))
+            ->assertInertia(fn ($page) => $page
+                ->where('started', true)
+                ->where('formUrl', $quiz->link));
     }
 
     /** @return array{Student, User} */

@@ -1,12 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ExternalLink, LockKeyhole } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import ExamConsentDialog from '@/components/student-app/exam-consent-dialog';
 import SecondaryPageShell from '@/components/student-app/secondary-page-shell';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -23,6 +23,7 @@ type UasLink = {
 type Props = {
     academicYear: { year: string } | null;
     academicPeriod: { name: string } | null;
+    gradeLevel: string | null;
     links: UasLink[];
     utsLinks: UasLink[];
     status: string;
@@ -31,6 +32,7 @@ type Props = {
 export default function StudentUas({
     academicYear,
     academicPeriod,
+    gradeLevel,
     links,
     utsLinks,
     status,
@@ -56,6 +58,7 @@ export default function StudentUas({
                 only: [
                     'academicYear',
                     'academicPeriod',
+                    'gradeLevel',
                     'links',
                     'status',
                     'utsLinks',
@@ -92,6 +95,7 @@ export default function StudentUas({
                     {academicYear && academicPeriod && (
                         <p className="shrink-0 text-sm text-muted-foreground">
                             {academicYear.year} · {academicPeriod.name}
+                            {gradeLevel && ` · Kelas ${gradeLevel}`}
                         </p>
                     )}
 
@@ -148,7 +152,9 @@ export default function StudentUas({
                                     <p className="rounded-xl border p-4 text-sm text-muted-foreground">
                                         {status === 'student_unlinked'
                                             ? 'Akun ini belum terhubung dengan data siswa.'
-                                            : 'Tahun ajaran dan semester aktif belum tersedia.'}
+                                            : status === 'no_active_class'
+                                              ? 'Kelas aktif belum tersedia. Hubungi sekolah untuk memeriksa penempatan kelas.'
+                                              : 'Tahun ajaran dan semester aktif belum tersedia.'}
                                     </p>
                                 ) : categoryLinks.length === 0 ? (
                                     <p className="rounded-xl border p-4 text-sm text-muted-foreground">
@@ -231,60 +237,36 @@ export default function StudentUas({
                     })}
                 </section>
 
-                <Dialog
+                <ExamConsentDialog
                     open={selectedExam !== null}
                     onOpenChange={(open) => {
                         if (!open) {
                             setSelectedExam(null);
                         }
                     }}
+                    title="Mulai ujian"
+                    subject={selectedExam?.subject?.name ?? 'Mata Pelajaran'}
+                    href={
+                        selectedExam
+                            ? `/student/uas/${selectedExam.id}/attempt`
+                            : null
+                    }
                 >
-                    <ModalShell>
-                        <DialogHeader>
-                            <DialogTitle>Mulai ujian</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-3 text-sm">
-                            <DialogDescription>
-                                {selectedExam?.subject?.name ??
-                                    'Mata Pelajaran'}
-                            </DialogDescription>
-                            <p>
-                                Ujian{' '}
-                                {selectedExam?.subject?.name ??
-                                    'Mata Pelajaran'}{' '}
-                                akan dimulai saat Anda memilih Mulai.
-                            </p>
-                            <p>
-                                Aktivitas halaman ujian dicatat untuk audit.
-                                Jika halaman ujian disembunyikan lalu dibuka
-                                kembali empat kali, percobaan terkunci. Hubungi
-                                administrator untuk meminta bantuan.
-                            </p>
-                            <p className="text-muted-foreground">
-                                Catatan aktivitas tidak memastikan penyebab
-                                perpindahan halaman.
-                            </p>
-                        </div>
-                        <DialogFooter>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setSelectedExam(null)}
-                            >
-                                Batal
-                            </Button>
-                            {selectedExam && (
-                                <Button asChild>
-                                    <Link
-                                        href={`/student/uas/${selectedExam.id}/attempt`}
-                                    >
-                                        Mulai
-                                    </Link>
-                                </Button>
-                            )}
-                        </DialogFooter>
-                    </ModalShell>
-                </Dialog>
+                    <p>
+                        Ujian {selectedExam?.subject?.name ?? 'Mata Pelajaran'}{' '}
+                        akan dimulai saat Anda memilih Mulai.
+                    </p>
+                    <p>
+                        Aktivitas halaman ujian dicatat untuk audit. Jika
+                        halaman ujian disembunyikan lalu dibuka kembali empat
+                        kali, percobaan terkunci. Hubungi administrator untuk
+                        meminta bantuan.
+                    </p>
+                    <p className="text-muted-foreground">
+                        Catatan aktivitas tidak memastikan penyebab perpindahan
+                        halaman.
+                    </p>
+                </ExamConsentDialog>
 
                 <Dialog
                     open={selectedLockedItem !== null}

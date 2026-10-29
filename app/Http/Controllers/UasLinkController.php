@@ -52,6 +52,7 @@ class UasLinkController extends Controller
             ->through(fn (UasLink $link): array => [
                 'id' => $link->id,
                 'category' => $link->category,
+                'grade_level' => $link->grade_level,
                 'academic_year' => $link->academicYear?->year,
                 'academic_period' => $link->academicPeriod?->name,
                 'subject' => $link->subject?->only(['id', 'code', 'name']),
@@ -126,6 +127,7 @@ class UasLinkController extends Controller
                 'academic_period_id' => $period->id,
                 'subject_id' => $request->integer('subject_id'),
                 'category' => $request->validated('category'),
+                'grade_level' => $request->validated('grade_level'),
             ],
             [
                 'link' => $request->validated('link'),
@@ -162,6 +164,7 @@ class UasLinkController extends Controller
             'academic_period_id' => $period->id,
             'subject_id' => $request->integer('subject_id'),
             'category' => $request->validated('category'),
+            'grade_level' => $request->validated('grade_level'),
             'link' => $request->validated('link'),
             'opens_at' => $this->openingInstant($request),
         ]);
