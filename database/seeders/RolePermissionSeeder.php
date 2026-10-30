@@ -15,9 +15,11 @@ class RolePermissionSeeder extends Seeder
     private const ROLES = [
         'Super Admin',
         'Sarpras',
+        'Kurikulum',
         'Guru',
         'Admin Perpustakaan',
         'Siswa',
+        'Kantin',
         'Kesiswaan',
         'Staff',
     ];
@@ -134,7 +136,7 @@ class RolePermissionSeeder extends Seeder
 
         // Sarpras mendapat permission inventaris
         $sarpras = Role::findByName('Sarpras', 'web');
-        $sarpras->syncPermissions([
+        $sarpras->givePermissionTo([
             'inventory.view',
             'inventory.create',
             'inventory.delete',
@@ -159,11 +161,16 @@ class RolePermissionSeeder extends Seeder
             'inventory.room.assign',
         ]);
 
-        // Permission Kantin tidak diberikan implicit ke Sarpras.
-        // Role mapping Kantin menunggu assignment eksplisit dari pengelola role.
+        // Setiap role menerima baseline seluruh permission pada modul yang dimilikinya.
+        // givePermissionTo mempertahankan grant tambahan yang dikelola di luar baseline ini.
+        Role::findByName('Kurikulum', 'web')->givePermissionTo([
+            'curriculum.view', 'curriculum.schedule.manage', 'curriculum.create', 'curriculum.update', 'curriculum.delete',
+            'curriculum.teacher_subject.view', 'curriculum.teacher_subject.create', 'curriculum.teacher_subject.delete',
+            'curriculum.uas.view', 'curriculum.uas.create', 'curriculum.uas.update', 'curriculum.uas.delete',
+            'curriculum.rombel_usage.view', 'curriculum.rombel_usage.create', 'curriculum.rombel_usage.delete',
+        ]);
 
-        // Role lain tanpa permission khusus (fase selanjutnya)
-        Role::findByName('Guru', 'web')->syncPermissions([
+        Role::findByName('Guru', 'web')->givePermissionTo([
             'teacher.agenda.manage',
             'teacher.attendance.manage',
             'teacher.student-note.view',
@@ -171,15 +178,20 @@ class RolePermissionSeeder extends Seeder
             'teacher.homeroom.view',
             'teacher.homeroom.seating.manage',
         ]);
-        Role::findByName('Admin Perpustakaan', 'web')->syncPermissions([]);
-        Role::findByName('Siswa', 'web')->syncPermissions([]);
 
-        // Kesiswaan hanya mengelola akses kartu pelajar, tanpa CRUD master siswa.
-        Role::findByName('Kesiswaan', 'web')->syncPermissions([
-            'student.card.view',
-            'student.card.print',
+        Role::findByName('Kantin', 'web')->givePermissionTo([
+            'kantin.dashboard.view', 'kantin.barang.view', 'kantin.barang.create',
+            'kantin.barang.update', 'kantin.barang.delete', 'kantin.kategori.view',
+            'kantin.kategori.create', 'kantin.saldo.view', 'kantin.saldo.topup',
+            'kantin.saldo.history.view',
         ]);
 
+        Role::findByName('Kesiswaan', 'web')->givePermissionTo([
+            'student.card.view', 'student.card.print',
+        ]);
+
+        $this->call(CounselingPermissionSeeder::class);
+        $this->call(StudentViolationPermissionSeeder::class);
         $this->call(TeacherQuizPermissionSeeder::class);
         $this->call(MasterSchoolPermissionSeeder::class);
         $this->call(LibraryPermissionSeeder::class);

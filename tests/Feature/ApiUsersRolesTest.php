@@ -124,11 +124,14 @@ class ApiUsersRolesTest extends TestCase
         $this->withToken($this->adminToken())
             ->getJson('/api/v1/roles')
             ->assertOk()
-            ->assertJsonCount(8, 'data')
+            ->assertJsonCount(11, 'data')
             ->assertJsonPath('data.*.name', [
                 'Admin Perpustakaan',
                 'Guru',
+                'Humas',
+                'Kantin',
                 'Kesiswaan',
+                'Konseling',
                 'Kurikulum',
                 'Sarpras',
                 'Siswa',
