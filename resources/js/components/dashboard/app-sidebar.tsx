@@ -441,7 +441,7 @@ export function AppSidebar({
         ...(examItems.length > 0
             ? [{ id: 7, label: 'Ujian', items: examItems }]
             : []),
-        ...(adminItems.length > 0
+        ...(isSuperAdmin && adminItems.length > 0
             ? [{ id: 8, label: 'Administrasi', items: adminItems }]
             : []),
     ];

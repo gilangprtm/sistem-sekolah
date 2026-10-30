@@ -42,7 +42,7 @@ class ModuleDocumentPermissionSeeder extends Seeder
             DocumentModule::Teacher->value => ['teacher.agenda.manage', 'teacher.attendance.manage', 'teacher.homeroom.view'],
             DocumentModule::StudentAffairs->value => ['student.card.view'],
             DocumentModule::Canteen->value => ['kantin.dashboard.view', 'kantin.barang.view', 'kantin.saldo.view'],
-            DocumentModule::Administration->value => ['student.view', 'teacher.view', 'users.manage', 'roles.manage'],
+            DocumentModule::Administration->value => [],
             DocumentModule::Humas->value => ['humas.aspiration.view'],
             DocumentModule::Library->value => [],
             DocumentModule::Counseling->value => [],

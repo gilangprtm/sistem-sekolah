@@ -135,13 +135,5 @@ export const getInitials = (str: string): string => {
         return '?';
     }
 
-    return (
-        str
-            .trim()
-            .split(/\s+/)
-            .filter(Boolean)
-            .map((word) => word[0])
-            .join('')
-            .toUpperCase() || '?'
-    );
+    return Array.from(str.trim().toUpperCase())[0] ?? '?';
 };

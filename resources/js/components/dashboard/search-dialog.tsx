@@ -223,6 +223,10 @@ export function SearchDialog() {
     const can = (permission: string) =>
         isSuperAdmin || permissions.includes(permission);
     const availableItems = searchItems.filter((item) => {
+        if (item.group === 'Administrasi' && !isSuperAdmin) {
+            return false;
+        }
+
         if (item.id === 'library-collection') {
             return can('library.collection.view');
         }
@@ -322,10 +326,12 @@ export function SearchDialog() {
         return true;
     });
     availableItems.push(
-        ...documentNavigation.map((item) => ({
-            ...item,
-            label: 'Dokumen',
-        })),
+        ...documentNavigation
+            .filter((item) => item.group !== 'Administrasi' || isSuperAdmin)
+            .map((item) => ({
+                ...item,
+                label: 'Dokumen',
+            })),
     );
     const recommendations = getAvailableItems(availableItems);
 

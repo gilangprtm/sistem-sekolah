@@ -3,7 +3,7 @@
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'can:users.manage'])->group(function () {
+Route::middleware(['auth', 'verified', 'role:Super Admin', 'can:users.manage'])->group(function () {
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::get('/users/student-accounts/template', [UserController::class, 'downloadStudentAccountsTemplate'])->name('users.student-accounts.template');

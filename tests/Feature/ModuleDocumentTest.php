@@ -113,10 +113,22 @@ class ModuleDocumentTest extends TestCase
         $this->assertTrue(Role::findByName('Super Admin', 'web')->hasPermissionTo('humas.document.manage'));
         $this->assertFalse(Role::findByName('Guru', 'web')->hasPermissionTo('curriculum.document.view'));
         $this->assertFalse(Role::findByName('Siswa', 'web')->hasPermissionTo('teacher.document.view'));
-        $this->assertFalse(Role::findByName('Admin Perpustakaan', 'web')->hasPermissionTo('administration.document.view'));
+        foreach (Role::query()->where('name', '!=', 'Super Admin')->get() as $role) {
+            $this->assertFalse($role->hasPermissionTo('administration.document.view'));
+            $this->assertFalse($role->hasPermissionTo('administration.document.manage'));
+        }
         $this->assertFalse(Role::findByName('Staff', 'web')->hasPermissionTo('humas.document.view'));
         $this->assertFalse(Role::findByName('Guru', 'web')->hasPermissionTo('library.document.view'));
         $this->assertFalse(Role::findByName('Konseling', 'web')->hasPermissionTo('teacher.document.view'));
+    }
+
+    public function test_administration_document_routes_are_reserved_for_super_admin(): void
+    {
+        $user = $this->user('Guru');
+        $user->givePermissionTo(['administration.document.view', 'administration.document.manage']);
+
+        $this->actingAs($user)->get(route('administration.documents.index'))->assertForbidden();
+        $this->post(route('administration.documents.folders.store'), ['name' => 'Folder', 'visibility' => 'private'])->assertForbidden();
     }
 
     #[TestWith(['inventory.documents.index', '/inventaris/dokumen'])]
@@ -320,6 +332,16 @@ class ModuleDocumentTest extends TestCase
         $this->get(route('dashboard'))->assertInertia(fn ($page) => $page->has('documentNavigation', 0));
         $this->assertDatabaseCount('m_teacher_document_folders', 0);
         $this->assertDatabaseCount('tr_teacher_documents', 0);
+    }
+
+    public function test_administration_document_navigation_is_shared_only_with_super_admin(): void
+    {
+        $this->actingAs($this->user('Guru'))->get(route('dashboard'))->assertInertia(fn ($page) => $page
+            ->has('documentNavigation', 1)
+            ->where('documentNavigation.0.key', 'teacher'));
+
+        $this->actingAs($this->user('Super Admin'))->get(route('dashboard'))->assertInertia(fn ($page) => $page
+            ->where('documentNavigation', fn ($navigation) => $navigation->contains('key', 'administration')));
     }
 
     public function test_guru_manage_permission_keeps_document_navigation_when_view_permission_has_not_been_seeded(): void

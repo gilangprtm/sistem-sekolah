@@ -19,7 +19,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/assistant/chat', [AssistantController::class, 'chat'])->middleware('auth:sanctum');
 
     // Users (Super Admin)
-    Route::middleware(['auth:sanctum', 'can:users.manage'])->prefix('users')->group(function () {
+    Route::middleware(['auth:sanctum', 'role:Super Admin', 'can:users.manage'])->prefix('users')->group(function () {
         Route::get('/', [UserApiController::class, 'index']);
         Route::post('/', [UserApiController::class, 'store']);
         Route::post('/generate-student-accounts', [UserApiController::class, 'generateStudentAccounts']);
@@ -31,7 +31,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Roles (Super Admin)
-    Route::middleware(['auth:sanctum', 'can:roles.manage'])->prefix('roles')->group(function () {
+    Route::middleware(['auth:sanctum', 'role:Super Admin', 'can:roles.manage'])->prefix('roles')->group(function () {
         Route::get('/', [RoleApiController::class, 'index']);
         Route::post('/', [RoleApiController::class, 'store']);
         Route::get('/{role}', [RoleApiController::class, 'show']);

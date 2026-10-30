@@ -59,6 +59,10 @@ enum DocumentModule: string
 
     public function canView(User $user): bool
     {
+        if ($this === self::Administration) {
+            return $user->hasRole('Super Admin');
+        }
+
         return $user->hasRole('Super Admin')
             || $user->can($this->permission('view'))
             || $user->can($this->permission('manage'));
