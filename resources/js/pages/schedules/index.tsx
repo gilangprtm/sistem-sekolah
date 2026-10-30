@@ -8,8 +8,8 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { Head, router } from '@inertiajs/react';
-import { CircleAlert, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { CircleAlert, Download, Plus } from 'lucide-react';
+import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import DataTableEmptyState from '@/components/data-table/data-table-empty-state';
 import DataTableShell from '@/components/data-table/data-table-shell';
@@ -35,6 +35,11 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
+import {
+    renderScheduleImage,
+    scheduleImageFilename,
+} from '@/lib/schedule-export';
+import { saveStudentCardBlob } from '@/lib/student-card-export';
 import { activity, place } from '@/routes/schedule';
 import type { BreadcrumbItem } from '@/types';
 
@@ -129,7 +134,7 @@ function DraggableScheduleEntry({
             ref={setNodeRef}
             type="button"
             disabled={disabled}
-            className="w-full rounded p-1 text-center font-medium text-foreground"
+            className="flex min-h-9 w-full items-center justify-center rounded px-2 py-2 text-center font-medium text-foreground"
             style={{
                 backgroundColor: entry.subject_color,
                 transform: transform
@@ -201,6 +206,10 @@ export default function JadwalPelajaranIndex({
     const [activityName, setActivityName] = useState('');
     const [activityError, setActivityError] = useState<string | null>(null);
     const [isSavingActivity, setIsSavingActivity] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+    const exportTableRef = useRef<HTMLTableElement>(null);
+    const exportLock = useRef(false);
     const [moveError, setMoveError] = useState<string | null>(null);
     const [placementError, setPlacementError] = useState<string | null>(null);
     const [placementSlot, setPlacementSlot] = useState<{
@@ -421,6 +430,47 @@ export default function JadwalPelajaranIndex({
     viewerQuery.set('grade', grade);
     const generateUrl = `/kurikulum/schedule/generate?${viewerQuery.toString()}`;
     const totalColumns = selectedRombels.length + 3;
+    const exportSchedule = async () => {
+        if (exportLock.current) {
+            return;
+        }
+
+        const table = exportTableRef.current;
+
+        if (!table || !selectedPeriod || selectedRombels.length === 0) {
+            setExportError('Jadwal belum tersedia untuk diunduh.');
+
+            return;
+        }
+
+        exportLock.current = true;
+        setIsExporting(true);
+        setExportError(null);
+
+        try {
+            const blob = await renderScheduleImage(
+                table,
+                `${selectedPeriod.academic_year.year} / ${selectedPeriod.name} · Jenjang ${grade} · ${selectedRombels.length} rombel`,
+            );
+            saveStudentCardBlob(
+                blob,
+                scheduleImageFilename(
+                    selectedPeriod.academic_year.year,
+                    selectedPeriod.name,
+                    grade,
+                ),
+            );
+        } catch (error) {
+            setExportError(
+                error instanceof Error
+                    ? error.message
+                    : 'Jadwal gagal diekspor sebagai gambar.',
+            );
+        } finally {
+            exportLock.current = false;
+            setIsExporting(false);
+        }
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -432,13 +482,33 @@ export default function JadwalPelajaranIndex({
                         title="Jadwal Pelajaran"
                         description="Klik angka jam untuk menambahkan kegiatan seluruh kelas. Pilih slot kosong untuk mengisi JP mingguan. Seret kotak untuk memindahkan atau menukar posisi dalam kelas yang sama. Perubahan disimpan otomatis."
                     />
-                    <Button
-                        variant="outline"
-                        asChild
-                        className="w-full md:w-auto md:shrink-0"
-                    >
-                        <a href={generateUrl}>Siapkan Jadwal</a>
-                    </Button>
+                    <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:shrink-0">
+                        <Button
+                            variant="outline"
+                            asChild
+                            className="w-full md:w-auto"
+                        >
+                            <a href={generateUrl}>Siapkan Jadwal</a>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full md:w-auto"
+                            onClick={() => void exportSchedule()}
+                            disabled={
+                                isExporting ||
+                                isSavingActivity ||
+                                isMoving ||
+                                isPlacing ||
+                                !selectedPeriod ||
+                                selectedRombels.length === 0 ||
+                                !days.some((day) => day.rows.length > 0)
+                            }
+                            aria-label="Unduh jadwal sebagai gambar"
+                        >
+                            <Download aria-hidden="true" />
+                            {isExporting ? 'Menyiapkan...' : 'Unduh'}
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="grid gap-2 sm:max-w-xl">
@@ -478,6 +548,12 @@ export default function JadwalPelajaranIndex({
                     </Tabs>
                 </div>
 
+                {exportError && (
+                    <p role="alert" className="text-sm text-destructive">
+                        {exportError}
+                    </p>
+                )}
+
                 <DataTableShell>
                     <div className="border-b px-4 py-3 text-sm text-muted-foreground">
                         {selectedPeriod
@@ -488,7 +564,10 @@ export default function JadwalPelajaranIndex({
                     </div>
                     <div className="overflow-x-auto">
                         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-                            <Table className="min-w-[960px] border-separate border-spacing-0">
+                            <Table
+                                ref={exportTableRef}
+                                className="w-max min-w-[640px] border-separate border-spacing-0"
+                            >
                                 <caption className="sr-only">
                                     Jadwal mingguan untuk rombel yang dipilih
                                 </caption>
@@ -506,14 +585,14 @@ export default function JadwalPelajaranIndex({
                                         {selectedRombels.map((rombel) => (
                                             <TableHead
                                                 key={rombel.id}
-                                                className="min-w-32 border-r bg-muted text-center"
+                                                className="min-w-24 border-r bg-muted text-center"
                                             >
                                                 {rombel.code}
                                             </TableHead>
                                         ))}
                                     </TableRow>
                                 </TableHeader>
-                                <TableBody>
+                                <TableBody className="[&_td]:py-1 [&_tr[data-schedule-day-divider]>td]:py-0">
                                     {selectedRombels.length === 0 ? (
                                         <DataTableEmptyState
                                             colSpan={totalColumns}
@@ -528,13 +607,14 @@ export default function JadwalPelajaranIndex({
                                                 ? [
                                                       <TableRow
                                                           key={`${day.key}-divider`}
+                                                          data-schedule-day-divider
                                                           aria-hidden="true"
                                                       >
                                                           <TableCell
                                                               colSpan={
                                                                   totalColumns
                                                               }
-                                                              className="h-3 border-y-2 border-border bg-background p-0"
+                                                              className="h-3 border-y-2 border-black bg-black p-0"
                                                           />
                                                       </TableRow>,
                                                   ]

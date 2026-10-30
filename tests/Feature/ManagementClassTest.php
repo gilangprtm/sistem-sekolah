@@ -76,6 +76,60 @@ class ManagementClassTest extends TestCase
                 ->where('classes.data.0.rombel_id', $rombel->id));
     }
 
+    public function test_management_class_defaults_to_active_year_instead_of_newest_inactive_year(): void
+    {
+        $activeYear = $this->year();
+        AcademicYear::query()->create(['year' => '2027/2028', 'status' => 'inactive']);
+        $rombel = Rombel::factory()->create();
+        $admin = $this->admin();
+        $this->createClass($admin, $activeYear, $rombel, Teacher::factory()->create(['staff_type' => 'guru', 'status' => 'active']));
+
+        $this->actingAs($admin)->get('/kurikulum/management-class')
+            ->assertInertia(fn ($page) => $page
+                ->where('selectedYear.id', $activeYear->id)
+                ->where('classes.total', 1)
+                ->where('classes.data.0.academic_year_id', $activeYear->id));
+
+        $this->get('/kurikulum/management-class/manage')
+            ->assertInertia(fn ($page) => $page
+                ->where('selectedYear.id', $activeYear->id)
+                ->where('registeredRombelIds.0', $rombel->id));
+    }
+
+    public function test_management_class_preserves_explicit_inactive_year_selection(): void
+    {
+        $this->year();
+        $inactiveYear = AcademicYear::query()->create(['year' => '2027/2028', 'status' => 'inactive']);
+        $admin = $this->admin();
+
+        foreach (['/kurikulum/management-class', '/kurikulum/management-class/manage'] as $path) {
+            $this->actingAs($admin)->get($path.'?academic_year_id='.$inactiveYear->id)
+                ->assertInertia(fn ($page) => $page->where('selectedYear.id', $inactiveYear->id));
+        }
+    }
+
+    public function test_management_class_falls_back_to_latest_year_when_no_year_is_active(): void
+    {
+        AcademicYear::query()->create(['year' => '2026/2027', 'status' => 'inactive']);
+        $latestYear = AcademicYear::query()->create(['year' => '2027/2028', 'status' => 'inactive']);
+        $admin = $this->admin();
+
+        foreach (['/kurikulum/management-class', '/kurikulum/management-class/manage'] as $path) {
+            $this->actingAs($admin)->get($path)
+                ->assertInertia(fn ($page) => $page->where('selectedYear.id', $latestYear->id));
+        }
+    }
+
+    public function test_management_class_handles_missing_academic_years(): void
+    {
+        $admin = $this->admin();
+
+        foreach (['/kurikulum/management-class', '/kurikulum/management-class/manage'] as $path) {
+            $this->actingAs($admin)->get($path)
+                ->assertInertia(fn ($page) => $page->where('selectedYear', null));
+        }
+    }
+
     public function test_year_class_rejects_duplicate_and_inactive_rombel(): void
     {
         $year = $this->year();

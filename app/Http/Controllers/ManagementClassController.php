@@ -33,7 +33,9 @@ class ManagementClassController extends Controller
     public function manage(Request $request): Response
     {
         $years = AcademicYear::query()->orderByDesc('year')->get(['id', 'year', 'status']);
-        $selectedYear = $years->firstWhere('id', $request->integer('academic_year_id')) ?? $years->first();
+        $selectedYear = $years->firstWhere('id', $request->integer('academic_year_id'))
+            ?? $years->firstWhere('status', 'active')
+            ?? $years->first();
         $selectedClass = null;
         $selectedTeacher = null;
         $selectedStudents = collect();
@@ -124,7 +126,9 @@ class ManagementClassController extends Controller
     private function pageData(Request $request, bool $paginate = false): array
     {
         $years = AcademicYear::query()->orderByDesc('year')->get(['id', 'year', 'status']);
-        $year = $years->firstWhere('id', $request->integer('academic_year_id')) ?? $years->first();
+        $year = $years->firstWhere('id', $request->integer('academic_year_id'))
+            ?? $years->firstWhere('status', 'active')
+            ?? $years->first();
         $search = $request->string('search')->trim()->toString();
         $perPage = min(max($request->integer('per_page', 10), 1), 50);
         $query = YearClass::query()

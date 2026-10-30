@@ -1,12 +1,14 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
 import { useState } from 'react';
+import AlertError from '@/components/alert-error';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import { useConfirmation } from '@/components/ui/confirmation-provider';
 import {
     Dialog,
     DialogDescription,
@@ -26,6 +28,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
+import { destroy } from '@/routes/academic-years';
 import type { BreadcrumbItem } from '@/types';
 
 type Period = {
@@ -47,6 +50,7 @@ type Year = {
 };
 
 type Props = {
+    canDelete: boolean;
     years: {
         data: Year[];
         current_page: number;
@@ -80,6 +84,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function AcademicYearsIndex({
+    canDelete,
     years,
     filters,
     filterOptions,
@@ -89,6 +94,30 @@ export default function AcademicYearsIndex({
     const [status, setStatus] = useState(filters.status ?? '');
     const [form, setForm] = useState<AcademicForm | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+    const confirm = useConfirmation();
+
+    const removeYear = async (item: Year) => {
+        if (
+            await confirm({
+                title: 'Hapus Tahun Ajaran?',
+                description: `Hapus Tahun Ajaran ${item.year} beserta semesternya? Tindakan ini tidak dapat dibatalkan. Tahun Ajaran aktif atau yang sudah digunakan tidak dapat dihapus.`,
+            })
+        ) {
+            setDeleteError(null);
+            setDeletingId(item.id);
+            router.delete(destroy.url(item.id), {
+                preserveScroll: true,
+                onError: (errors) => setDeleteError(errors.year),
+                onSuccess: () =>
+                    setSelected((previous) =>
+                        previous.filter((id) => id !== item.id),
+                    ),
+                onFinish: () => setDeletingId(null),
+            });
+        }
+    };
 
     const filterParams = (): Record<string, string> => {
         const params: Record<string, string> = {};
@@ -365,6 +394,13 @@ export default function AcademicYearsIndex({
                     </div>
                 </div>
 
+                {deleteError && (
+                    <AlertError
+                        title="Tahun Ajaran tidak dapat dihapus"
+                        errors={[deleteError]}
+                    />
+                )}
+
                 <DataTableShell
                     data={years.data}
                     columns={columns}
@@ -383,11 +419,22 @@ export default function AcademicYearsIndex({
                     rowActions={{
                         label: (item) => `Aksi Tahun Ajaran ${item.year}`,
                         render: (item) => (
-                            <DropdownMenuItem
-                                onClick={() => openYearEdit(item)}
-                            >
-                                Edit
-                            </DropdownMenuItem>
+                            <>
+                                <DropdownMenuItem
+                                    onClick={() => openYearEdit(item)}
+                                >
+                                    Edit
+                                </DropdownMenuItem>
+                                {canDelete && (
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        disabled={deletingId !== null}
+                                        onClick={() => void removeYear(item)}
+                                    >
+                                        Hapus
+                                    </DropdownMenuItem>
+                                )}
+                            </>
                         ),
                     }}
                     pagination={{
