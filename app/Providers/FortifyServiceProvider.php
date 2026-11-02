@@ -11,8 +11,10 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Laravel\Fortify\Contracts\LoginResponse;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Http\Responses\TwoFactorLoginResponse as DefaultTwoFactorLoginResponse;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -31,6 +33,20 @@ class FortifyServiceProvider extends ServiceProvider
                     }
 
                     return redirect()->intended(route('dashboard', absolute: false));
+                }
+            };
+        });
+
+        $this->app->singleton(TwoFactorLoginResponse::class, function () {
+            return new class extends DefaultTwoFactorLoginResponse
+            {
+                public function toResponse($request)
+                {
+                    if ($request->user()->hasRole('Siswa')) {
+                        return redirect()->route('student-app.dashboard');
+                    }
+
+                    return parent::toResponse($request);
                 }
             };
         });

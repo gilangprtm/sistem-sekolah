@@ -4,9 +4,19 @@ use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\CounselingNoteController;
 use App\Http\Controllers\HumasAspirationController;
 use App\Http\Controllers\StudentViolationController;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Inertia\Response;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', function (Request $request): Response|RedirectResponse {
+    if ($request->user()?->hasRole('Siswa')) {
+        return to_route('student-app.dashboard');
+    }
+
+    return Inertia::render('welcome');
+})->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/assistant/chat', [AssistantController::class, 'chat'])->name('assistant.chat');
 });

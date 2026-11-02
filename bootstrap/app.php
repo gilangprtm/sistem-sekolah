@@ -37,6 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->statefulApi();
         $middleware->redirectGuestsTo(fn () => route('login'));
+        $middleware->redirectUsersTo(fn (Request $request) => route(
+            $request->user()->hasRole('Siswa') ? 'student-app.dashboard' : 'dashboard',
+        ));
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,

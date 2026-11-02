@@ -50,6 +50,21 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 
+    public function test_student_users_are_redirected_to_the_student_app_from_public_home_and_admin_dashboard(): void
+    {
+        Role::create(['name' => 'Siswa']);
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+        $studentDashboard = route('student-app.dashboard', absolute: false);
+
+        $this->actingAs($user)
+            ->get(route('home', absolute: false))
+            ->assertRedirect($studentDashboard);
+
+        $this->get(route('dashboard', absolute: false))
+            ->assertRedirect($studentDashboard);
+    }
+
     public function test_student_users_are_redirected_to_the_student_app()
     {
         Role::create(['name' => 'Siswa']);
@@ -63,6 +78,17 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
         $response->assertRedirect(route('student-app.dashboard', absolute: false));
+    }
+
+    public function test_authenticated_student_visiting_a_guest_only_route_is_redirected_to_student_app(): void
+    {
+        Role::create(['name' => 'Siswa']);
+        $user = User::factory()->create();
+        $user->assignRole('Siswa');
+
+        $this->actingAs($user)
+            ->get(route('login'))
+            ->assertRedirect(route('student-app.dashboard', absolute: false));
     }
 
     public function test_student_login_ignores_intended_admin_dashboard_url(): void
