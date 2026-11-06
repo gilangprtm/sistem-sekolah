@@ -158,6 +158,37 @@ class StudentQuizAttemptService
         });
     }
 
+    public function unlockAll(TeacherQuiz $quiz, int $actorId): int
+    {
+        return DB::transaction(function () use ($quiz, $actorId): int {
+            $quiz = TeacherQuiz::query()->lockForUpdate()->findOrFail($quiz->id);
+            abort_unless($quiz->created_by === $actorId, 404);
+
+            $count = 0;
+            $attempts = $quiz->attempts()->where('status', 'locked')->lockForUpdate()->get();
+            foreach ($attempts as $attempt) {
+                $attempt->update([
+                    'status' => 'active',
+                    'interruption_count' => 0,
+                    'locked_at' => null,
+                    'unlocked_by' => $actorId,
+                    'unlocked_at' => now(),
+                    'unlock_reason' => 'Buka Semua oleh guru',
+                ]);
+                $attempt->events()->create([
+                    'event_type' => 'teacher_unlock',
+                    'occurred_at' => now(),
+                    'actor_user_id' => $actorId,
+                    'reason' => 'Buka Semua oleh guru',
+                    'interruption_count' => 0,
+                ]);
+                $count++;
+            }
+
+            return $count;
+        });
+    }
+
     private function increment(StudentQuizAttempt $attempt, string $eventType, ?int $duration = null): void
     {
         $count = min($attempt->interruption_count + 1, self::INTERRUPTION_LIMIT);
