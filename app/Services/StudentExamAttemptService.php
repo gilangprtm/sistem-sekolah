@@ -178,6 +178,34 @@ class StudentExamAttemptService
         });
     }
 
+    public function unlockAll(UasLink $uasLink, int $adminId): int
+    {
+        return DB::transaction(function () use ($uasLink, $adminId): int {
+            UasLink::query()->lockForUpdate()->findOrFail($uasLink->id);
+            $attempts = $uasLink->examAttempts()->where('status', 'locked')
+                ->whereIn('interruption_count', [3, 4])->lockForUpdate()->get();
+            foreach ($attempts as $attempt) {
+                $attempt->forceFill([
+                    'status' => 'active',
+                    'interruption_count' => 0,
+                    'locked_at' => null,
+                    'unlocked_by' => $adminId,
+                    'unlocked_at' => now(),
+                    'unlock_reason' => 'Buka Semua oleh pengawas',
+                ])->save();
+                $attempt->events()->create([
+                    'event_type' => 'admin_unlock',
+                    'occurred_at' => now(),
+                    'actor_user_id' => $adminId,
+                    'reason' => 'Buka Semua oleh pengawas',
+                    'interruption_count' => 0,
+                ]);
+            }
+
+            return $attempts->count();
+        });
+    }
+
     public function unlock(StudentExamAttempt $attempt, int $adminId, string $reason): StudentExamAttempt
     {
         $reason = trim($reason);
