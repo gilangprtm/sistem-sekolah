@@ -140,22 +140,46 @@ class StudentQuizAttemptService
             if ($attempt->status !== 'locked') {
                 return;
             }
-            $attempt->update([
-                'status' => 'active',
-                'interruption_count' => 0,
-                'locked_at' => null,
-                'unlocked_by' => $actorId,
-                'unlocked_at' => now(),
-                'unlock_reason' => $reason,
-            ]);
-            $attempt->events()->create([
-                'event_type' => 'teacher_unlock',
-                'occurred_at' => now(),
-                'actor_user_id' => $actorId,
-                'reason' => $reason,
-                'interruption_count' => 0,
-            ]);
+            $this->unlockAttempt($attempt, $actorId, $reason);
         });
+    }
+
+    public function unlockAll(TeacherQuiz $quiz, int $actorId): void
+    {
+        DB::transaction(function () use ($quiz, $actorId): void {
+            $quiz = TeacherQuiz::query()->lockForUpdate()->findOrFail($quiz->id);
+            abort_unless($quiz->created_by === $actorId, 404);
+            $reason = 'Buka semua siswa terkunci oleh Guru.';
+
+            $quiz->attempts()->where('status', 'locked')->orderBy('id')->chunkById(100, function ($attempts) use ($actorId, $reason): void {
+                foreach ($attempts as $attempt) {
+                    $attempt = StudentQuizAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+                    if ($attempt->status !== 'locked') {
+                        continue;
+                    }
+                    $this->unlockAttempt($attempt, $actorId, $reason);
+                }
+            });
+        });
+    }
+
+    private function unlockAttempt(StudentQuizAttempt $attempt, int $actorId, string $reason): void
+    {
+        $attempt->update([
+            'status' => 'active',
+            'interruption_count' => 0,
+            'locked_at' => null,
+            'unlocked_by' => $actorId,
+            'unlocked_at' => now(),
+            'unlock_reason' => $reason,
+        ]);
+        $attempt->events()->create([
+            'event_type' => 'teacher_unlock',
+            'occurred_at' => now(),
+            'actor_user_id' => $actorId,
+            'reason' => $reason,
+            'interruption_count' => 0,
+        ]);
     }
 
     private function increment(StudentQuizAttempt $attempt, string $eventType, ?int $duration = null): void

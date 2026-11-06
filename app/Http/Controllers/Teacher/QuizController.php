@@ -29,6 +29,7 @@ class QuizController extends Controller
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
             'monitor_quiz_id' => ['nullable', 'integer', 'min:1'],
+            'monitor_search' => ['nullable', 'string', 'max:100'],
             'monitor_page' => ['sometimes', 'integer', 'min:1'],
             'monitor_per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
@@ -57,7 +58,11 @@ class QuizController extends Controller
             $monitoring = [
                 'quiz_id' => $quiz->id,
                 'subject' => $quiz->subject?->name,
+                'monitor_search' => $request->string('monitor_search')->trim()->toString(),
+                'locked_count' => $quiz->attempts()->where('status', 'locked')->count(),
                 'attempts' => $quiz->attempts()->with('student:id,full_name')->where('status', 'locked')
+                    ->when($request->filled('monitor_search'), fn ($query) => $query->whereHas('student', fn ($query) => $query
+                        ->whereLike('full_name', '%'.$request->string('monitor_search')->trim()->toString().'%')))
                     ->latest('id')->paginate($request->integer('monitor_per_page', 10), ['*'], 'monitor_page')->withQueryString()
                     ->through(fn (StudentQuizAttempt $attempt): array => [
                         'id' => $attempt->id,
@@ -135,6 +140,26 @@ class QuizController extends Controller
         $service->unlock($attempt, $request->user()->id, $data['reason']);
 
         return $this->saved('Blokir siswa dibuka. Status Buka/Kunci Ulangan tidak berubah.');
+    }
+
+    public function unlockAll(Request $request, TeacherQuiz $quiz, TeacherQuizPolicy $policy, StudentQuizAttemptService $service): RedirectResponse
+    {
+        abort_unless($policy->manage($request->user(), $quiz), 404);
+        $query = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'subject_id' => ['nullable', 'integer', 'min:1'],
+            'availability' => ['nullable', Rule::in(['open', 'locked'])],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'monitor_search' => ['nullable', 'string', 'max:100'],
+            'monitor_per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+        $service->unlockAll($quiz, $request->user()->id);
+        $query['monitor_quiz_id'] = $quiz->id;
+        $query['monitor_page'] = 1;
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Semua blokir siswa Ulangan ini dibuka. Status Buka/Kunci Ulangan tidak berubah.']);
+
+        return to_route('teacher.quizzes.index', $query);
     }
 
     private function saved(string $message): RedirectResponse

@@ -214,6 +214,128 @@ class TeacherQuizTest extends TestCase
         $this->get(route('teacher.quizzes.index', ['availability' => 'invalid']))->assertSessionHasErrors('availability');
     }
 
+    public function test_monitor_search_covers_all_locked_students_and_retains_pagination_context(): void
+    {
+        [$teacher, $subject] = $this->teacherAndSubject();
+        $subject->update(['name' => 'Matematika']);
+        [$other] = $this->teacherAndSubject();
+        $quiz = $this->quiz($teacher, $subject);
+        $anotherQuiz = $this->quiz($teacher, $subject);
+        $foreignQuiz = $this->quiz($other, $subject);
+        $students = Student::factory()->count(12)->create(['full_name' => 'Budi Pencarian']);
+        foreach ($students as $student) {
+            $this->attempt($quiz, $student);
+        }
+        $this->attempt($anotherQuiz, $students->first());
+        $this->attempt($foreignQuiz, $students->first());
+        $active = Student::factory()->create(['full_name' => 'Budi Aktif']);
+        $this->attempt($quiz, $active)->update(['status' => 'active']);
+        $unmatched = Student::factory()->create(['full_name' => 'Siti']);
+        $this->attempt($quiz, $unmatched);
+        $params = [
+            'search' => 'Matematika', 'subject_id' => $subject->id, 'availability' => 'open', 'page' => 1, 'per_page' => 1,
+            'monitor_quiz_id' => $quiz->id, 'monitor_search' => '  bUdI  ', 'monitor_page' => 2, 'monitor_per_page' => 10,
+        ];
+
+        $response = $this->actingAs($teacher)->get(route('teacher.quizzes.index', $params));
+        $response->assertInertia(fn ($page) => $page
+            ->where('filters.search', 'Matematika')
+            ->where('monitoring.monitor_search', 'bUdI')->where('monitoring.locked_count', 13)
+            ->where('monitoring.attempts.total', 12)->where('monitoring.attempts.current_page', 2)
+            ->where('monitoring.attempts.per_page', 10)->has('monitoring.attempts.data', 2)
+            ->where('monitoring.attempts.data.1.student_name', 'Budi Pencarian'));
+        $url = $response->inertiaProps('monitoring.attempts.prev_page_url');
+        parse_str(parse_url($url, PHP_URL_QUERY), $query);
+        foreach ($params as $key => $value) {
+            $this->assertSame((string) ($key === 'monitor_page' ? 1 : ($key === 'monitor_search' ? 'bUdI' : $value)), $query[$key]);
+        }
+        $this->get(route('teacher.quizzes.index', [...$params, 'monitor_search' => 'absent', 'monitor_page' => 1]))
+            ->assertInertia(fn ($page) => $page->where('monitoring.attempts.total', 0)
+                ->has('monitoring.attempts.data', 0)->where('monitoring.locked_count', 13));
+        $this->get(route('teacher.quizzes.index', [...$params, 'monitor_search' => '', 'monitor_page' => 1]))
+            ->assertInertia(fn ($page) => $page->where('monitoring.attempts.total', 13));
+        $this->get(route('teacher.quizzes.index', ['monitor_search' => 'Budi']))
+            ->assertInertia(fn ($page) => $page->where('monitoring', null));
+        foreach ([str_repeat('a', 101), ['invalid']] as $invalid) {
+            $this->get(route('teacher.quizzes.index', [...$params, 'monitor_search' => $invalid]))->assertSessionHasErrors('monitor_search');
+        }
+    }
+
+    public function test_bulk_unlock_without_reason_covers_all_pages_ignores_search_and_preserves_audit_and_other_attempts(): void
+    {
+        $this->freezeTime();
+        [$teacher, $subject] = $this->teacherAndSubject();
+        [$other] = $this->teacherAndSubject();
+        $quiz = $this->quiz($teacher, $subject, false);
+        $anotherQuiz = $this->quiz($teacher, $subject);
+        $foreignQuiz = $this->quiz($other, $subject);
+        $attempts = Student::factory()->count(101)->create()->map(fn (Student $student) => $this->attempt($quiz, $student));
+        $first = $attempts->first();
+        $previous = $first->events()->create(['event_type' => 'exam_page_visible', 'occurred_at' => now(), 'interruption_count' => 4]);
+        $active = $this->attempt($quiz, Student::factory()->create());
+        $active->update(['status' => 'active', 'interruption_count' => 2, 'locked_at' => null]);
+        $sameOwner = $this->attempt($anotherQuiz, $first->student);
+        $foreign = $this->attempt($foreignQuiz, $first->student);
+        $untouched = [$active->fresh()->getAttributes(), $sameOwner->fresh()->getAttributes(), $foreign->fresh()->getAttributes()];
+        $context = route('teacher.quizzes.index', [
+            'search' => 'Math', 'subject_id' => $subject->id, 'availability' => 'locked', 'page' => 3, 'per_page' => 5,
+            'monitor_quiz_id' => $quiz->id, 'monitor_search' => 'no matches', 'monitor_page' => 13, 'monitor_per_page' => 20,
+        ]);
+
+        $response = $this->actingAs($teacher)->from($context)->post(route('teacher.quizzes.unlock-all', $quiz), [
+            'search' => 'Math', 'subject_id' => $subject->id, 'availability' => 'locked', 'page' => 3, 'per_page' => 5,
+            'monitor_search' => 'no matches', 'monitor_page' => 13, 'monitor_per_page' => 20,
+        ])->assertRedirect(route('teacher.quizzes.index', [
+            'search' => 'Math', 'subject_id' => $subject->id, 'availability' => 'locked', 'page' => 3, 'per_page' => 5,
+            'monitor_search' => 'no matches', 'monitor_per_page' => 20, 'monitor_quiz_id' => $quiz->id, 'monitor_page' => 1,
+        ]))->assertSessionHasNoErrors();
+        $this->get($response->headers->get('Location'))->assertInertia(fn ($page) => $page
+            ->where('filters.search', 'Math')->where('filters.subject_id', $subject->id)->where('filters.availability', 'locked')
+            ->where('quizzes.current_page', 3)->where('quizzes.per_page', 5)
+            ->where('monitoring.quiz_id', $quiz->id)->where('monitoring.monitor_search', 'no matches')
+            ->where('monitoring.attempts.current_page', 1)->where('monitoring.attempts.last_page', 1)
+            ->where('monitoring.attempts.per_page', 20)->where('monitoring.attempts.total', 0)->where('monitoring.locked_count', 0));
+
+        foreach ($attempts as $attempt) {
+            $this->assertDatabaseHas('tr_teacher_quiz_attempts', [
+                'id' => $attempt->id, 'status' => 'active', 'interruption_count' => 0, 'locked_at' => null,
+                'unlocked_by' => $teacher->id, 'unlocked_at' => now(), 'unlock_reason' => 'Buka semua siswa terkunci oleh Guru.',
+                'started_at' => $attempt->started_at,
+            ]);
+            $this->assertDatabaseHas('tr_teacher_quiz_attempt_events', [
+                'quiz_attempt_id' => $attempt->id, 'event_type' => 'teacher_unlock', 'actor_user_id' => $teacher->id,
+                'occurred_at' => now(), 'interruption_count' => 0, 'reason' => 'Buka semua siswa terkunci oleh Guru.',
+            ]);
+        }
+        $this->assertModelExists($previous);
+        $this->assertSame($untouched, [$active->fresh()->getAttributes(), $sameOwner->fresh()->getAttributes(), $foreign->fresh()->getAttributes()]);
+        $this->assertFalse($quiz->fresh()->is_open);
+        $this->assertDatabaseCount('tr_teacher_quiz_attempt_events', 102);
+        $this->post(route('teacher.quizzes.unlock-all', $quiz))->assertRedirect();
+        $this->assertDatabaseCount('tr_teacher_quiz_attempt_events', 102);
+        $this->get($context)->assertInertia(fn ($page) => $page->where('monitoring.locked_count', 0)->where('monitoring.attempts.total', 0));
+    }
+
+    public function test_bulk_unlock_enforces_auth_permission_and_creator_ownership_even_for_super_admin(): void
+    {
+        [$teacher, $subject] = $this->teacherAndSubject();
+        [$other] = $this->teacherAndSubject();
+        $quiz = $this->quiz($teacher, $subject);
+        $attempt = $this->attempt($quiz, Student::factory()->create());
+        $url = route('teacher.quizzes.unlock-all', $quiz);
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        $unprivileged = User::factory()->create();
+
+        $this->post($url)->assertRedirect(route('login'));
+        $this->actingAs($unprivileged)->post($url)->assertForbidden();
+        $this->actingAs($other)->post($url)->assertNotFound();
+        $this->actingAs($admin)->post($url)->assertNotFound();
+        $this->assertDatabaseHas('tr_teacher_quiz_attempts', ['id' => $attempt->id, 'status' => 'locked']);
+        $this->assertDatabaseCount('tr_teacher_quiz_attempt_events', 0);
+        $this->assertTrue($quiz->fresh()->is_open);
+    }
+
     public function test_quiz_factory_creates_a_consistent_academic_context(): void
     {
         $quiz = TeacherQuiz::factory()->create();

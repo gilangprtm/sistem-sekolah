@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified', 'can:teacher.quiz.view'])->prefix('guru/u
     Route::patch('/{quiz}/availability', [QuizController::class, 'availability'])->name('availability');
     Route::delete('/{quiz}', [QuizController::class, 'destroy'])->name('destroy');
     Route::post('/attempts/{attempt}/unlock', [QuizController::class, 'unlock'])->name('attempts.unlock');
+    Route::post('/{quiz}/unlock-all', [QuizController::class, 'unlockAll'])->name('unlock-all');
 });
 
 Route::get('/guru/agenda/cetak', AgendaReportController::class)

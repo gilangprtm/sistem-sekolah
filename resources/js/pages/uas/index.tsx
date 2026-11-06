@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ModalShell from '@/components/ui/modal-shell';
 import AppLayout from '@/layouts/app-layout';
+import { index, unlockAll } from '@/routes/uas';
 import type { BreadcrumbItem } from '@/types';
 
 type Subject = { id: number; code: string; name: string };
@@ -39,6 +40,8 @@ type MonitoringAttempt = {
 };
 type Monitoring = {
     uas_link_id: number;
+    monitor_search: string;
+    locked_count: number;
     subject: Subject;
     attempts: {
         data: MonitoringAttempt[];
@@ -68,6 +71,7 @@ type Props = {
     category: 'UTS' | 'UAS';
     filters: {
         academic_year_id?: number;
+        has_year_filter: boolean;
         category?: 'UTS' | 'UAS';
         search?: string;
         per_page?: number;
@@ -110,6 +114,9 @@ export default function UasIndex({
     const [unlockReason, setUnlockReason] = useState('');
     const [unlockError, setUnlockError] = useState('');
     const [unlockProcessing, setUnlockProcessing] = useState(false);
+    const [bulkUnlockOpen, setBulkUnlockOpen] = useState(false);
+    const [monitorLoading, setMonitorLoading] = useState(false);
+    const [bulkUnlockError, setBulkUnlockError] = useState('');
     const [monitoringVisible, setMonitoringVisible] = useState(
         new URLSearchParams(window.location.search).has('monitor_uas_link_id'),
     );
@@ -126,6 +133,50 @@ export default function UasIndex({
             preserveScroll: true,
             replace: true,
         });
+    const appliedContext = (): Record<string, string | number> => ({
+        category,
+        ...(filters.has_year_filter
+            ? { academic_year_id: filters.academic_year_id ?? '' }
+            : {}),
+        search: filters.search ?? '',
+        page: links.current_page,
+        per_page: links.per_page,
+    });
+    const navigateMonitor = (
+        params: Record<string, string | number>,
+        closing = false,
+    ) => {
+        if (unlockProcessing || monitorLoading) {
+            return;
+        }
+
+        setMonitorLoading(true);
+        setBulkUnlockError('');
+        router.get(
+            index.url(),
+            {
+                ...appliedContext(),
+                ...(!closing
+                    ? {
+                          monitor_uas_link_id: monitoring?.uas_link_id ?? '',
+                          monitor_search: monitoring?.monitor_search ?? '',
+                          monitor_per_page: monitoring?.attempts.per_page ?? 10,
+                      }
+                    : {}),
+                ...params,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onError: () =>
+                    setBulkUnlockError(
+                        'Monitoring tidak dapat dimuat. Tutup dan buka kembali monitoring.',
+                    ),
+                onFinish: () => setMonitorLoading(false),
+            },
+        );
+    };
     const options = subjects.map((subject) => ({
         value: String(subject.id),
         label: `${subject.code} — ${subject.name}`,
@@ -394,14 +445,20 @@ export default function UasIndex({
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() => {
+                                        if (
+                                            monitorLoading ||
+                                            unlockProcessing
+                                        ) {
+                                            return;
+                                        }
+
                                         setMonitorTarget(item);
                                         setMonitoringVisible(true);
-                                        navigate({
-                                            ...filterParams(),
-                                            page: links.current_page,
-                                            per_page: links.per_page,
+                                        navigateMonitor({
                                             monitor_uas_link_id: item.id,
+                                            monitor_search: '',
                                             monitor_page: 1,
+                                            monitor_per_page: 10,
                                         });
                                     }}
                                 >
@@ -437,14 +494,12 @@ export default function UasIndex({
                 <Dialog
                     open={monitoringVisible}
                     onOpenChange={(isOpen) => {
-                        if (!isOpen) {
+                        if (!isOpen && !monitorLoading && !unlockProcessing) {
                             setMonitoringVisible(false);
+                            setBulkUnlockError('');
                             setMonitorTarget(null);
-                            navigate({
-                                ...filterParams(),
-                                page: links.current_page,
-                                per_page: links.per_page,
-                            });
+                            setBulkUnlockOpen(false);
+                            navigateMonitor({}, true);
                         }
                     }}
                 >
@@ -458,17 +513,112 @@ export default function UasIndex({
                                 .
                             </DialogDescription>
                         </DialogHeader>
+                        <form
+                            key={`${monitoring?.uas_link_id ?? monitorTarget?.id}-${monitoring?.monitor_search ?? ''}`}
+                            className="flex flex-wrap items-end gap-3"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                const value = new FormData(
+                                    event.currentTarget,
+                                ).get('monitor_search');
+                                navigateMonitor({
+                                    monitor_search: String(value ?? '').trim(),
+                                    monitor_page: 1,
+                                });
+                            }}
+                        >
+                            <div className="grid min-w-0 basis-full gap-2 sm:flex-[1_1_16rem]">
+                                <Label htmlFor="uas-monitor-search">
+                                    Cari nama siswa
+                                </Label>
+                                <div className="relative">
+                                    <Search
+                                        aria-hidden="true"
+                                        className="absolute top-2.5 left-2.5 size-4 text-muted-foreground"
+                                    />
+                                    <Input
+                                        id="uas-monitor-search"
+                                        name="monitor_search"
+                                        className="pl-8"
+                                        maxLength={100}
+                                        defaultValue={
+                                            monitoring?.monitor_search ?? ''
+                                        }
+                                        disabled={
+                                            monitorLoading || unlockProcessing
+                                        }
+                                    />
+                                </div>
+                            </div>
+                            <Button
+                                type="submit"
+                                disabled={monitorLoading || unlockProcessing}
+                            >
+                                Cari
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={monitorLoading || unlockProcessing}
+                                onClick={(event) => {
+                                    event.currentTarget.form?.reset();
+                                    navigateMonitor({
+                                        monitor_search: '',
+                                        monitor_page: 1,
+                                    });
+                                }}
+                            >
+                                Reset
+                            </Button>
+                            <Button
+                                type="button"
+                                disabled={
+                                    monitorLoading ||
+                                    unlockProcessing ||
+                                    !!bulkUnlockError ||
+                                    !monitoring?.locked_count
+                                }
+                                onClick={() => setBulkUnlockOpen(true)}
+                            >
+                                Buka Semua
+                            </Button>
+                        </form>
+                        {bulkUnlockError && (
+                            <p
+                                role="alert"
+                                className="text-sm text-destructive"
+                            >
+                                {bulkUnlockError}
+                            </p>
+                        )}
+                        <p
+                            role="status"
+                            className="text-sm text-muted-foreground"
+                        >
+                            {monitorLoading
+                                ? 'Memuat siswa...'
+                                : `${monitoring?.locked_count ?? 0} siswa terkunci pada ujian ini. Buka Semua mencakup semua halaman dan tidak mengikuti pencarian.`}
+                        </p>
                         <DataTableShell
                             data={monitoring?.attempts.data ?? []}
                             columns={monitoringColumns}
                             getRowKey={(attempt) => attempt.id}
-                            emptyState="Tidak ada siswa terkunci."
+                            emptyState={
+                                monitoring?.monitor_search
+                                    ? 'Tidak ada siswa terkunci yang sesuai pencarian.'
+                                    : 'Tidak ada siswa terkunci.'
+                            }
                             rowActions={{
                                 variant: 'custom',
                                 render: (attempt) => (
                                     <Button
                                         size="sm"
                                         variant="outline"
+                                        disabled={
+                                            monitorLoading ||
+                                            unlockProcessing ||
+                                            !!bulkUnlockError
+                                        }
                                         onClick={() => {
                                             setUnlockTarget(attempt);
                                             setUnlockReason('');
@@ -485,24 +635,22 @@ export default function UasIndex({
                                           resource: monitoring.attempts,
                                           noun: 'siswa terkunci',
                                           onPageChange: (monitorPage) =>
-                                              navigate({
-                                                  ...filterParams(),
-                                                  page: links.current_page,
-                                                  per_page: links.per_page,
+                                              navigateMonitor({
                                                   monitor_uas_link_id:
                                                       monitoring.uas_link_id,
+                                                  monitor_search:
+                                                      monitoring.monitor_search,
                                                   monitor_page: monitorPage,
                                                   monitor_per_page:
                                                       monitoring.attempts
                                                           .per_page,
                                               }),
                                           onPerPageChange: (monitorPerPage) =>
-                                              navigate({
-                                                  ...filterParams(),
-                                                  page: links.current_page,
-                                                  per_page: links.per_page,
+                                              navigateMonitor({
                                                   monitor_uas_link_id:
                                                       monitoring.uas_link_id,
+                                                  monitor_search:
+                                                      monitoring.monitor_search,
                                                   monitor_page: 1,
                                                   monitor_per_page:
                                                       monitorPerPage,
@@ -511,6 +659,91 @@ export default function UasIndex({
                                     : undefined
                             }
                         />
+                    </ModalShell>
+                </Dialog>
+                <Dialog
+                    open={bulkUnlockOpen}
+                    onOpenChange={(visible) => {
+                        if (!unlockProcessing && !monitorLoading) {
+                            setBulkUnlockOpen(visible);
+                        }
+                    }}
+                >
+                    <ModalShell>
+                        <DialogHeader>
+                            <DialogTitle>
+                                Buka Semua siswa terkunci?
+                            </DialogTitle>
+                            <DialogDescription>
+                                Semua siswa terkunci untuk{' '}
+                                {monitoring?.subject.name ??
+                                    monitorTarget?.subject.name}{' '}
+                                akan dibuka, termasuk siswa di luar pencarian
+                                dan di halaman lain. Tindakan ini hanya berlaku
+                                untuk ujian yang dipilih, bukan semua ujian.
+                                Tidak perlu mengisi alasan.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {bulkUnlockError && (
+                            <p
+                                role="alert"
+                                className="text-sm text-destructive"
+                            >
+                                {bulkUnlockError}
+                            </p>
+                        )}
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                disabled={unlockProcessing || monitorLoading}
+                                onClick={() => setBulkUnlockOpen(false)}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                disabled={
+                                    unlockProcessing ||
+                                    monitorLoading ||
+                                    !!bulkUnlockError ||
+                                    !monitoring?.locked_count
+                                }
+                                onClick={() => {
+                                    if (
+                                        !monitoring ||
+                                        monitorLoading ||
+                                        unlockProcessing ||
+                                        bulkUnlockError
+                                    ) {
+                                        return;
+                                    }
+
+                                    setUnlockProcessing(true);
+                                    router.post(
+                                        unlockAll.url(monitoring.uas_link_id),
+                                        {
+                                            ...appliedContext(),
+                                            monitor_search:
+                                                monitoring.monitor_search,
+                                            monitor_per_page:
+                                                monitoring.attempts.per_page,
+                                        },
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () =>
+                                                setBulkUnlockOpen(false),
+                                            onError: () =>
+                                                setBulkUnlockError(
+                                                    'Semua siswa terkunci tidak dapat dibuka. Monitoring tetap terbuka.',
+                                                ),
+                                            onFinish: () =>
+                                                setUnlockProcessing(false),
+                                        },
+                                    );
+                                }}
+                            >
+                                {unlockProcessing ? 'Membuka...' : 'Buka Semua'}
+                            </Button>
+                        </DialogFooter>
                     </ModalShell>
                 </Dialog>
                 <Dialog

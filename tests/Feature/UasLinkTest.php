@@ -198,6 +198,156 @@ class UasLinkTest extends TestCase
         ]))->assertInertia(fn ($page) => $page->where('monitoring', null));
     }
 
+    public function test_monitor_search_is_trimmed_case_insensitive_and_applied_before_pagination(): void
+    {
+        [$year, $period] = $this->activeContext();
+        $link = $this->monitorExam($year, $period);
+        foreach (['aLiCe Satu', 'ALICE Dua', 'Budi', 'Citra'] as $name) {
+            $this->monitorAttempt($link, $name);
+        }
+        $operator = User::factory()->create();
+        $operator->givePermissionTo('curriculum.uas.view');
+        $query = ['monitor_uas_link_id' => $link->id, 'monitor_search' => '  alice  ', 'monitor_per_page' => 1];
+
+        $this->actingAs($operator)->get(route('uas.index', $query))->assertInertia(fn ($page) => $page
+            ->where('monitoring.monitor_search', 'alice')
+            ->where('monitoring.locked_count', 4)
+            ->where('monitoring.attempts.total', 2)
+            ->where('monitoring.attempts.data.0.student_name', 'ALICE Dua'));
+        $this->get(route('uas.index', [...$query, 'monitor_page' => 2]))->assertInertia(fn ($page) => $page
+            ->where('monitoring.attempts.data.0.student_name', 'aLiCe Satu'));
+        $this->get(route('uas.index', [...$query, 'monitor_search' => 'no match']))->assertInertia(fn ($page) => $page
+            ->where('monitoring.attempts.total', 0)->where('monitoring.locked_count', 4));
+        $this->get(route('uas.index', [...$query, 'monitor_search' => '']))->assertInertia(fn ($page) => $page
+            ->where('monitoring.attempts.total', 4)->where('monitoring.monitor_search', ''));
+        foreach ([str_repeat('x', 101), ['alice']] as $invalid) {
+            $this->getJson(route('uas.index', [...$query, 'monitor_search' => $invalid]))
+                ->assertUnprocessable()->assertJsonValidationErrors('monitor_search');
+        }
+    }
+
+    public function test_bulk_unlock_all_pages_ignores_student_search_preserves_history_and_is_idempotent(): void
+    {
+        $this->freezeTime();
+        [$year, $period] = $this->activeContext();
+        $link = $this->monitorExam($year, $period);
+        $attempts = collect();
+        for ($index = 0; $index < 105; $index++) {
+            $attempts->push($this->monitorAttempt($link, 'Siswa '.$index, $index % 2 === 0 ? 3 : 4));
+        }
+        $first = $attempts->first();
+        $startedAt = $first->started_at;
+        $event = $first->events()->create(['event_type' => 'exam_attempt_completed', 'occurred_at' => now(), 'interruption_count' => 4]);
+        $active = $this->monitorAttempt($link, 'Aktif', 3, 'active');
+        $wrongCount = $this->monitorAttempt($link, 'Hitungan lain', 2);
+        $otherGrade = $this->monitorExam($year, $period, ['subject_id' => $link->subject_id, 'grade_level' => 'VIII']);
+        $other = $this->monitorAttempt($otherGrade, 'Jenjang lain');
+        $otherCategory = $this->monitorExam($year, $period, ['category' => 'UTS']);
+        $categoryAttempt = $this->monitorAttempt($otherCategory, 'Kategori lain');
+        $untouched = [$active, $wrongCount, $other, $categoryAttempt];
+        $snapshots = array_map(fn ($attempt) => $attempt->fresh()->getRawOriginal(), $untouched);
+        $operator = User::factory()->create();
+        $operator->givePermissionTo(['curriculum.uas.view', 'curriculum.uas.update']);
+        $context = ['category' => 'UAS', 'academic_year_id' => '', 'search' => '', 'page' => 7, 'per_page' => 5, 'monitor_search' => 'Tidak cocok', 'monitor_per_page' => 20, 'monitor_page' => 99, 'reason' => 'Spoof', 'unlocked_by' => 999, 'redirect' => 'https://example.org'];
+        $redirect = route('uas.index', ['category' => 'UAS', 'page' => 7, 'per_page' => 5, 'monitor_uas_link_id' => $link->id, 'monitor_page' => 1, 'monitor_per_page' => 20, 'academic_year_id' => '', 'search' => '', 'monitor_search' => 'Tidak cocok']);
+
+        $this->actingAs($operator)->withHeader('Referer', 'https://example.org')->post(route('uas.unlock-all', $link), $context)
+            ->assertRedirect($redirect)->assertSessionHasNoErrors();
+
+        foreach ($attempts as $attempt) {
+            $this->assertDatabaseHas('tr_curriculum_exam_attempts', ['id' => $attempt->id, 'status' => 'active', 'interruption_count' => 0, 'locked_at' => null, 'unlocked_by' => $operator->id, 'unlocked_at' => now(), 'unlock_reason' => 'Buka semua siswa terkunci oleh Kurikulum.']);
+            $this->assertDatabaseHas('tr_curriculum_exam_attempt_events', ['exam_attempt_id' => $attempt->id, 'event_type' => 'admin_unlock', 'actor_user_id' => $operator->id, 'reason' => 'Buka semua siswa terkunci oleh Kurikulum.', 'interruption_count' => 0]);
+        }
+        $this->assertSame((string) $startedAt, (string) $first->fresh()->started_at);
+        $this->assertModelExists($event);
+        foreach ($untouched as $index => $attempt) {
+            $this->assertSame($snapshots[$index], $attempt->fresh()->getRawOriginal());
+        }
+        $this->assertDatabaseCount('tr_curriculum_exam_attempt_events', 106);
+        $this->post(route('uas.unlock-all', $link), $context)->assertRedirect($redirect);
+        $this->assertDatabaseCount('tr_curriculum_exam_attempt_events', 106);
+        $this->get($redirect)->assertInertia(fn ($page) => $page
+            ->where('monitoring.uas_link_id', $link->id)->where('monitoring.locked_count', 0)
+            ->where('monitoring.monitor_search', 'Tidak cocok')->where('monitoring.attempts.current_page', 1)
+            ->where('monitoring.attempts.per_page', 20)->where('filters.has_year_filter', true));
+    }
+
+    public function test_bulk_unlock_requires_both_curriculum_permissions_and_authentication(): void
+    {
+        [$year, $period] = $this->activeContext();
+        $link = $this->monitorExam($year, $period);
+        $attempt = $this->monitorAttempt($link, 'Terkunci');
+        $snapshot = $attempt->fresh()->getRawOriginal();
+        $this->post(route('uas.unlock-all', $link), ['category' => 'UAS'])->assertRedirect(route('login'));
+        foreach ([[], ['curriculum.uas.view'], ['curriculum.uas.update']] as $permissions) {
+            $user = User::factory()->create();
+            $user->givePermissionTo($permissions);
+            $this->actingAs($user)->post(route('uas.unlock-all', $link), ['category' => 'UAS'])->assertForbidden();
+        }
+        $student = User::factory()->create();
+        $student->assignRole('Siswa');
+        $this->actingAs($student)->post(route('uas.unlock-all', $link), ['category' => 'UAS'])->assertForbidden();
+        $this->assertSame($snapshot, $attempt->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('tr_curriculum_exam_attempt_events', 0);
+    }
+
+    public function test_bulk_unlock_rejects_missing_mismatched_and_inactive_context_without_mutation(): void
+    {
+        [$year, $period] = $this->activeContext();
+        $link = $this->monitorExam($year, $period);
+        $attempt = $this->monitorAttempt($link, 'Terkunci');
+        $snapshot = $attempt->fresh()->getRawOriginal();
+        $operator = User::factory()->create();
+        $operator->givePermissionTo(['curriculum.uas.view', 'curriculum.uas.update']);
+        $this->actingAs($operator)->post(route('uas.unlock-all', 999999), ['category' => 'UAS'])->assertNotFound();
+        $this->post(route('uas.unlock-all', $link), ['category' => 'UTS'])->assertNotFound();
+        $this->post(route('uas.unlock-all', $link), ['category' => 'UAS', 'search' => 'Tidak cocok'])->assertNotFound();
+        $this->postJson(route('uas.unlock-all', $link), ['category' => 'UAS', 'monitor_search' => str_repeat('x', 101)])
+            ->assertUnprocessable()->assertJsonValidationErrors('monitor_search');
+        $inactivePeriod = AcademicPeriod::query()->create(['academic_year_id' => $year->id, 'code' => 'genap', 'name' => 'Semester Genap', 'status' => 'inactive']);
+        $historicalLink = $this->monitorExam($year, $inactivePeriod);
+        $historicalAttempt = $this->monitorAttempt($historicalLink, 'Semester lain');
+        $this->post(route('uas.unlock-all', $historicalLink), ['category' => 'UAS'])->assertNotFound();
+        $oldYear = AcademicYear::query()->create(['year' => '2025/2026', 'status' => 'inactive']);
+        $oldPeriod = AcademicPeriod::query()->create(['academic_year_id' => $oldYear->id, 'code' => 'ganjil', 'name' => 'Semester Ganjil', 'status' => 'inactive']);
+        $oldLink = $this->monitorExam($oldYear, $oldPeriod);
+        $oldAttempt = $this->monitorAttempt($oldLink, 'Tahun lain');
+        $this->post(route('uas.unlock-all', $oldLink), ['category' => 'UAS'])->assertNotFound();
+        $period->update(['status' => 'inactive']);
+        $this->postJson(route('uas.unlock-all', $link), ['category' => 'UAS'])->assertUnprocessable();
+        $year->update(['status' => 'inactive']);
+        $this->postJson(route('uas.unlock-all', $link), ['category' => 'UAS'])->assertUnprocessable();
+        $this->assertSame($snapshot, $attempt->fresh()->getRawOriginal());
+        $this->assertSame('locked', $historicalAttempt->fresh()->status);
+        $this->assertSame('locked', $oldAttempt->fresh()->status);
+        $this->assertDatabaseCount('tr_curriculum_exam_attempt_events', 0);
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function monitorExam(AcademicYear $year, AcademicPeriod $period, array $attributes = []): UasLink
+    {
+        return UasLink::query()->create([...[
+            'academic_year_id' => $year->id,
+            'academic_period_id' => $period->id,
+            'subject_id' => Subject::factory()->create()->id,
+            'category' => 'UAS',
+            'grade_level' => 'VII',
+            'link' => 'https://forms.gle/monitor',
+        ], ...$attributes]);
+    }
+
+    private function monitorAttempt(UasLink $link, string $name, int $count = 3, string $status = 'locked'): StudentExamAttempt
+    {
+        return StudentExamAttempt::query()->create([
+            'uas_link_id' => $link->id,
+            'student_id' => Student::factory()->create(['full_name' => $name])->id,
+            'status' => $status,
+            'interruption_count' => $count,
+            'started_at' => now()->subHour(),
+            'locked_at' => $status === 'locked' ? now() : null,
+        ]);
+    }
+
     public function test_deleting_uas_link_cascades_exam_attempts_and_events(): void
     {
         [$year, $period] = $this->activeContext();

@@ -11,6 +11,7 @@ use App\Models\TeacherQuiz;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class StudentQuizAttemptTest extends TestCase
@@ -176,7 +177,9 @@ class StudentQuizAttemptTest extends TestCase
         $this->assertDatabaseCount('tr_teacher_quiz_attempt_events', 4);
     }
 
-    public function test_teacher_unlock_keeps_history_and_requires_a_fresh_start_before_exposing_the_form(): void
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function test_teacher_unlock_keeps_history_and_requires_a_fresh_start_before_exposing_the_form(bool $bulk): void
     {
         [$teacher, $subject] = $this->teacherAndSubject();
         [$student, $user] = $this->student();
@@ -195,9 +198,10 @@ class StudentQuizAttemptTest extends TestCase
             'interruption_count' => 4,
         ]);
 
-        $this->actingAs($teacher)->post(route('teacher.quizzes.attempts.unlock', $attempt), [
-            'reason' => 'Siswa diizinkan memulai kembali',
-        ])->assertRedirect();
+        $this->actingAs($teacher)->post(
+            $bulk ? route('teacher.quizzes.unlock-all', $quiz) : route('teacher.quizzes.attempts.unlock', $attempt),
+            $bulk ? [] : ['reason' => 'Siswa diizinkan memulai kembali'],
+        )->assertRedirect();
 
         $this->actingAs($user)->get(route('student-app.quizzes'))
             ->assertInertia(fn ($page) => $page

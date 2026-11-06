@@ -178,6 +178,28 @@ class StudentExamAttemptService
         });
     }
 
+    public function unlockAll(UasLink $uasLink, int $adminId): void
+    {
+        DB::transaction(function () use ($uasLink, $adminId): void {
+            StudentExamAttempt::query()
+                ->where('uas_link_id', $uasLink->id)
+                ->where('status', 'locked')
+                ->whereIn('interruption_count', [3, 4])
+                ->orderBy('id')
+                ->chunkById(100, function ($attempts) use ($adminId): void {
+                    foreach ($attempts as $attempt) {
+                        $attempt = StudentExamAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
+
+                        if ($attempt->status !== 'locked' || ! in_array($attempt->interruption_count, [3, 4], true)) {
+                            continue;
+                        }
+
+                        $this->unlock($attempt, $adminId, 'Buka semua siswa terkunci oleh Kurikulum.');
+                    }
+                });
+        });
+    }
+
     public function unlock(StudentExamAttempt $attempt, int $adminId, string $reason): StudentExamAttempt
     {
         $reason = trim($reason);

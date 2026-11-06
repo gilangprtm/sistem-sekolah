@@ -372,6 +372,35 @@ class StudentExamAttemptTest extends TestCase
             ->assertJsonPath('locked', false);
     }
 
+    public function test_bulk_unlock_requires_fresh_start_before_exposing_form_and_single_unlock_still_requires_reason(): void
+    {
+        [$link, $studentUser] = $this->examForStudent();
+        $attempt = StudentExamAttempt::query()->create([
+            'student_id' => $studentUser->student->id,
+            'uas_link_id' => $link->id,
+            'status' => 'locked',
+            'started_at' => now()->subHour(),
+            'locked_at' => now(),
+            'interruption_count' => 4,
+        ]);
+        $admin = User::factory()->create();
+        $admin->givePermissionTo(['curriculum.uas.view', 'curriculum.uas.update']);
+        $this->actingAs($admin)->postJson(route('uas.attempt.unlock', $attempt), [])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->postJson(route('uas.attempt.unlock', $attempt), ['reason' => 'abc'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->assertSame('locked', $attempt->fresh()->status);
+        $this->assertDatabaseCount('tr_curriculum_exam_attempt_events', 0);
+
+        $this->post(route('uas.unlock-all', $link), ['category' => 'UAS'])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->actingAs($studentUser)->get(route('student-app.uas.attempt', $link))->assertInertia(fn ($page) => $page
+            ->component('student-app/exam')->where('started', false)->where('formUrl', null)->where('interruptionCount', 0));
+        $this->get(route('student-app.uas.open', $link))->assertForbidden();
+        $this->postJson(route('student-app.uas.attempt.start', $link))->assertOk()
+            ->assertJsonPath('interruptionCount', 1)->assertJsonPath('warning', false)->assertJsonPath('locked', false);
+        $this->get(route('student-app.uas.open', $link))->assertRedirect($link->link);
+        $this->assertDatabaseHas('tr_curriculum_exam_attempt_events', ['exam_attempt_id' => $attempt->id, 'event_type' => 'exam_attempt_started', 'interruption_count' => 1]);
+    }
+
     public function test_admin_can_unlock_with_reason_and_student_can_resume(): void
     {
         [$link, $studentUser] = $this->examForStudent();

@@ -85,6 +85,7 @@ class UasController extends Controller
 
         abort_if($attempt?->status === 'locked', 423);
         abort_unless($attempt?->status === 'active', 403);
+        abort_if($attempt->unlocked_at !== null && $attempt->interruption_count === 0, 403);
 
         return redirect()->away($uasLink->link);
     }

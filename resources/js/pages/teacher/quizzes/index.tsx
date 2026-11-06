@@ -25,6 +25,7 @@ import {
     store,
     update,
     availability,
+    unlockAll,
 } from '@/routes/teacher/quizzes';
 import { unlock } from '@/routes/teacher/quizzes/attempts';
 import type { BreadcrumbItem } from '@/types';
@@ -51,6 +52,8 @@ type Props = {
     monitoring: {
         quiz_id: number;
         subject: string | null;
+        monitor_search: string;
+        locked_count: number;
         attempts: Paginated<Attempt>;
     } | null;
     subjects: Subject[];
@@ -89,6 +92,8 @@ export default function TeacherQuizzes({
     const [selectedQuizzes, setSelectedQuizzes] = useState<number[]>([]);
     const monitorTarget = monitoring?.quiz_id ?? null;
     const [unlockTarget, setUnlockTarget] = useState<Attempt | null>(null);
+    const [bulkUnlockOpen, setBulkUnlockOpen] = useState(false);
+    const [monitorLoading, setMonitorLoading] = useState(false);
     const [reason, setReason] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
@@ -109,6 +114,33 @@ export default function TeacherQuizzes({
                 onSuccess: () => setSelectedQuizzes([]),
             },
         );
+    const navigateMonitor = (params: Record<string, string | number>) => {
+        if (processing || monitorLoading) {
+            return;
+        }
+
+        router.get(
+            index.url(),
+            {
+                search: filters.search,
+                subject_id: filters.subject_id ?? '',
+                availability: filters.availability,
+                page: quizzes.current_page,
+                per_page: quizzes.per_page,
+                monitor_quiz_id: monitoring?.quiz_id ?? '',
+                monitor_search: monitoring?.monitor_search ?? '',
+                monitor_per_page: monitoring?.attempts.per_page ?? 10,
+                ...params,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onStart: () => setMonitorLoading(true),
+                onFinish: () => setMonitorLoading(false),
+            },
+        );
+    };
     const resetFilters = () => {
         setSearch('');
         setFilterSubject('');
@@ -342,11 +374,11 @@ export default function TeacherQuizzes({
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onSelect={() => {
-                                        navigate({
-                                            search,
-                                            page: quizzes.current_page,
-                                            per_page: quizzes.per_page,
+                                        navigateMonitor({
                                             monitor_quiz_id: quiz.id,
+                                            monitor_search: '',
+                                            monitor_page: 1,
+                                            monitor_per_page: 10,
                                         });
                                     }}
                                 >
@@ -382,11 +414,11 @@ export default function TeacherQuizzes({
                 <Dialog
                     open={monitorTarget !== null}
                     onOpenChange={(visible) => {
-                        if (!visible) {
-                            navigate({
-                                search,
-                                page: quizzes.current_page,
-                                per_page: quizzes.per_page,
+                        if (!visible && !processing && !monitorLoading) {
+                            navigateMonitor({
+                                monitor_quiz_id: '',
+                                monitor_search: '',
+                                monitor_page: 1,
                             });
                         }
                     }}
@@ -400,17 +432,97 @@ export default function TeacherQuizzes({
                                 Selesai.
                             </DialogDescription>
                         </DialogHeader>
+                        <form
+                            key={`${monitorTarget}-${monitoring?.monitor_search ?? ''}`}
+                            className="flex flex-wrap items-end gap-3"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                const query = new FormData(
+                                    event.currentTarget,
+                                ).get('monitor_search');
+                                navigateMonitor({
+                                    monitor_search: String(query ?? '').trim(),
+                                    monitor_page: 1,
+                                });
+                            }}
+                        >
+                            <div className="grid min-w-0 basis-full gap-2 sm:flex-[1_1_16rem]">
+                                <Label htmlFor="quiz-monitor-search">
+                                    Cari nama siswa
+                                </Label>
+                                <div className="relative">
+                                    <Search
+                                        aria-hidden="true"
+                                        className="absolute top-2.5 left-2.5 size-4 text-muted-foreground"
+                                    />
+                                    <Input
+                                        id="quiz-monitor-search"
+                                        name="monitor_search"
+                                        className="pl-8"
+                                        maxLength={100}
+                                        defaultValue={
+                                            monitoring?.monitor_search ?? ''
+                                        }
+                                        disabled={processing || monitorLoading}
+                                    />
+                                </div>
+                            </div>
+                            <Button
+                                type="submit"
+                                disabled={processing || monitorLoading}
+                            >
+                                Cari
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={processing || monitorLoading}
+                                onClick={(event) => {
+                                    event.currentTarget.form?.reset();
+                                    navigateMonitor({
+                                        monitor_search: '',
+                                        monitor_page: 1,
+                                    });
+                                }}
+                            >
+                                Reset
+                            </Button>
+                            <Button
+                                type="button"
+                                disabled={
+                                    processing ||
+                                    monitorLoading ||
+                                    !monitoring?.locked_count
+                                }
+                                onClick={() => setBulkUnlockOpen(true)}
+                            >
+                                Buka Semua
+                            </Button>
+                        </form>
+                        <p
+                            className="text-sm text-muted-foreground"
+                            role="status"
+                        >
+                            {monitorLoading
+                                ? 'Memuat siswa...'
+                                : `${monitoring?.locked_count ?? 0} siswa terkunci di Ulangan ini. Buka Semua mencakup semua halaman, tanpa mengikuti pencarian.`}
+                        </p>
                         <DataTableShell
                             data={monitoring?.attempts.data ?? []}
                             columns={monitorColumns}
                             getRowKey={(attempt) => attempt.id}
-                            emptyState="Tidak ada attempt terkunci."
+                            emptyState={
+                                monitoring?.monitor_search
+                                    ? 'Tidak ada siswa terkunci yang sesuai pencarian.'
+                                    : 'Tidak ada attempt terkunci.'
+                            }
                             rowActions={{
                                 variant: 'custom',
                                 render: (attempt) => (
                                     <Button
                                         size="sm"
                                         variant="outline"
+                                        disabled={processing || monitorLoading}
                                         onClick={() => {
                                             setUnlockTarget(attempt);
                                             setReason('');
@@ -427,21 +539,11 @@ export default function TeacherQuizzes({
                                           resource: monitoring.attempts,
                                           noun: 'siswa',
                                           onPageChange: (page) =>
-                                              navigate({
-                                                  search,
-                                                  page: quizzes.current_page,
-                                                  per_page: quizzes.per_page,
-                                                  monitor_quiz_id:
-                                                      monitoring.quiz_id,
+                                              navigateMonitor({
                                                   monitor_page: page,
                                               }),
                                           onPerPageChange: (per_page) =>
-                                              navigate({
-                                                  search,
-                                                  page: quizzes.current_page,
-                                                  per_page: quizzes.per_page,
-                                                  monitor_quiz_id:
-                                                      monitoring.quiz_id,
+                                              navigateMonitor({
                                                   monitor_page: 1,
                                                   monitor_per_page: per_page,
                                               }),
@@ -449,6 +551,76 @@ export default function TeacherQuizzes({
                                     : undefined
                             }
                         />
+                    </ModalShell>
+                </Dialog>
+                <Dialog
+                    open={bulkUnlockOpen}
+                    onOpenChange={(visible) => {
+                        if (!processing) {
+                            setBulkUnlockOpen(visible);
+                        }
+                    }}
+                >
+                    <ModalShell>
+                        <DialogHeader>
+                            <DialogTitle>
+                                Buka Semua siswa terkunci?
+                            </DialogTitle>
+                            <DialogDescription>
+                                Semua siswa terkunci di Ulangan{' '}
+                                {monitoring?.subject} akan dibuka, di semua
+                                halaman termasuk yang tidak sesuai pencarian.
+                                Status Ulangan Buka/Kunci tidak berubah. Tidak
+                                perlu mengisi alasan.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                disabled={processing}
+                                onClick={() => setBulkUnlockOpen(false)}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                disabled={
+                                    processing ||
+                                    monitorLoading ||
+                                    !monitoring?.locked_count
+                                }
+                                onClick={() => {
+                                    if (!monitoring) {
+                                        return;
+                                    }
+
+                                    setProcessing(true);
+                                    router.post(
+                                        unlockAll.url(monitoring.quiz_id),
+                                        {
+                                            search: filters.search,
+                                            subject_id:
+                                                filters.subject_id ?? '',
+                                            availability: filters.availability,
+                                            page: quizzes.current_page,
+                                            per_page: quizzes.per_page,
+                                            monitor_search:
+                                                monitoring.monitor_search,
+                                            monitor_per_page:
+                                                monitoring.attempts.per_page,
+                                        },
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () =>
+                                                setBulkUnlockOpen(false),
+                                            onFinish: () =>
+                                                setProcessing(false),
+                                        },
+                                    );
+                                }}
+                            >
+                                {processing ? 'Membuka...' : 'Buka Semua'}
+                            </Button>
+                        </DialogFooter>
                     </ModalShell>
                 </Dialog>
                 <Dialog open={open} onOpenChange={setOpen}>

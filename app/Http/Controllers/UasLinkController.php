@@ -7,6 +7,7 @@ use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
 use App\Models\Subject;
 use App\Models\UasLink;
+use App\Services\StudentExamAttemptService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class UasLinkController extends Controller
 {
     public function index(Request $request): Response
     {
+        $request->validate(['monitor_search' => ['nullable', 'string', 'max:100']]);
         $activeYear = $this->activeYear();
         $years = AcademicYear::query()->orderByDesc('id')->get(['id', 'year']);
         $hasYearFilter = $request->query->has('academic_year_id');
@@ -63,6 +65,7 @@ class UasLinkController extends Controller
             ]);
         $monitoringLinkId = $request->integer('monitor_uas_link_id') ?: null;
         $monitoring = null;
+        $monitorSearch = $request->string('monitor_search')->trim()->toString();
 
         if ($monitoringLinkId !== null && $activeYear !== null && $activePeriod !== null) {
             $monitoringLink = UasLink::query()
@@ -78,13 +81,17 @@ class UasLinkController extends Controller
                 ->first();
 
             if ($monitoringLink !== null) {
+                $eligibleAttempts = $monitoringLink->examAttempts()
+                    ->where('status', 'locked')
+                    ->whereIn('interruption_count', [3, 4]);
                 $monitoring = [
                     'uas_link_id' => $monitoringLink->id,
+                    'monitor_search' => $monitorSearch,
+                    'locked_count' => (clone $eligibleAttempts)->count(),
                     'subject' => $monitoringLink->subject?->only(['id', 'code', 'name']),
-                    'attempts' => $monitoringLink->examAttempts()
+                    'attempts' => $eligibleAttempts
+                        ->whereHas('student', fn ($query) => $query->whereLike('full_name', '%'.$monitorSearch.'%'))
                         ->with('student:id,user_id,full_name')
-                        ->where('status', 'locked')
-                        ->whereIn('interruption_count', [3, 4])
                         ->latest('id')
                         ->paginate(min(max($request->integer('monitor_per_page', 10), 1), 50), ['*'], 'monitor_page')
                         ->withQueryString()
@@ -111,10 +118,56 @@ class UasLinkController extends Controller
             'subjects' => Subject::query()->where('status', 'active')->orderBy('name')->get(['id', 'code', 'name']),
             'filters' => [
                 'academic_year_id' => $selectedYearId,
+                'has_year_filter' => $hasYearFilter,
                 'category' => $category,
                 ...$request->only(['search', 'per_page']),
             ],
         ]);
+    }
+
+    public function unlockAll(Request $request, UasLink $uasLink, StudentExamAttemptService $service): RedirectResponse
+    {
+        $data = $request->validate([
+            'category' => ['required', 'in:UTS,UAS'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'academic_year_id' => ['sometimes', 'nullable', 'integer'],
+            'search' => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'monitor_search' => ['nullable', 'string', 'max:100'],
+            'monitor_per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+        [$year, $period] = $this->activeContext();
+
+        abort_unless(
+            $uasLink->academic_year_id === $year->id
+                && $uasLink->academic_period_id === $period->id
+                && $uasLink->category === $data['category'],
+            404,
+        );
+
+        $search = trim($data['search'] ?? '');
+        abort_if($search !== '' && ! $uasLink->subject()->where(function ($query) use ($search): void {
+            $query->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%");
+        })->exists(), 404);
+
+        $service->unlockAll($uasLink, $request->user()->id);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Semua percobaan siswa terkunci berhasil dibuka kembali.']);
+        $query = [
+            'category' => $data['category'],
+            'page' => $data['page'] ?? 1,
+            'per_page' => $data['per_page'] ?? 10,
+            'monitor_uas_link_id' => $uasLink->id,
+            'monitor_page' => 1,
+            'monitor_per_page' => $data['monitor_per_page'] ?? 10,
+        ];
+
+        foreach (['academic_year_id', 'search', 'monitor_search'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $query[$key] = $data[$key] ?? '';
+            }
+        }
+
+        return redirect()->route('uas.index', $query);
     }
 
     public function store(UasLinkRequest $request): RedirectResponse
