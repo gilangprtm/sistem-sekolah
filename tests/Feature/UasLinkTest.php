@@ -142,19 +142,19 @@ class UasLinkTest extends TestCase
         $operator->givePermissionTo(['curriculum.uas.view', 'curriculum.uas.update']);
         $this->actingAs($operator)->post(route('uas.attempt.unlock-all', $link))->assertRedirect();
         foreach ($attempts as $attempt) {
-            $this->assertDatabaseHas('tr_student_exam_attempts', [
+            $this->assertDatabaseHas('tr_curriculum_exam_attempts', [
                 'id' => $attempt->id,
                 'status' => 'active',
                 'interruption_count' => 0,
                 'unlock_reason' => 'Buka Semua oleh pengawas',
             ]);
-            $this->assertDatabaseHas('tr_student_exam_attempt_events', [
-                'student_exam_attempt_id' => $attempt->id,
+            $this->assertDatabaseHas('tr_curriculum_exam_attempt_events', [
+                'exam_attempt_id' => $attempt->id,
                 'event_type' => 'admin_unlock',
                 'actor_user_id' => $operator->id,
             ]);
         }
-        $this->assertDatabaseHas('tr_student_exam_attempts', [
+        $this->assertDatabaseHas('tr_curriculum_exam_attempts', [
             'id' => $foreign->id,
             'status' => 'locked',
         ]);
