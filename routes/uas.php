@@ -12,7 +12,6 @@ Route::middleware(['auth', 'verified', 'can:curriculum.uas.view'])
         Route::post('/ujian', [UasLinkController::class, 'store'])->middleware('can:curriculum.uas.create')->name('uas.store');
         Route::patch('/ujian/{uasLink}', [UasLinkController::class, 'update'])->middleware('can:curriculum.uas.update')->name('uas.update');
         Route::delete('/ujian/{uasLink}', [UasLinkController::class, 'destroy'])->middleware('can:curriculum.uas.delete')->name('uas.destroy');
-        Route::post('/ujian/{uasLink}/unlock-all', [ExamAttemptController::class, 'unlockAll'])->middleware('can:curriculum.uas.update')->name('uas.attempt.unlock-all');
         Route::post('/ujian/attempts/{attempt}/unlock', [ExamAttemptController::class, 'unlock'])->middleware('can:curriculum.uas.update')->name('uas.attempt.unlock');
 
         Route::get('/uas', fn (Request $request) => redirect()->route('uas.index', $request->query()))->name('uas.legacy.index');
