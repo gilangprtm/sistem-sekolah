@@ -113,7 +113,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(5)->by('credentials:'.$throttleKey),
-                Limit::perMinute(20)->by('ip:'.$request->ip()),
+                Limit::perMinute(300)->by('ip:'.$request->ip()),
             ];
         });
     }
