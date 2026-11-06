@@ -118,6 +118,23 @@ class ExamAttemptController extends Controller
         return back();
     }
 
+    public function unlockAll(Request $request, UasLink $uasLink, StudentExamAttemptService $service): RedirectResponse
+    {
+        $year = AcademicYear::query()->where('status', 'active')->latest('id')->first();
+        $period = $year?->periods()->where('status', 'active')->latest('id')->first();
+        abort_unless($period !== null
+            && $uasLink->academic_year_id === $year->id
+            && $uasLink->academic_period_id === $period->id, 404);
+
+        $count = $service->unlockAll($uasLink, $request->user()->id);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $count.' blokir siswa berhasil dibuka.',
+        ]);
+
+        return back();
+    }
+
     private function ensureAvailableToStudent(?Student $student, UasLink $uasLink): void
     {
         abort_if($student === null || ! $this->examAccess->canAccess($student, $uasLink), 404);
