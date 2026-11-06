@@ -187,14 +187,14 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
             >
                 {!ready && (
                     <div
-                        className="absolute inset-0 animate-pulse rounded-[2.5%] bg-slate-200/20"
+                        className="absolute inset-0 animate-pulse bg-slate-200/20"
                         role="status"
                         aria-label="Memuat kartu pelajar"
                     />
                 )}
                 <article
                     ref={ref}
-                    className="absolute top-0 left-0 overflow-hidden rounded-[25px] border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat text-left shadow-sm"
+                    className="absolute top-0 left-0 overflow-hidden border border-slate-300 bg-[#024059] bg-cover bg-center bg-no-repeat text-left shadow-sm"
                     style={{
                         backgroundImage: `url(${CARD_BACKGROUND})`,
                         width: 1011,
