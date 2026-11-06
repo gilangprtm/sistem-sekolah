@@ -53,10 +53,6 @@ function formatBirthDate(value: string | null): string | null {
     return monthName ? `${day} ${monthName} ${year}` : value;
 }
 
-function formatStudentNumbers(nis: string | null, nisn: string | null): string {
-    return `${nis?.trim() || '-'} / ${nisn?.trim() || '-'}`;
-}
-
 function initialsForStudent(name: string): string {
     return name
         .split(/\s+/)
@@ -246,14 +242,11 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                         </div>
                         <div className="flex items-center text-left">
                             <span className="w-[21.5%] shrink-0 whitespace-nowrap">
-                                NIS/NISN
+                                NISN
                             </span>
                             <span className="w-[1.9%] shrink-0">:</span>
                             <span className="min-w-0 truncate">
-                                {formatStudentNumbers(
-                                    student.nis,
-                                    student.nisn,
-                                )}
+                                {student.nisn?.trim() || '-'}
                             </span>
                         </div>
                         <div className="flex items-center text-left">
