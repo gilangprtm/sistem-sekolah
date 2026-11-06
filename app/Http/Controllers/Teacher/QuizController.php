@@ -29,6 +29,7 @@ class QuizController extends Controller
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
             'monitor_quiz_id' => ['nullable', 'integer', 'min:1'],
+            'monitor_search' => ['nullable', 'string', 'max:100'],
             'monitor_page' => ['sometimes', 'integer', 'min:1'],
             'monitor_per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
@@ -51,13 +52,16 @@ class QuizController extends Controller
                 'is_open' => $quiz->is_open,
             ]);
         $monitoring = null;
+        $monitorSearch = $request->string('monitor_search')->trim()->toString();
         if ($request->filled('monitor_quiz_id')) {
             $quiz = TeacherQuiz::query()->where('created_by', $request->user()->id)
                 ->findOrFail($request->integer('monitor_quiz_id'));
             $monitoring = [
                 'quiz_id' => $quiz->id,
                 'subject' => $quiz->subject?->name,
+                'search' => $monitorSearch,
                 'attempts' => $quiz->attempts()->with('student:id,full_name')->where('status', 'locked')
+                    ->when($monitorSearch !== '', fn ($query) => $query->whereHas('student', fn ($query) => $query->whereLike('full_name', '%'.$monitorSearch.'%')))
                     ->latest('id')->paginate($request->integer('monitor_per_page', 10), ['*'], 'monitor_page')->withQueryString()
                     ->through(fn (StudentQuizAttempt $attempt): array => [
                         'id' => $attempt->id,
@@ -135,6 +139,14 @@ class QuizController extends Controller
         $service->unlock($attempt, $request->user()->id, $data['reason']);
 
         return $this->saved('Blokir siswa dibuka. Status Buka/Kunci Ulangan tidak berubah.');
+    }
+
+    public function unlockAll(Request $request, TeacherQuiz $quiz, TeacherQuizPolicy $policy, StudentQuizAttemptService $service): RedirectResponse
+    {
+        abort_unless($policy->manage($request->user(), $quiz), 404);
+        $count = $service->unlockAll($quiz, $request->user()->id);
+
+        return $this->saved($count.' blokir siswa berhasil dibuka. Status Buka/Kunci Ulangan tidak berubah.');
     }
 
     private function saved(string $message): RedirectResponse
