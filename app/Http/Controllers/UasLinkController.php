@@ -61,8 +61,6 @@ class UasLinkController extends Controller
                     ? null
                     : CarbonImmutable::parse((string) $link->opens_at)->setTimezone('Asia/Makassar')->format('Y-m-d H:i'),
             ]);
-        $request->validate(['monitor_search' => ['nullable', 'string', 'max:100']]);
-        $monitorSearch = $request->string('monitor_search')->trim()->toString();
         $monitoringLinkId = $request->integer('monitor_uas_link_id') ?: null;
         $monitoring = null;
 
@@ -82,13 +80,11 @@ class UasLinkController extends Controller
             if ($monitoringLink !== null) {
                 $monitoring = [
                     'uas_link_id' => $monitoringLink->id,
-                    'search' => $monitorSearch,
                     'subject' => $monitoringLink->subject?->only(['id', 'code', 'name']),
                     'attempts' => $monitoringLink->examAttempts()
                         ->with('student:id,user_id,full_name')
                         ->where('status', 'locked')
                         ->whereIn('interruption_count', [3, 4])
-                        ->when($monitorSearch !== '', fn ($query) => $query->whereHas('student', fn ($studentQuery) => $studentQuery->whereLike('full_name', '%'.$monitorSearch.'%')))
                         ->latest('id')
                         ->paginate(min(max($request->integer('monitor_per_page', 10), 1), 50), ['*'], 'monitor_page')
                         ->withQueryString()
