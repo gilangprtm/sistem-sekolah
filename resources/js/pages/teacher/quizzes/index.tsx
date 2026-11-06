@@ -51,7 +51,6 @@ type Props = {
     monitoring: {
         quiz_id: number;
         subject: string | null;
-        search: string;
         attempts: Paginated<Attempt>;
     } | null;
     subjects: Subject[];
@@ -90,8 +89,6 @@ export default function TeacherQuizzes({
     const [selectedQuizzes, setSelectedQuizzes] = useState<number[]>([]);
     const monitorTarget = monitoring?.quiz_id ?? null;
     const [unlockTarget, setUnlockTarget] = useState<Attempt | null>(null);
-    const [monitorSearch, setMonitorSearch] = useState(monitoring?.search ?? '');
-    const [unlockAllConfirm, setUnlockAllConfirm] = useState(false);
     const [reason, setReason] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
@@ -403,50 +400,6 @@ export default function TeacherQuizzes({
                                 Selesai.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="flex flex-wrap items-end gap-2">
-                            <form
-                                className="flex min-w-[240px] flex-1 gap-2"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    navigate({
-                                        monitor_quiz_id: monitoring!.quiz_id,
-                                        monitor_search: monitorSearch.trim(),
-                                        monitor_page: 1,
-                                        monitor_per_page: monitoring!.attempts.per_page,
-                                    });
-                                }}
-                            >
-                                <div className="relative flex-1">
-                                    <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-                                    <Input
-                                        aria-label="Cari nama siswa terkunci"
-                                        placeholder="Cari nama siswa..."
-                                        value={monitorSearch}
-                                        maxLength={100}
-                                        onChange={(event) => setMonitorSearch(event.target.value)}
-                                        className="pl-9"
-                                    />
-                                </div>
-                                <Button type="submit" variant="outline">Cari</Button>
-                                {monitoring?.search && (
-                                    <Button type="button" variant="ghost" onClick={() => {
-                                        setMonitorSearch('');
-                                        navigate({
-                                            monitor_quiz_id: monitoring.quiz_id,
-                                            monitor_search: '',
-                                            monitor_page: 1,
-                                            monitor_per_page: monitoring.attempts.per_page,
-                                        });
-                                    }}>Reset</Button>
-                                )}
-                            </form>
-                            <Button
-                                disabled={!monitoring || monitoring.attempts.total === 0 || processing}
-                                onClick={() => setUnlockAllConfirm(true)}
-                            >
-                                Buka Semua
-                            </Button>
-                        </div>
                         <DataTableShell
                             data={monitoring?.attempts.data ?? []}
                             columns={monitorColumns}
@@ -496,30 +449,6 @@ export default function TeacherQuizzes({
                                     : undefined
                             }
                         />
-                    </ModalShell>
-                </Dialog>
-                <Dialog open={unlockAllConfirm} onOpenChange={(visible) => {
-                    if (!processing) setUnlockAllConfirm(visible);
-                }}>
-                    <ModalShell>
-                        <DialogHeader>
-                            <DialogTitle>Buka semua blokir siswa?</DialogTitle>
-                            <DialogDescription>
-                                Semua siswa terkunci pada ulangan ini akan dibuka, termasuk yang tidak tampil akibat pencarian atau pagination. Tidak diperlukan alasan. Status Buka/Kunci Ulangan tetap sama.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                            <Button variant="outline" disabled={processing} onClick={() => setUnlockAllConfirm(false)}>Batal</Button>
-                            <Button disabled={processing || !monitoring} onClick={() => {
-                                if (!monitoring) return;
-                                setProcessing(true);
-                                router.post(`/guru/ulangan/${monitoring.quiz_id}/unlock-all`, {}, {
-                                    preserveScroll: true,
-                                    onSuccess: () => setUnlockAllConfirm(false),
-                                    onFinish: () => setProcessing(false),
-                                });
-                            }}>{processing ? 'Memproses...' : 'Buka Semua'}</Button>
-                        </DialogFooter>
                     </ModalShell>
                 </Dialog>
                 <Dialog open={open} onOpenChange={setOpen}>
