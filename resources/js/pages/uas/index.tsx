@@ -39,6 +39,7 @@ type MonitoringAttempt = {
 };
 type Monitoring = {
     uas_link_id: number;
+    search: string;
     subject: Subject;
     attempts: {
         data: MonitoringAttempt[];
@@ -107,6 +108,8 @@ export default function UasIndex({
     const [unlockTarget, setUnlockTarget] = useState<MonitoringAttempt | null>(
         null,
     );
+    const [monitorSearch, setMonitorSearch] = useState(monitoring?.search ?? '');
+    const [unlockAllConfirm, setUnlockAllConfirm] = useState(false);
     const [unlockReason, setUnlockReason] = useState('');
     const [unlockError, setUnlockError] = useState('');
     const [unlockProcessing, setUnlockProcessing] = useState(false);
@@ -458,6 +461,49 @@ export default function UasIndex({
                                 .
                             </DialogDescription>
                         </DialogHeader>
+                        <div className="flex flex-wrap items-end gap-2">
+                            <form className="flex min-w-[240px] flex-1 gap-2" onSubmit={(event) => {
+                                event.preventDefault();
+                                if (!monitoring) return;
+                                navigate({
+                                    ...filterParams(),
+                                    page: links.current_page,
+                                    per_page: links.per_page,
+                                    monitor_uas_link_id: monitoring.uas_link_id,
+                                    monitor_search: monitorSearch.trim(),
+                                    monitor_page: 1,
+                                    monitor_per_page: monitoring.attempts.per_page,
+                                });
+                            }}>
+                                <div className="relative flex-1">
+                                    <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+                                    <Input
+                                        aria-label="Cari nama siswa terkunci"
+                                        placeholder="Cari nama siswa..."
+                                        value={monitorSearch}
+                                        maxLength={100}
+                                        onChange={(event) => setMonitorSearch(event.target.value)}
+                                        className="pl-9"
+                                    />
+                                </div>
+                                <Button type="submit" variant="outline">Cari</Button>
+                                {monitoring?.search && <Button type="button" variant="ghost" onClick={() => {
+                                    setMonitorSearch('');
+                                    navigate({
+                                        ...filterParams(),
+                                        page: links.current_page,
+                                        per_page: links.per_page,
+                                        monitor_uas_link_id: monitoring.uas_link_id,
+                                        monitor_search: '',
+                                        monitor_page: 1,
+                                        monitor_per_page: monitoring.attempts.per_page,
+                                    });
+                                }}>Reset</Button>}
+                            </form>
+                            <Button disabled={!monitoring || monitoring.attempts.total === 0 || unlockProcessing} onClick={() => setUnlockAllConfirm(true)}>
+                                Buka Semua
+                            </Button>
+                        </div>
                         <DataTableShell
                             data={monitoring?.attempts.data ?? []}
                             columns={monitoringColumns}
@@ -511,6 +557,30 @@ export default function UasIndex({
                                     : undefined
                             }
                         />
+                    </ModalShell>
+                </Dialog>
+                <Dialog open={unlockAllConfirm} onOpenChange={(visible) => {
+                    if (!unlockProcessing) setUnlockAllConfirm(visible);
+                }}>
+                    <ModalShell>
+                        <DialogHeader>
+                            <DialogTitle>Buka semua blokir siswa?</DialogTitle>
+                            <DialogDescription>
+                                Seluruh siswa terkunci pada ujian ini akan dibuka, termasuk yang tidak terlihat akibat pencarian atau pagination. Tidak perlu mengisi alasan.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button variant="outline" disabled={unlockProcessing} onClick={() => setUnlockAllConfirm(false)}>Batal</Button>
+                            <Button disabled={unlockProcessing || !monitoring} onClick={() => {
+                                if (!monitoring) return;
+                                setUnlockProcessing(true);
+                                router.post(`/kurikulum/ujian/${monitoring.uas_link_id}/unlock-all`, {}, {
+                                    preserveScroll: true,
+                                    onSuccess: () => setUnlockAllConfirm(false),
+                                    onFinish: () => setUnlockProcessing(false),
+                                });
+                            }}>{unlockProcessing ? 'Memproses...' : 'Buka Semua'}</Button>
+                        </DialogFooter>
                     </ModalShell>
                 </Dialog>
                 <Dialog
