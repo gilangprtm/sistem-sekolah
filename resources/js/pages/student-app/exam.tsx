@@ -10,6 +10,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import ModalShell from '@/components/ui/modal-shell';
+const SHOW_GOOGLE_FORM_COMPLETION_BUTTON = false;
 const FIRST_INTERRUPTION_WARNING =
     'Kamu telah keluar aplikasi, kamu tidak akan bisa mengikuti ujian jika tetap keluar dari aplikasi';
 const SECOND_INTERRUPTION_WARNING =
@@ -463,14 +464,18 @@ export default function StudentExam({
                                 referrerPolicy="no-referrer"
                                 allow="fullscreen"
                             />
-                            <div className="absolute right-2 bottom-2">
-                                <Button
-                                    type="button"
-                                    onClick={() => setIsCompletionOpen(true)}
-                                >
-                                    Selesai
-                                </Button>
-                            </div>
+                            {SHOW_GOOGLE_FORM_COMPLETION_BUTTON && (
+                                <div className="absolute right-2 bottom-2">
+                                    <Button
+                                        type="button"
+                                        onClick={() =>
+                                            setIsCompletionOpen(true)
+                                        }
+                                    >
+                                        Selesai
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <section
