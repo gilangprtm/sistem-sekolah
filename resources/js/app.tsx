@@ -29,6 +29,7 @@ createInertiaApp({
             case name === 'teacher/documents/agenda-report':
             case name.startsWith('errors/'):
             case name === 'welcome' || name.startsWith('kantin/pos/'):
+            case name === 'attendance-kiosk/index':
                 return null;
             case name.startsWith('auth/v1/') || name.startsWith('auth/v2/'):
                 return null;

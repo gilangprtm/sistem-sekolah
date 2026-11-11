@@ -8,8 +8,7 @@ import {
     ShoppingBasket,
     Trash2,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useConfirmation } from '@/components/ui/confirmation-provider';
 import { formatRupiah } from '@/lib/utils';
 
@@ -38,154 +37,163 @@ export default function KantinPos({ categories, products }: Props) {
     const [pinChallenge, setPinChallenge] = useState<PinChallenge | null>(null);
     const [pin, setPin] = useState('');
     const [verificationToken, setVerificationToken] = useState('');
-    const [nisn, setNisn] = useState('');
-    const [scanning, setScanning] = useState(false);
+    const [identifier, setIdentifier] = useState('');
     const [busy, setBusy] = useState(false);
     const [paying, setPaying] = useState(false);
     const [notice, setNotice] = useState('');
     const [error, setError] = useState('');
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
-
-    function stopCamera() {
-        streamRef.current?.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-        setScanning(false);
-    }
-
-    useEffect(
-        () => () => {
-            streamRef.current?.getTracks().forEach((track) => track.stop());
-        },
-        [],
-    );
-
-    async function identify(value: string, method: 'nisn' | 'qr') {
-        if (busy) {
-            return;
-        }
-
-        setBusy(true);
-        setError('');
-
-        try {
-            const csrf = document.querySelector<HTMLMetaElement>(
-                'meta[name="csrf-token"]',
-            )?.content;
-            const response = await fetch('/kantin/pos/identify', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie.match(
-                            /(?:^|; )XSRF-TOKEN=([^;]*)/,
-                        )?.[1] ?? '',
-                    ),
-                },
-                body: JSON.stringify({ [method]: value.trim() }),
-            });
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message ?? 'Kartu tidak dapat diverifikasi.',
-                );
-            }
-
-            stopCamera();
-
-            if (data.pin_required) {
-                setPinChallenge({ token: data.challenge_token as string });
-                setPin('');
-
-                return;
-            }
-
-            setStudent(data.student as IdentifiedStudent);
-            setVerificationToken(data.verification_token as string);
-            setCart({});
-            setNisn('');
-        } catch (cause) {
-            setError(
-                cause instanceof Error ? cause.message : 'Gagal membaca kartu.',
-            );
-        } finally {
-            setBusy(false);
-        }
-    }
-
-    async function startCamera() {
-        setError('');
-
-        if (!navigator.mediaDevices?.getUserMedia) {
-            setError(
-                'Kamera tidak tersedia. Gunakan HTTPS atau masukkan NISN.',
-            );
-
-            return;
-        }
-
-        type Detector = {
-            detect: (
-                source: HTMLVideoElement,
-            ) => Promise<Array<{ rawValue: string }>>;
-        };
-        type DetectorClass = new (options: { formats: string[] }) => Detector;
-        const DetectorAPI = (
-            window as Window & { BarcodeDetector?: DetectorClass }
-        ).BarcodeDetector;
-
-        if (!DetectorAPI) {
-            setError(
-                'Browser ini belum mendukung pemindaian QR lewat kamera. Silakan masuk menggunakan NISN.',
-            );
-
-            return;
-        }
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
-                audio: false,
-            });
-            streamRef.current = stream;
-            setScanning(true);
-            const video = videoRef.current;
-
-            if (!video) {
-                stopCamera();
-
-                return;
-            }
-
-            video.srcObject = stream;
-            await video.play();
-            const detector = new DetectorAPI({ formats: ['qr_code'] });
-
-            while (streamRef.current === stream && stream.active) {
-                const codes = await detector.detect(video);
-
-                if (codes[0]?.rawValue) {
-                    await identify(codes[0].rawValue, 'qr');
-                    break;
-                }
-
-                await new Promise((resolve) => setTimeout(resolve, 200));
-            }
-        } catch {
-            setError('Kamera gagal diakses. Pastikan izin kamera diberikan.');
-            stopCamera();
-        }
-    }
-
     const [category, setCategory] = useState<number | null>(null);
     const [search, setSearch] = useState('');
     const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
     const [cart, setCart] = useState<Record<number, number>>({});
     const [cartOpen, setCartOpen] = useState(false);
+
+    const identify = useCallback(
+        async (value: string, method: 'nisn' | 'qr') => {
+            if (busy) {
+                return;
+            }
+
+            setBusy(true);
+            setError('');
+
+            try {
+                const csrf = document.querySelector<HTMLMetaElement>(
+                    'meta[name="csrf-token"]',
+                )?.content;
+                const response = await fetch('/kantin/pos/identify', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                        'X-XSRF-TOKEN': decodeURIComponent(
+                            document.cookie.match(
+                                /(?:^|; )XSRF-TOKEN=([^;]*)/,
+                            )?.[1] ?? '',
+                        ),
+                    },
+                    body: JSON.stringify({ [method]: value.trim() }),
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ?? 'Kartu tidak dapat diverifikasi.',
+                    );
+                }
+
+                if (data.pin_required) {
+                    setPinChallenge({ token: data.challenge_token as string });
+                    setPin('');
+
+                    return;
+                }
+
+                setStudent(data.student as IdentifiedStudent);
+                setVerificationToken(data.verification_token as string);
+                setCart({});
+                setIdentifier('');
+            } catch (cause) {
+                setError(
+                    cause instanceof Error
+                        ? cause.message
+                        : 'Gagal membaca kartu.',
+                );
+            } finally {
+                setBusy(false);
+            }
+        },
+        [busy],
+    );
+
+    useEffect(() => {
+        if (student || pinChallenge || busy) {
+            return;
+        }
+
+        let buffer = '';
+        let lastKeyAt = 0;
+        const resetTimer = window.setInterval(() => {
+            if (Date.now() - lastKeyAt > 100) {
+                buffer = '';
+            }
+        }, 100);
+        const isInteractive = (target: EventTarget | null): boolean => {
+            if (!(target instanceof HTMLElement)) {
+                return false;
+            }
+
+            return (
+                target.closest(
+                    'button, a, select, summary, details, [role="button"]',
+                ) !== null
+            );
+        };
+        const isEditable = (target: EventTarget | null): boolean => {
+            if (!(target instanceof HTMLElement)) {
+                return false;
+            }
+
+            return (
+                target.isContentEditable ||
+                target.closest(
+                    'input, textarea, select, [contenteditable="true"]',
+                ) !== null
+            );
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (isEditable(event.target) || isInteractive(event.target)) {
+                buffer = '';
+                lastKeyAt = 0;
+
+                return;
+            }
+
+            if (
+                event.isComposing ||
+                event.ctrlKey ||
+                event.altKey ||
+                event.metaKey
+            ) {
+                return;
+            }
+
+            if (event.key === 'Enter') {
+                if (buffer) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const value = buffer;
+                    buffer = '';
+                    lastKeyAt = 0;
+
+                    void identify(value, value.includes('@') ? 'qr' : 'nisn');
+                }
+
+                return;
+            }
+
+            if (event.key.length === 1) {
+                if (Date.now() - lastKeyAt > 100) {
+                    buffer = '';
+                }
+
+                buffer += event.key;
+                lastKeyAt = Date.now();
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.clearInterval(resetTimer);
+            buffer = '';
+        };
+    }, [student, pinChallenge, busy, identify]);
 
     const visible = useMemo(
         () =>
@@ -299,7 +307,7 @@ export default function KantinPos({ categories, products }: Props) {
             setCart({});
             setStudent(null);
             setVerificationToken('');
-            setNisn('');
+            setIdentifier('');
             setSearch('');
             setCategory(null);
             setCartOpen(false);
@@ -342,14 +350,13 @@ export default function KantinPos({ categories, products }: Props) {
             /* The server session will expire independently. */
         }
 
-        stopCamera();
         setCart({});
         setCartOpen(false);
         setStudent(null);
         setVerificationToken('');
         setPinChallenge(null);
         setPin('');
-        setNisn('');
+        setIdentifier('');
         setSearch('');
         setCategory(null);
         setError('');
@@ -454,7 +461,7 @@ export default function KantinPos({ categories, products }: Props) {
                     backgroundImage: "url('/images/hero-background.png')",
                 }}
             >
-                <Head title="Scan Kartu Pelajar - Kantin" />
+                <Head title="Kantin Sekolah" />
                 <div
                     className="absolute inset-0 bg-gradient-to-br from-[#160F42]/95 via-[#160F42]/80 to-[#5D1B68]/70"
                     aria-hidden="true"
@@ -472,51 +479,39 @@ export default function KantinPos({ categories, products }: Props) {
                     </p>
                     <h1 className="mt-2 text-3xl font-bold">Kantin Sekolah</h1>
                     <p className="mt-3 text-slate-500">
-                        Scan kartu pelajar untuk mulai berbelanja, atau masuk
-                        menggunakan NISN.
+                        Pindai kartu pelajar atau masukkan NISN untuk mulai
+                        berbelanja.
                     </p>
-                    <video
-                        ref={videoRef}
-                        muted
-                        playsInline
-                        autoPlay
-                        className={`mt-6 aspect-video w-full rounded-2xl bg-black object-cover ${scanning ? '' : 'hidden'}`}
-                    />
-                    <button
-                        type="button"
-                        onClick={scanning ? stopCamera : startCamera}
-                        disabled={busy}
-                        className="mt-6 min-h-14 w-full rounded-2xl bg-[#160F42] font-semibold text-white disabled:opacity-50"
-                    >
-                        {scanning ? 'Batalkan Scan' : 'Scan Kartu Pelajar'}
-                    </button>
                     <form
                         onSubmit={(event) => {
                             event.preventDefault();
-                            void identify(nisn, 'nisn');
+                            const value = identifier.trim();
+                            void identify(
+                                value,
+                                value.includes('@') ? 'qr' : 'nisn',
+                            );
                         }}
                         className="mt-6 space-y-3 border-t border-slate-100 pt-5"
                     >
-                        <p className="pt-3 text-left text-sm text-slate-500">
-                            Atau masuk menggunakan NISN
-                        </p>
-                        <label htmlFor="nisn-input" className="sr-only">
-                            NISN siswa
+                        <label htmlFor="student-identifier" className="sr-only">
+                            Scan QR kartu atau masukkan NISN
                         </label>
                         <input
-                            id="nisn-input"
+                            id="student-identifier"
                             autoComplete="off"
-                            type="text"
-                            value={nisn}
-                            onChange={(event) => setNisn(event.target.value)}
-                            inputMode="numeric"
-                            maxLength={20}
-                            placeholder="Masukkan NISN"
+                            type="password"
+                            value={identifier}
+                            onChange={(event) =>
+                                setIdentifier(event.target.value)
+                            }
+                            maxLength={254}
+                            placeholder="Scan QR kartu atau masukkan NISN"
                             className="min-h-12 w-full rounded-xl border border-slate-200 px-4"
+                            disabled={busy}
                         />
                         <button
                             type="submit"
-                            disabled={!nisn.trim() || busy}
+                            disabled={!identifier.trim() || busy}
                             className="min-h-12 w-full rounded-xl border border-[#DCD6EE] font-semibold text-[#160F42] disabled:opacity-40"
                         >
                             {busy ? 'Memeriksa...' : 'Verifikasi NISN'}

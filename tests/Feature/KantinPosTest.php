@@ -24,8 +24,8 @@ class KantinPosTest extends TestCase
         $source = file_get_contents(resource_path('js/pages/kantin/pos/index.tsx'));
         $this->assertStringContainsString("backgroundImage: \"url('/images/hero-background.png')\"", $source);
         $this->assertStringContainsString('if (!student)', $source);
-        $this->assertStringContainsString('<Head title="Scan Kartu Pelajar - Kantin" />', $source);
-        $this->assertStringContainsString('Scan kartu pelajar untuk mulai berbelanja, atau masuk', $source);
+        $this->assertStringContainsString('<Head title="Kantin Sekolah" />', $source);
+        $this->assertStringContainsString('Pindai kartu pelajar atau masukkan NISN untuk mulai', $source);
     }
 
     public function test_identify_by_nisn_requires_pin_and_returns_student_after_pin_verification(): void
@@ -133,19 +133,44 @@ class KantinPosTest extends TestCase
         $this->assertStringContainsString("event.key === 'Escape' && cartOpen", $source);
     }
 
-    public function test_pos_offers_card_camera_scan_and_manual_nisn_without_external_scanner_mode(): void
+    public function test_pos_keeps_masked_manual_identifier_fallback_without_autofocus(): void
     {
         $source = file_get_contents(resource_path('js/pages/kantin/pos/index.tsx'));
 
         $this->assertIsString($source);
+        $this->assertMatchesRegularExpression('/<input\s+id="student-identifier"(?=[^>]*type="password")(?=[^>]*value=\{identifier\})[^>]*>/', $source);
+        $this->assertStringNotContainsString('showIdentifier', $source);
+        $this->assertStringNotContainsString('toggleIdentifier', $source);
+        $this->assertStringNotContainsString('autoFocus', $source);
+        $this->assertStringContainsString('value={identifier}', $source);
+        $this->assertStringContainsString('setIdentifier(event.target.value)', $source);
+        $this->assertStringContainsString('event.preventDefault();', $source);
+        $this->assertStringContainsString("value.includes('@') ? 'qr' : 'nisn'", $source);
+        $this->assertStringContainsString('Scan QR kartu atau masukkan NISN', $source);
         $this->assertStringContainsString('JSON.stringify({ [method]: value.trim() })', $source);
-        $this->assertStringContainsString("identify(nisn, 'nisn')", $source);
-        $this->assertStringContainsString("identify(codes[0].rawValue, 'qr')", $source);
-        $this->assertStringContainsString("'Scan Kartu Pelajar'", $source);
-        $this->assertStringContainsString('Atau masuk menggunakan NISN', $source);
+        $this->assertStringContainsString("window.addEventListener('keydown', handleKeyDown)", $source);
+        $this->assertStringContainsString("window.removeEventListener('keydown', handleKeyDown)", $source);
+        $this->assertStringContainsString('event.key.length === 1', $source);
+        $this->assertStringContainsString('void identify(value, value.includes', $source);
+        $this->assertStringNotContainsString('inputMode="numeric"', substr($source, strpos($source, 'id="student-identifier"'), 500));
+    }
+
+    public function test_pos_automatically_submits_hid_identifier_and_keeps_manual_nisn_action(): void
+    {
+        $source = file_get_contents(resource_path('js/pages/kantin/pos/index.tsx'));
+
+        $this->assertIsString($source);
+        $this->assertStringNotContainsString('startCamera', $source);
+        $this->assertStringNotContainsString('videoRef', $source);
+        $this->assertStringNotContainsString('getUserMedia', $source);
+        $this->assertStringNotContainsString('Scan Kartu Pelajar', $source);
+        $this->assertStringNotContainsString('Batalkan Scan', $source);
+        $this->assertStringNotContainsString('autoFocus', $source);
+        $this->assertStringContainsString('event.preventDefault();', $source);
+        $this->assertStringContainsString("value.includes('@') ? 'qr' : 'nisn'", $source);
         $this->assertStringContainsString('Verifikasi NISN', $source);
-        $this->assertStringNotContainsString('pemindai QR eksternal', $source);
-        $this->assertStringNotContainsString('identificationMethod', $source);
+        $this->assertStringContainsString('JSON.stringify({ [method]: value.trim() })', $source);
+        $this->assertStringContainsString('setPinChallenge({ token: data.challenge_token as string })', $source);
     }
 
     public function test_identify_requires_pin_when_student_has_no_pin(): void

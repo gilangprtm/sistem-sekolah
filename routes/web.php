@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AssistantController;
+use App\Http\Controllers\AttendanceKioskController;
 use App\Http\Controllers\CounselingNoteController;
 use App\Http\Controllers\HumasAspirationController;
 use App\Http\Controllers\StudentViolationController;
@@ -9,6 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
+
+Route::get('/absensi', [AttendanceKioskController::class, 'index'])->name('attendance-kiosk.index');
+Route::post('/absensi/check-in', [AttendanceKioskController::class, 'checkIn'])->middleware('throttle:120,1')->name('attendance-kiosk.check-in');
 
 Route::get('/', function (Request $request): Response|RedirectResponse {
     if ($request->user()?->hasRole('Siswa')) {
