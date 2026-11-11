@@ -234,6 +234,7 @@ export default function StudentProfile({ user, student, qrCode }: Props) {
                         <StudentCardVisual
                             student={student}
                             qrCode={qrCode}
+                            qrInteractive
                             barcodeValue={
                                 student.nis ||
                                 student.nisn ||

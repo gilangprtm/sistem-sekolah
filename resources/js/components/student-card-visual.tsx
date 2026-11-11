@@ -1,4 +1,12 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { wrapStudentCardAddress } from '@/lib/student-card-address';
 
 export type StudentCardStudent = {
@@ -18,6 +26,7 @@ type Props = {
     qrCode: string | null;
     barcodeValue?: string;
     className?: string;
+    qrInteractive?: boolean;
 };
 
 const CARD_BACKGROUND = '/images/base_kartupelajar.png';
@@ -81,14 +90,55 @@ function barcodePattern(value: string): boolean[] {
     return pattern;
 }
 
-function Barcode({ value, qrCode }: { value: string; qrCode: string | null }) {
+function Barcode({
+    value,
+    qrCode,
+    interactive = false,
+}: {
+    value: string;
+    qrCode: string | null;
+    interactive?: boolean;
+}) {
     if (qrCode !== null) {
-        return (
+        const image = (
             <img
                 src={qrCode}
                 alt="QR Code akun siswa"
                 className="size-full object-contain"
             />
+        );
+
+        if (!interactive) {
+            return image;
+        }
+
+        return (
+            <Dialog>
+                <DialogTrigger asChild>
+                    <button
+                        type="button"
+                        aria-label="Perbesar QR Code akun siswa untuk dipindai"
+                        className="size-full cursor-zoom-in rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    >
+                        {image}
+                    </button>
+                </DialogTrigger>
+                <DialogContent className="w-[calc(100%-2rem)] max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>QR Code akun siswa</DialogTitle>
+                        <DialogDescription>
+                            QR Code diperbesar agar mudah dipindai.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="mx-auto w-full max-w-72 bg-white p-4">
+                        <img
+                            src={qrCode}
+                            alt="QR Code akun siswa untuk dipindai"
+                            className="block aspect-square size-full object-contain"
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         );
     }
 
@@ -107,7 +157,13 @@ function Barcode({ value, qrCode }: { value: string; qrCode: string | null }) {
 
 export const StudentCardVisual = forwardRef<HTMLElement, Props>(
     function StudentCardVisual(
-        { student, qrCode, barcodeValue, className = '' },
+        {
+            student,
+            qrCode,
+            barcodeValue,
+            className = '',
+            qrInteractive = false,
+        },
         ref,
     ) {
         const wrapperRef = useRef<HTMLDivElement>(null);
@@ -282,7 +338,11 @@ export const StudentCardVisual = forwardRef<HTMLElement, Props>(
                         </div>
                     </div>
                     <div className="absolute right-[6%] bottom-[10%] aspect-square w-[13%]">
-                        <Barcode value={codeValue} qrCode={qrCode} />
+                        <Barcode
+                            value={codeValue}
+                            qrCode={qrCode}
+                            interactive={qrInteractive}
+                        />
                     </div>
                 </article>
             </div>
