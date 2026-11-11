@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Models\StudentQuizAttempt;
 use App\Models\TeacherQuiz;
+use App\Services\StudentQuizAccess;
 use App\Services\StudentQuizAttemptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,10 +16,10 @@ use Inertia\Response;
 
 class QuizController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, StudentQuizAccess $access): Response
     {
         $student = $this->student($request);
-        $quizzes = TeacherQuiz::query()->where('is_open', true)
+        $quizzes = $access->availableToStudent($student)
             ->with(['subject:id,code,name', 'creator:id,name', 'attempts' => fn ($query) => $query->where('student_id', $student->id)])
             ->latest('id')->paginate(20)->through(fn (TeacherQuiz $quiz): array => [
                 'id' => $quiz->id,
@@ -30,9 +31,10 @@ class QuizController extends Controller
         return Inertia::render('student-app/quizzes/index', ['quizzes' => $quizzes]);
     }
 
-    public function show(Request $request, TeacherQuiz $quiz, StudentQuizAttemptService $service): Response
+    public function show(Request $request, TeacherQuiz $quiz, StudentQuizAccess $access, StudentQuizAttemptService $service): Response
     {
         $student = $this->student($request);
+        abort_unless($access->allows($student, $quiz), $quiz->is_open ? 404 : 403);
         $service->ensureOpen($quiz);
         $attempt = $quiz->attempts()->where('student_id', $student->id)->first();
         $reopen = $request->boolean('reopen') && $attempt !== null && $attempt->interruption_count > 0;
@@ -53,13 +55,15 @@ class QuizController extends Controller
         ]);
     }
 
-    public function start(Request $request, TeacherQuiz $quiz, StudentQuizAttemptService $service): JsonResponse
+    public function start(Request $request, TeacherQuiz $quiz, StudentQuizAccess $access, StudentQuizAttemptService $service): JsonResponse
     {
         $request->validate([
             'reopen' => ['sometimes', 'boolean'],
             'expected_count' => ['required', 'integer', 'min:0', 'max:4'],
         ]);
-        $result = $service->start($this->student($request), $quiz, $request->boolean('reopen'), $request->integer('expected_count'));
+        $student = $this->student($request);
+        abort_unless($access->allows($student, $quiz), $quiz->is_open ? 404 : 403);
+        $result = $service->start($student, $quiz, $request->boolean('reopen'), $request->integer('expected_count'));
 
         return $this->result($result);
     }
@@ -80,9 +84,10 @@ class QuizController extends Controller
         return response()->json(['status' => $attempt->status, 'interruptionCount' => $attempt->interruption_count]);
     }
 
-    public function state(Request $request, TeacherQuiz $quiz): JsonResponse
+    public function state(Request $request, TeacherQuiz $quiz, StudentQuizAccess $access): JsonResponse
     {
         $student = $this->student($request);
+        abort_unless($access->allows($student, $quiz), $quiz->is_open ? 404 : 403);
         $attempt = $quiz->attempts()->where('student_id', $student->id)->first();
 
         return response()->json(['open' => $quiz->is_open, 'locked' => $attempt?->status === 'locked'])

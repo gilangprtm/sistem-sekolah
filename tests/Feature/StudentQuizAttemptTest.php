@@ -4,10 +4,17 @@ namespace Tests\Feature;
 
 use App\Models\AcademicPeriod;
 use App\Models\AcademicYear;
+use App\Models\Rombel;
+use App\Models\ScheduleEntry;
+use App\Models\SchedulePlan;
+use App\Models\ScheduleTeachingAssignment;
 use App\Models\Student;
+use App\Models\StudentPlacement;
 use App\Models\StudentQuizAttempt;
 use App\Models\Subject;
+use App\Models\Teacher;
 use App\Models\TeacherQuiz;
+use App\Models\TeacherSubject;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -255,6 +262,27 @@ class StudentQuizAttemptTest extends TestCase
         $subject ??= Subject::factory()->create();
         $year = AcademicYear::query()->firstOrCreate(['year' => '2026/2027'], ['status' => 'active']);
         $period = AcademicPeriod::query()->firstOrCreate(['academic_year_id' => $year->id, 'code' => 'S1'], ['name' => 'Semester 1', 'status' => 'active']);
+
+        $students = Student::query()->orderBy('id')->get();
+        if ($students->isNotEmpty()) {
+            $teacherProfile = Teacher::factory()->create(['user_id' => $teacher->id, 'staff_type' => 'guru', 'status' => 'active']);
+            $rombel = Rombel::factory()->create();
+            $plan = SchedulePlan::factory()->create(['academic_period_id' => $period->id, 'created_by' => $teacher->id, 'status' => 'published', 'published_at' => now()]);
+            $teacherSubject = TeacherSubject::factory()->create(['teacher_id' => $teacherProfile->id, 'subject_id' => $subject->id]);
+            $assignment = ScheduleTeachingAssignment::query()->create([
+                'schedule_plan_id' => $plan->id, 'academic_period_id' => $period->id, 'rombel_id' => $rombel->id,
+                'subject_id' => $subject->id, 'teacher_subject_id' => $teacherSubject->id, 'teacher_id' => $teacherProfile->id,
+                'weekly_jp' => 2, 'subject_code' => $subject->code, 'subject_name' => $subject->name,
+                'teacher_name' => $teacherProfile->full_name, 'rombel_code' => $rombel->code, 'status' => 'active',
+            ]);
+            ScheduleEntry::query()->create([
+                ...$assignment->only(['schedule_plan_id', 'academic_period_id', 'rombel_id', 'subject_id', 'teacher_id', 'subject_code', 'subject_name', 'teacher_name', 'rombel_code']),
+                'teaching_assignment_id' => $assignment->id, 'day' => 'monday', 'lesson_number' => 1, 'start_time' => '07:30', 'end_time' => '08:10',
+            ]);
+            foreach ($students as $student) {
+                StudentPlacement::query()->create(['student_id' => $student->id, 'academic_year_id' => $year->id, 'rombel_id' => $rombel->id, 'status' => 'active']);
+            }
+        }
 
         return TeacherQuiz::query()->create([
             'created_by' => $teacher->id,
