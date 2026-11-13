@@ -7,6 +7,7 @@ use App\Http\Controllers\Teacher\AttendanceReportController;
 use App\Http\Controllers\Teacher\DocumentController;
 use App\Http\Controllers\Teacher\HomeroomController;
 use App\Http\Controllers\Teacher\HomeroomSeatingController;
+use App\Http\Controllers\Teacher\HomeroomStudentContactController;
 use App\Http\Controllers\Teacher\QuizController;
 use App\Http\Controllers\Teacher\StudentAttendanceController;
 use App\Http\Controllers\Teacher\StudentNoteController;
@@ -65,6 +66,8 @@ Route::middleware(['auth', 'verified', 'can:teacher.homeroom.view'])
     ->prefix('guru')
     ->group(function (): void {
         Route::get('/wali-kelas', HomeroomController::class)->name('teacher.homeroom');
+        Route::patch('/wali-kelas/siswa/{student}/kontak', [HomeroomStudentContactController::class, 'update'])
+            ->name('teacher.homeroom.student-contact.update');
         Route::put('/wali-kelas/tempat-duduk', [HomeroomSeatingController::class, 'update'])
             ->middleware('can:teacher.homeroom.seating.manage')
             ->name('teacher.homeroom.seating.update');

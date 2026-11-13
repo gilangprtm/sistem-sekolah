@@ -6,10 +6,11 @@ import {
     useSensors,
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
 import SearchableCombobox from '@/components/searchable-combobox';
 import ClassroomSeating from '@/components/teachers/classroom-seating';
 import type { SeatingLayout } from '@/components/teachers/classroom-seating';
@@ -29,10 +30,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import ModalShell from '@/components/ui/modal-shell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { update as updateSeating } from '@/routes/teacher/homeroom/seating';
+import { update as updateStudentContact } from '@/routes/teacher/homeroom/student-contact';
 import type { BreadcrumbItem } from '@/types';
 import type { AttendanceRow } from '@/types/student-attendance';
 
@@ -85,6 +89,7 @@ type Props = {
     filters: { per_page?: number };
     hasTeacherProfile: boolean;
     canManageSeating: boolean;
+    canUpdateStudentContacts: boolean;
     seating: SeatingLayout | null;
 };
 
@@ -199,7 +204,24 @@ function displayDetailValue(value: string | number | null): string {
     return `${value}`;
 }
 
-function StudentDetail({ student }: { student: Student }) {
+function StudentDetail({
+    student,
+    canUpdateContacts,
+    onSaved,
+}: {
+    student: Student;
+    canUpdateContacts: boolean;
+    onSaved: () => void;
+}) {
+    const [editingContacts, setEditingContacts] = useState(false);
+    const form = useForm({
+        phone: student.phone ?? '',
+        parent_phone: student.parent_phone ?? '',
+    });
+    const contactFields: Record<string, 'phone' | 'parent_phone'> = {
+        'Nomor telepon siswa': 'phone',
+        'Nomor telepon orang tua': 'parent_phone',
+    };
     const sections = [
         {
             title: 'Data pribadi',
@@ -258,7 +280,22 @@ function StudentDetail({ student }: { student: Student }) {
     ];
 
     return (
-        <div className="space-y-6">
+        <form
+            className="space-y-6"
+            onSubmit={(event) => {
+                event.preventDefault();
+
+                if (!editingContacts || !canUpdateContacts || form.processing) {
+                    return;
+                }
+
+                form.patch(updateStudentContact.url(student.id), {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: onSaved,
+                });
+            }}
+        >
             {sections.map((section) => (
                 <section key={section.title} className="space-y-3">
                     <div className="space-y-1">
@@ -270,27 +307,113 @@ function StudentDetail({ student }: { student: Student }) {
                         </p>
                     </div>
                     <dl className="grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2">
-                        {section.fields.map((field) => (
-                            <div
-                                key={field.label}
-                                className={
-                                    field.fullWidth
-                                        ? 'min-w-0 bg-background p-4 sm:col-span-2'
-                                        : 'min-w-0 bg-background p-4'
-                                }
-                            >
-                                <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                    {field.label}
-                                </dt>
-                                <dd className="mt-1.5 font-medium break-words whitespace-pre-line">
-                                    {displayDetailValue(field.value)}
-                                </dd>
-                            </div>
-                        ))}
+                        {section.fields.map((field) => {
+                            const contactField = contactFields[field.label];
+
+                            return (
+                                <div
+                                    key={field.label}
+                                    className={
+                                        field.fullWidth
+                                            ? 'min-w-0 bg-background p-4 sm:col-span-2'
+                                            : 'min-w-0 bg-background p-4'
+                                    }
+                                >
+                                    <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                        {editingContacts && contactField ? (
+                                            <Label
+                                                htmlFor={`contact-${contactField}`}
+                                            >
+                                                {field.label}
+                                            </Label>
+                                        ) : (
+                                            field.label
+                                        )}
+                                    </dt>
+                                    <dd className="mt-1.5 font-medium break-words whitespace-pre-line">
+                                        {editingContacts && contactField ? (
+                                            <div className="space-y-2">
+                                                <Input
+                                                    id={`contact-${contactField}`}
+                                                    name={contactField}
+                                                    type="tel"
+                                                    inputMode="tel"
+                                                    maxLength={30}
+                                                    value={
+                                                        form.data[contactField]
+                                                    }
+                                                    disabled={form.processing}
+                                                    aria-invalid={
+                                                        !!form.errors[
+                                                            contactField
+                                                        ]
+                                                    }
+                                                    aria-describedby={
+                                                        form.errors[
+                                                            contactField
+                                                        ]
+                                                            ? `contact-${contactField}-error`
+                                                            : undefined
+                                                    }
+                                                    onChange={(event) =>
+                                                        form.setData(
+                                                            contactField,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                />
+                                                <InputError
+                                                    id={`contact-${contactField}-error`}
+                                                    message={
+                                                        form.errors[
+                                                            contactField
+                                                        ]
+                                                    }
+                                                />
+                                            </div>
+                                        ) : (
+                                            displayDetailValue(field.value)
+                                        )}
+                                    </dd>
+                                </div>
+                            );
+                        })}
                     </dl>
                 </section>
             ))}
-        </div>
+            {canUpdateContacts && (
+                <div className="flex flex-wrap justify-end gap-2">
+                    {editingContacts ? (
+                        <>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={form.processing}
+                                onClick={() => {
+                                    form.reset();
+                                    form.clearErrors();
+                                    setEditingContacts(false);
+                                }}
+                            >
+                                Batal
+                            </Button>
+                            <Button type="submit" disabled={form.processing}>
+                                {form.processing
+                                    ? 'Menyimpan…'
+                                    : 'Simpan Kontak'}
+                            </Button>
+                        </>
+                    ) : (
+                        <Button
+                            type="button"
+                            onClick={() => setEditingContacts(true)}
+                        >
+                            Ubah Data
+                        </Button>
+                    )}
+                </div>
+            )}
+        </form>
     );
 }
 
@@ -304,10 +427,15 @@ export default function HomeroomPage({
     filters,
     hasTeacherProfile,
     canManageSeating,
+    canUpdateStudentContacts,
     seating,
 }: Props) {
     const [selected, setSelected] = useState<number[]>([]);
-    const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+    const [viewingStudentId, setViewingStudentId] = useState<number | null>(
+        null,
+    );
+    const viewingStudent =
+        students?.data.find(({ id }) => id === viewingStudentId) ?? null;
     const [editingSeat, setEditingSeat] = useState<number | null>(null);
     const [seatError, setSeatError] = useState<string | null>(null);
     const [seatSaving, setSeatSaving] = useState(false);
@@ -524,7 +652,9 @@ export default function HomeroomPage({
                                             <StudentActionItems
                                                 student={student}
                                                 onView={() =>
-                                                    setViewingStudent(student)
+                                                    setViewingStudentId(
+                                                        student.id,
+                                                    )
                                                 }
                                             />
                                         ),
@@ -747,7 +877,7 @@ export default function HomeroomPage({
                     open={viewingStudent !== null}
                     onOpenChange={(open) => {
                         if (!open) {
-                            setViewingStudent(null);
+                            setViewingStudentId(null);
                         }
                     }}
                 >
@@ -771,7 +901,12 @@ export default function HomeroomPage({
                         </DialogHeader>
                         {viewingStudent && (
                             <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-                                <StudentDetail student={viewingStudent} />
+                                <StudentDetail
+                                    key={viewingStudent.id}
+                                    student={viewingStudent}
+                                    canUpdateContacts={canUpdateStudentContacts}
+                                    onSaved={() => setViewingStudentId(null)}
+                                />
                             </div>
                         )}
                     </ModalShell>

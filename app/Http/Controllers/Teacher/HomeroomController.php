@@ -93,6 +93,9 @@ class HomeroomController extends Controller
             'canManageAttendance' => $request->user()->can('teacher.attendance.manage'),
             'seating' => $seating,
             'canManageSeating' => $request->user()->can('teacher.homeroom.seating.manage'),
+            'canUpdateStudentContacts' => $teacher?->status === 'active'
+                && $teacher?->staff_type === 'guru'
+                && $assignment !== null,
             'filters' => $request->only(['per_page']),
             'hasTeacherProfile' => $teacher !== null,
         ]);
