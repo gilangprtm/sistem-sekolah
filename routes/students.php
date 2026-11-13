@@ -9,6 +9,7 @@ Route::middleware(['auth', 'verified', 'can:student.card.view'])->group(function
 
 Route::middleware(['auth', 'verified', 'can:student.card.print'])->group(function (): void {
     Route::get('/students/cards/print', [StudentController::class, 'cardsPrint'])->name('students.cards.print');
+    Route::get('/students/cards/download', [StudentController::class, 'downloadCardsData'])->name('students.cards.download');
 });
 
 Route::middleware(['auth', 'verified', 'can:student.card.view'])->group(function (): void {

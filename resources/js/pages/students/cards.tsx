@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { CreditCard, Printer, Search, UserRound } from 'lucide-react';
+import { CreditCard, Download, Printer, Search, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import DataTableShell from '@/components/data-table/data-table-shell';
 import type { DataTableColumn } from '@/components/data-table/data-table-shell';
@@ -34,7 +34,9 @@ type Props = {
     filters: {
         search?: string;
         gender?: string;
+        status?: string;
         tahun_angkatan?: string;
+        photo?: string;
     };
     filterOptions: {
         genders: FilterOption[];
@@ -63,6 +65,7 @@ export default function StudentCards({
     const [tahunAngkatan, setTahunAngkatan] = useState(
         filters.tahun_angkatan ?? '',
     );
+    const [photo, setPhoto] = useState(filters.photo ?? '');
     const [selected, setSelected] = useState<number[]>([]);
 
     const filterParams = (): Record<string, string> => {
@@ -78,6 +81,10 @@ export default function StudentCards({
 
         if (tahunAngkatan) {
             params.tahun_angkatan = tahunAngkatan;
+        }
+
+        if (photo) {
+            params.photo = photo;
         }
 
         return params;
@@ -99,6 +106,7 @@ export default function StudentCards({
         setSearch('');
         setGender('');
         setTahunAngkatan('');
+        setPhoto('');
         navigate({ page: 1, per_page: students.per_page });
     };
 
@@ -106,6 +114,15 @@ export default function StudentCards({
         navigate({ ...filterParams(), page, per_page: students.per_page });
     };
     const printQuery = new URLSearchParams(filterParams()).toString();
+    const exportQuery = new URLSearchParams(
+        Object.entries(filters).filter(
+            ([key, value]) =>
+                key !== 'per_page' &&
+                key !== 'page' &&
+                value !== undefined &&
+                value !== '',
+        ) as [string, string][],
+    ).toString();
     const columns: DataTableColumn<Student>[] = [
         {
             id: 'name',
@@ -152,17 +169,31 @@ export default function StudentCards({
                         description="Pilih siswa untuk membuka dan mencetak kartu pelajar"
                     />
                     {canPrint && (
-                        <Button
-                            asChild
-                            className="w-full md:w-auto md:shrink-0"
-                        >
-                            <Link
-                                href={`/students/cards/print${printQuery ? `?${printQuery}` : ''}`}
+                        <div className="flex flex-col gap-2 md:flex-row">
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="w-full md:w-auto md:shrink-0"
                             >
-                                <Printer />
-                                Cetak Semua Kartu
-                            </Link>
-                        </Button>
+                                <a
+                                    href={`/students/cards/download${exportQuery ? `?${exportQuery}` : ''}`}
+                                >
+                                    <Download />
+                                    Unduh Data
+                                </a>
+                            </Button>
+                            <Button
+                                asChild
+                                className="w-full md:w-auto md:shrink-0"
+                            >
+                                <Link
+                                    href={`/students/cards/print${printQuery ? `?${printQuery}` : ''}`}
+                                >
+                                    <Printer />
+                                    Cetak Semua Kartu
+                                </Link>
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -217,6 +248,21 @@ export default function StudentCards({
                                 placeholder="Semua"
                                 searchPlaceholder="Cari angkatan..."
                                 emptyMessage="Angkatan tidak ditemukan."
+                            />
+                        </div>
+                        <div className="grid min-w-0 flex-[1_1_12rem] gap-2">
+                            <Label>Foto</Label>
+                            <SearchableCombobox
+                                value={photo}
+                                options={[
+                                    { value: '', label: 'Semua' },
+                                    { value: 'yes', label: 'Sudah' },
+                                    { value: 'no', label: 'Belum' },
+                                ]}
+                                onChange={setPhoto}
+                                placeholder="Semua"
+                                searchPlaceholder="Cari status foto..."
+                                emptyMessage="Status foto tidak ditemukan."
                             />
                         </div>
                         <div className="flex flex-wrap gap-2">

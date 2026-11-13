@@ -10,6 +10,7 @@ use App\Models\StudentPlacement;
 use App\Models\User;
 use App\Services\AutoLinkStudentAccounts;
 use App\Services\StudentCsvImporter;
+use App\Services\XlsxWriter;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -53,7 +54,7 @@ class StudentController extends Controller
 
         return Inertia::render('students/cards', [
             'students' => $this->paginatedStudents($request, $angkatanOptions),
-            'filters' => $request->only(['search', 'gender', 'status', 'tahun_angkatan', 'per_page']),
+            'filters' => $request->only(['search', 'gender', 'status', 'tahun_angkatan', 'photo', 'per_page']),
             'filterOptions' => array_merge(
                 $this->studentFilterOptions(),
                 ['angkatans' => $angkatanOptions],
@@ -71,13 +72,53 @@ class StudentController extends Controller
 
         return Inertia::render('students/cards-print', [
             'students' => $students,
-            'filters' => $request->only(['search', 'gender', 'status', 'tahun_angkatan']),
+            'filters' => $request->only(['search', 'gender', 'status', 'tahun_angkatan', 'photo']),
         ]);
     }
 
     public function card(Student $student): Response
     {
         return Inertia::render('students/card', $this->cardPayload($student));
+    }
+
+    public function downloadCardsData(Request $request, XlsxWriter $writer): StreamedResponse
+    {
+        $angkatanOptions = $this->studentAngkatanOptions();
+        $students = $this->studentQuery($request, $angkatanOptions)->get();
+        $activeYear = AcademicYear::query()->where('status', 'active')->first();
+        $placements = $activeYear === null ? collect() : StudentPlacement::query()
+            ->with('rombel:id,name,code')
+            ->where('academic_year_id', $activeYear->id)
+            ->where('status', 'active')
+            ->whereIn('student_id', $students->modelKeys())
+            ->get()
+            ->keyBy('student_id');
+        $rows = [
+            ['Data Kartu Pelajar'],
+            ['Tahun Ajaran: '.($activeYear?->year ?? '-')],
+            [],
+            ['NISN', 'Nama', 'Kelas'],
+        ];
+
+        foreach ($students as $student) {
+            $rombel = $placements->get($student->id)?->rombel;
+            $rows[] = [$student->nisn ?? '-', $student->full_name, $rombel?->name ?: ($rombel?->code ?: '-')];
+        }
+
+        $content = $writer->write($rows, 'Data Kartu Pelajar', [
+            'titleRow' => 1,
+            'headerRow' => 4,
+            'borderFromRow' => 5,
+            'columnWidths' => [1 => 22, 2 => 36, 3 => 22],
+        ]);
+
+        return response()->streamDownload(static function () use ($content): void {
+            echo $content;
+        }, 'data-kartu-pelajar.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function downloadTemplate(): StreamedResponse
@@ -244,6 +285,7 @@ class StudentController extends Controller
         $tahunAngkatan = $angkatanOptions === null
             ? null
             : $this->validatedAngkatan($request->input('tahun_angkatan'), $angkatanOptions);
+        $photo = $angkatanOptions === null ? '' : $request->string('photo')->toString();
 
         return Student::query()
             ->with('user:id,name,email')
@@ -260,6 +302,10 @@ class StudentController extends Controller
             ->when($account === 'connected', fn ($query) => $query->whereHas('user'))
             ->when($account === 'unconnected', fn ($query) => $query->whereDoesntHave('user'))
             ->when($tahunAngkatan !== null, fn ($query) => $query->where('tahun_angkatan', $tahunAngkatan))
+            ->when($photo === 'yes', fn ($query) => $query->whereNotNull('photo_path')->where('photo_path', '<>', ''))
+            ->when($photo === 'no', fn ($query) => $query->where(function ($query): void {
+                $query->whereNull('photo_path')->orWhere('photo_path', '');
+            }))
             ->orderBy('full_name');
     }
 

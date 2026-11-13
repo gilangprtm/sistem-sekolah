@@ -237,6 +237,95 @@ class StudentCardTest extends TestCase
                 ->where('filterOptions.angkatans', [2024, 2025]));
     }
 
+    public function test_student_cards_excel_export_applies_filters_and_uses_active_placement_for_all_matching_students(): void
+    {
+        $printer = User::factory()->create();
+        $printer->givePermissionTo('student.card.print');
+        $year = AcademicYear::query()->create(['year' => '2026/2027', 'status' => 'active']);
+        $oldYear = AcademicYear::query()->create(['year' => '2025/2026', 'status' => 'inactive']);
+        $activeClass = Rombel::factory()->create(['name' => 'VII Aktif', 'code' => '7A']);
+        $otherClass = Rombel::factory()->create(['name' => 'VI Lama', 'code' => '6B']);
+        $matching = Student::factory()->create(['nisn' => '112233', 'full_name' => 'Target Siswa', 'gender' => 'L', 'tahun_angkatan' => 2025, 'photo_path' => 'siswa.jpg']);
+        $noClass = Student::factory()->create(['nisn' => '445566', 'full_name' => 'Target Tanpa Kelas', 'gender' => 'L', 'tahun_angkatan' => 2025, 'photo_path' => 'ada.jpg']);
+        Student::factory()->create(['full_name' => 'Target Putri', 'gender' => 'P', 'tahun_angkatan' => 2025, 'photo_path' => 'ada.jpg']);
+        Student::factory()->create(['full_name' => 'Target Tanpa Foto', 'gender' => 'L', 'tahun_angkatan' => 2025, 'photo_path' => null]);
+        Student::factory()->create(['full_name' => 'Siswa Lain', 'gender' => 'L', 'tahun_angkatan' => 2025, 'photo_path' => 'ada.jpg']);
+
+        StudentPlacement::query()->create(['academic_year_id' => $oldYear->id, 'rombel_id' => $otherClass->id, 'student_id' => $matching->id, 'status' => 'active', 'started_at' => now()]);
+        StudentPlacement::query()->create(['academic_year_id' => $year->id, 'rombel_id' => $activeClass->id, 'student_id' => $matching->id, 'status' => 'active', 'started_at' => now()]);
+
+        $response = $this->actingAs($printer)->get('/students/cards/download?search=Target&gender=L&tahun_angkatan=2025&photo=yes&per_page=1')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Content-Disposition', 'attachment; filename=data-kartu-pelajar.xlsx');
+
+        ob_start();
+        $response->sendContent();
+        $content = ob_get_clean();
+        $path = tempnam(sys_get_temp_dir(), 'student-export-test-');
+        file_put_contents($path, $content);
+        $archive = new \ZipArchive();
+        $this->assertTrue($archive->open($path) === true);
+        $sheet = simplexml_load_string($archive->getFromName('xl/worksheets/sheet1.xml'));
+        $archive->close();
+        @unlink($path);
+        $this->assertNotFalse($sheet);
+        $sheet->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $rowValues = [];
+        foreach ($sheet->xpath('//x:sheetData/x:row') as $row) {
+            $values = [];
+            foreach ($row->c as $cell) {
+                $column = ord($cell['r'][0]) - ord('A');
+                $values[$column] = isset($cell->is->t) ? (string) $cell->is->t : (string) ($cell->v ?? '');
+            }
+            ksort($values);
+            $rowValues[] = array_values($values);
+        }
+        $this->assertSame(['NISN', 'Nama', 'Kelas'], $rowValues[3]);
+        $this->assertSame(['112233', 'Target Siswa', 'VII Aktif'], $rowValues[4]);
+        $this->assertSame(['445566', 'Target Tanpa Kelas', '-'], $rowValues[5]);
+        $this->assertCount(6, $rowValues);
+    }
+
+    public function test_student_cards_excel_export_requires_print_permission(): void
+    {
+        $viewer = User::factory()->create();
+        $viewer->givePermissionTo('student.card.view');
+        $printer = User::factory()->create();
+        $printer->givePermissionTo('student.card.print');
+
+        $this->actingAs($viewer)->get('/students/cards/download')->assertForbidden();
+        $this->actingAs($printer)->get('/students/cards/download')->assertOk();
+    }
+
+    public function test_student_cards_photo_filter_defaults_to_all_and_filters_present_and_missing_paths(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        Student::factory()->create(['full_name' => 'Foto Ada', 'photo_path' => 'students/1/photo.jpg']);
+        Student::factory()->create(['full_name' => 'Foto Kosong', 'photo_path' => '']);
+        Student::factory()->create(['full_name' => 'Tanpa Foto', 'photo_path' => null]);
+
+        $this->actingAs($admin)->get('/students/cards')
+            ->assertInertia(fn ($page) => $page
+                ->where('students.total', 3)
+                ->missing('filters.photo'));
+
+        $this->actingAs($admin)->get('/students/cards?photo=yes')
+            ->assertInertia(fn ($page) => $page
+                ->where('students.data', fn ($students) => $students->pluck('full_name')->all() === ['Foto Ada'])
+                ->where('filters.photo', 'yes'));
+
+        $this->actingAs($admin)->get('/students/cards?photo=no')
+            ->assertInertia(fn ($page) => $page
+                ->where('students.data', fn ($students) => $students->pluck('full_name')->all() === ['Foto Kosong', 'Tanpa Foto']));
+
+        $this->actingAs($admin)->get('/students/cards?photo=invalid')
+            ->assertInertia(fn ($page) => $page->where('students.total', 3));
+    }
+
     public function test_student_cards_ignores_invalid_or_unselected_tahun_angkatan_filter(): void
     {
         $admin = User::factory()->create();
@@ -320,6 +409,23 @@ class StudentCardTest extends TestCase
         $this->assertStringContainsString('setIsDownloading(false)', $source);
         $this->assertStringContainsString('toast.error', $source);
         $this->assertStringNotContainsString('window.print()', $source);
+    }
+
+    public function test_student_cards_print_photo_filter_only_includes_students_with_photos(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('Super Admin');
+        Student::factory()->create(['full_name' => 'Foto Cetak', 'photo_path' => 'students/1/photo.jpg']);
+        Student::factory()->create(['full_name' => 'Tanpa Foto Cetak', 'photo_path' => null]);
+
+        $this->actingAs($admin)
+            ->get('/students/cards/print?photo=yes')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('students/cards-print')
+                ->where('students', fn ($students) => $students->count() === 1
+                    && $students->first()['student']['full_name'] === 'Foto Cetak')
+                ->where('filters.photo', 'yes'));
     }
 
     public function test_student_cards_print_has_a_dedicated_print_surface_with_all_students(): void
